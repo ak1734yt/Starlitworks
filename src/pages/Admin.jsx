@@ -91,7 +91,11 @@ export default function Admin() {
       
       // Also update vault if present
       if (editingOrder.vault_data) {
-        await updateOrderVault(editingOrder.id, JSON.parse(editingOrder.vault_data));
+        let vData = editingOrder.vault_data;
+        if (typeof vData === 'string') {
+          try { vData = JSON.parse(vData); } catch(e) { throw new Error("Invalid JSON in Starlit Vault"); }
+        }
+        await updateOrderVault(editingOrder.id, vData);
       }
 
       toast.success('Order & Vault updated');

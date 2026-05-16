@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getInvoices, updateInstallment } from '../services/api';
+import { getUserInvoicesByAdmin, updateInstallment } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CreditCard, TrendingUp, Calendar, CheckCircle2, Circle, AlertCircle, ChevronRight, LayoutDashboard } from 'lucide-react';
