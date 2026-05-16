@@ -115,7 +115,8 @@ export default function CookieConsent() {
               By clicking accept, you agree to our security tracking and session storage policies.
             </p>
           </div>
-        </motion.div>
+          </motion.div>
+        </div>
       )}
     </AnimatePresence>
   );

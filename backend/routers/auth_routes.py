@@ -186,3 +186,29 @@ def update_profile(body: ProfileBody, user=Depends(get_current_user)):
     row = dict(db.execute("SELECT * FROM users WHERE id = ?", (user["id"],)).fetchone())
     db.close()
     return {"success": True, "user": safe_user(row)}
+
+# ─── Avatar Upload ────────────────────────────────────────────────────────────
+import shutil, uuid
+from fastapi import UploadFile, File
+
+DATA_DIR    = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
+UPLOADS_DIR = os.path.join(DATA_DIR, "uploads")
+os.makedirs(UPLOADS_DIR, exist_ok=True)
+
+ALLOWED_EXTS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
+
+@router.post("/upload/avatar")
+async def upload_avatar(file: UploadFile = File(...), user=Depends(get_current_user)):
+    ext = os.path.splitext(file.filename or "")[1].lower()
+    if ext not in ALLOWED_EXTS:
+        raise HTTPException(400, "Unsupported file type. Use JPG, PNG, GIF or WebP.")
+    fname = f"avatar_{user['id']}_{uuid.uuid4().hex[:8]}{ext}"
+    dest  = os.path.join(UPLOADS_DIR, fname)
+    with open(dest, "wb") as f:
+        shutil.copyfileobj(file.file, f)
+    url = f"/uploads/{fname}"
+    # Update avatar in DB immediately
+    db = get_db()
+    db.execute("UPDATE users SET avatar_url=? WHERE id=?", (url, user["id"]))
+    db.commit(); db.close()
+    return {"url": url}

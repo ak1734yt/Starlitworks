@@ -1,11 +1,11 @@
-import { Sparkles, ShoppingBag, History, CreditCard, LogOut, User, Shield, Settings, Activity, Loader2 } from "lucide-react";
+import { Sparkles, ShoppingBag, History, CreditCard, LogOut, Shield, Settings, Activity, Loader2, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import ProfileModal from "./ProfileModal";
 import NotificationCenter from "./NotificationCenter";
-import { getUserInvoicesByAdmin } from "../services/api";
+import { getUserInvoicesByAdmin, getInvoices } from "../services/api";
 const Navbar = () => {
   const location = useLocation();
   const navigate  = useNavigate();
@@ -23,7 +23,11 @@ const Navbar = () => {
 
   useEffect(() => {
     if (user) {
-      getUserInvoicesByAdmin(user.id).then(invs => {
+      const fetchPromise = (user.role === 'admin' || user.role === 'manager') 
+        ? getInvoices() 
+        : getUserInvoicesByAdmin(user.id);
+        
+      fetchPromise.then(invs => {
         if (Array.isArray(invs)) {
           setHasInstallments(invs.some(i => i.paymentType === 'installment'));
         }
@@ -53,7 +57,7 @@ const Navbar = () => {
         {/* Right Section Group (Nav + Auth) */}
         <div className="flex items-center gap-8">
 
-        {/* Nav links */}
+        {/* Nav links (Desktop) */}
         <div className="hidden lg:flex items-center gap-8 text-sm font-medium text-gray-300">
           <Link to="/about" className="hover:text-brand-primary transition-colors">About Us</Link>
           <Link to="/#portfolio" className="hover:text-brand-primary transition-colors">Portfolio</Link>
@@ -83,8 +87,21 @@ const Navbar = () => {
         {/* Right side */}
         <div className="flex items-center gap-3">
           {user && <NotificationCenter />}
+          
+          {/* Mobile Menu Toggle */}
+          <button 
+            onClick={() => setUserMenuOpen(!userMenuOpen)}
+            className="lg:hidden p-2.5 glass rounded-xl text-gray-400 hover:text-white"
+          >
+            <div className="w-5 h-4 flex flex-col justify-between">
+              <span className={`h-0.5 bg-current rounded-full transition-all ${userMenuOpen ? 'rotate-45 translate-y-1.5' : ''}`} />
+              <span className={`h-0.5 bg-current rounded-full transition-all ${userMenuOpen ? 'opacity-0' : ''}`} />
+              <span className={`h-0.5 bg-current rounded-full transition-all ${userMenuOpen ? '-rotate-45 -translate-y-2' : ''}`} />
+            </div>
+          </button>
+
           {user ? (
-            <div className="relative">
+            <div className="relative hidden lg:block">
               <button
                 onClick={() => setUserMenuOpen(v => !v)}
                 className="flex items-center gap-2 glass px-3 py-2 rounded-xl hover:border-brand-primary/40 transition-all"
@@ -161,6 +178,106 @@ const Navbar = () => {
     </motion.nav>
 
     {showProfileModal && <ProfileModal onClose={() => setShowProfileModal(false)} />}
+
+    {/* Mobile Menu Overlay */}
+    <AnimatePresence>
+      {userMenuOpen && (
+        <motion.div
+          initial={{ opacity: 0, x: '100%' }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: '100%' }}
+          className="fixed inset-0 z-[60] lg:hidden"
+        >
+          {/* Backdrop */}
+          <div 
+            className="absolute inset-0 bg-black/80 backdrop-blur-md"
+            onClick={() => setUserMenuOpen(false)}
+          />
+          
+          {/* Menu Content */}
+          <motion.div 
+            className="absolute top-0 right-0 bottom-0 w-[80%] max-w-xs bg-brand-card border-l border-white/10 p-8 flex flex-col"
+          >
+            <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-brand-primary/10 flex items-center justify-center">
+                  <Sparkles className="w-4 h-4 text-brand-primary" />
+                </div>
+                <span className="font-display font-bold">Starlit Siege</span>
+              </div>
+              <button onClick={() => setUserMenuOpen(false)} className="p-2 glass rounded-lg text-gray-500 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {user ? (
+              <div className="mb-8 p-4 glass rounded-2xl">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-primary to-brand-secondary flex items-center justify-center font-bold">
+                    {user.avatar ? <img src={user.avatar} className="w-full h-full object-cover rounded-xl" /> : user.name[0]}
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-white truncate">{user.name}</p>
+                    <p className="text-[10px] text-gray-500 truncate">{user.email}</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => { setShowProfileModal(true); setUserMenuOpen(false); }}
+                  className="w-full py-2 bg-white/5 hover:bg-white/10 rounded-xl text-xs font-bold transition-all"
+                >
+                  Edit Profile
+                </button>
+              </div>
+            ) : (
+              <div className="grid gap-3 mb-8">
+                <button onClick={() => { openAuthModal('/', 'login'); setUserMenuOpen(false); }} className="w-full py-3 glass rounded-xl text-sm font-bold">Sign In</button>
+                <button onClick={() => { openAuthModal('/', 'signup'); setUserMenuOpen(false); }} className="w-full py-3 btn-primary rounded-xl text-sm font-bold">Get Started</button>
+              </div>
+            )}
+
+            <div className="flex flex-col gap-1">
+              <Link to="/about" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-3 p-3 text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-all">
+                <Shield className="w-4 h-4" /> About Us
+              </Link>
+              <Link to="/#portfolio" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-3 p-3 text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-all">
+                <Activity className="w-4 h-4" /> Portfolio
+              </Link>
+              <button onClick={() => { handleProtectedLink('/shop'); setUserMenuOpen(false); }} className="flex items-center gap-3 p-3 text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-all">
+                <ShoppingBag className="w-4 h-4" /> Shop
+              </button>
+              {user && (
+                <>
+                  <div className="h-px bg-white/5 my-2" />
+                  <Link to="/history" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-3 p-3 text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-all">
+                    <History className="w-4 h-4" /> Invoice History
+                  </Link>
+                  {hasInstallments && (
+                    <Link to="/tracker" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-3 p-3 text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-all">
+                      <CreditCard className="w-4 h-4" /> Tracker
+                    </Link>
+                  )}
+                  {(user.role === 'admin' || user.role === 'manager') && (
+                    <Link to="/admin" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-3 p-3 text-yellow-500/80 hover:text-yellow-400 hover:bg-yellow-500/10 rounded-xl transition-all font-bold">
+                      <Shield className="w-4 h-4" /> Admin Panel
+                    </Link>
+                  )}
+                  {user.role === 'manager' && (
+                    <Link to="/manager" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-3 p-3 text-brand-primary hover:text-white hover:bg-brand-primary/10 rounded-xl transition-all font-bold">
+                      <Shield className="w-4 h-4" /> Manager Panel
+                    </Link>
+                  )}
+                  <div className="mt-auto pt-8">
+                    <button onClick={() => { logout(); setUserMenuOpen(false); }} className="w-full flex items-center gap-3 p-4 text-red-400 hover:bg-red-500/10 rounded-2xl transition-all font-bold">
+                      <LogOut className="w-5 h-5" /> Sign Out
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
     </>
   );
 };

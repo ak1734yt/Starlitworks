@@ -7,6 +7,12 @@ import SystemHealth from '../components/SystemHealth';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
+import {
+  createUserInvoice, deleteOrder, request, getPublicPrices,
+  getAnalyticsLogs, updateOrderVault, updateInstallment
+} from '../services/api';
+import OrderChat from '../components/OrderChat';
+
 const TABS = [
   { id: 'orders',   label: 'Service Requests', icon: ShoppingBag },
   { id: 'chats',    label: 'Order Chats',      icon: MessageSquare },
@@ -16,10 +22,6 @@ const TABS = [
   { id: 'clients',  label: 'Clients',          icon: Users },
   { id: 'pulse',    label: 'User Pulse',       icon: LayoutDashboard },
 ];
-  createUserInvoice, deleteOrder, request, getPublicPrices,
-  getAnalyticsLogs, updateOrderVault, updateInstallment
-} from '../services/api';
-import OrderChat from '../components/OrderChat';
 
 const getScreenshotUrl = (url) => {
   if (!url) return '';
@@ -776,8 +778,6 @@ export default function Admin() {
                   </button>
                 </div>
               </form>
-
-
             </motion.div>
           </motion.div>
         )}

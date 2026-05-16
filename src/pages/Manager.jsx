@@ -434,7 +434,6 @@ export default function Manager() {
                 </div>
               </div>
             ))}
-          </div>
           </motion.div>
         )}
 
@@ -512,7 +511,6 @@ export default function Manager() {
                 </table>
               </div>
             </div>
-          </div>
           </motion.div>
         )}
 
@@ -604,11 +602,10 @@ export default function Manager() {
                   </div>
                 </div>
               ))}
-                  </div>
+            </div>
                 </div>
               );
             })}
-          </div>
           </motion.div>
         )}
 
@@ -704,7 +701,6 @@ export default function Manager() {
                 </div>
               ))}
             </div>
-          </div>
           </motion.div>
         )}
 
@@ -987,7 +983,6 @@ export default function Manager() {
                 </button>
               </div>
             </form>
-          </div>
           </motion.div>
         )}
 
@@ -1088,7 +1083,7 @@ export default function Manager() {
                 </div>
               </div>
             </div>
-          </div>
+          </motion.div>
         )}
         {activeTab === 'pulse' && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">

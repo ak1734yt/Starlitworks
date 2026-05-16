@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getUserInvoicesByAdmin, updateInstallment } from '../services/api';
+import { getUserInvoicesByAdmin, getInvoices, updateInstallment } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CreditCard, TrendingUp, Calendar, CheckCircle2, Circle, AlertCircle, ChevronRight, LayoutDashboard } from 'lucide-react';
@@ -16,7 +16,9 @@ export default function InstallmentTracker() {
     if (!user) return;
     setLoading(true);
     try {
-      const all = await getUserInvoicesByAdmin(user.id);
+      const all = (user.role === 'admin' || user.role === 'manager')
+        ? await getInvoices()
+        : await getUserInvoicesByAdmin(user.id);
       setInvoices(all.filter(inv => inv.paymentType === 'installment'));
     } catch { showToast('Failed to load tracking data', 'error'); }
     finally { setLoading(false); }
@@ -76,13 +78,13 @@ export default function InstallmentTracker() {
                   animate={{ opacity: 1, x: 0 }}
                   className="glass-card overflow-hidden"
                 >
-                  <div className="p-8 border-b border-white/5 bg-white/[0.01] flex flex-col lg:flex-row justify-between gap-8">
+                  <div className="p-6 md:p-8 border-b border-white/5 bg-white/[0.01] flex flex-col lg:flex-row justify-between gap-6 md:gap-8">
                     <div className="flex-grow">
-                      <div className="flex items-center gap-3 mb-2">
-                        <span className="text-xs font-bold text-brand-secondary bg-brand-secondary/10 px-2 py-0.5 rounded uppercase tracking-tighter">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-2">
+                        <span className="text-xs font-bold text-brand-secondary bg-brand-secondary/10 px-2 py-0.5 rounded uppercase tracking-tighter w-fit">
                           {inv.invoiceNumber}
                         </span>
-                        <h3 className="text-2xl font-bold">{inv.client?.name}</h3>
+                        <h3 className="text-xl sm:text-2xl font-bold">{inv.client?.name}</h3>
                       </div>
                       <p className="text-gray-500 text-sm flex items-center gap-2">
                         <Calendar className="w-3.5 h-3.5" />
@@ -90,33 +92,33 @@ export default function InstallmentTracker() {
                       </p>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-8 lg:text-right">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 md:gap-8 lg:text-right">
                       <div>
                         <p className="text-[10px] text-gray-600 uppercase font-bold mb-1">Total Contract</p>
-                        <p className="text-lg font-bold">₹{inv.grandTotal.toLocaleString()}</p>
+                        <p className="text-base sm:text-lg font-bold">₹{inv.grandTotal.toLocaleString()}</p>
                       </div>
                       <div>
                         <p className="text-[10px] text-green-500/60 uppercase font-bold mb-1">Received</p>
-                        <p className="text-lg font-bold text-green-500">₹{paidAmt.toLocaleString()}</p>
+                        <p className="text-base sm:text-lg font-bold text-green-500">₹{paidAmt.toLocaleString()}</p>
                       </div>
-                      <div>
+                      <div className="col-span-2 sm:col-span-1">
                         <p className="text-[10px] text-red-400/60 uppercase font-bold mb-1">Outstanding</p>
-                        <p className="text-lg font-bold text-red-400">₹{pendingAmt.toLocaleString()}</p>
+                        <p className="text-base sm:text-lg font-bold text-red-400">₹{pendingAmt.toLocaleString()}</p>
                       </div>
-                      {inv.recurringTotal > 0 && (
-                        <div className="pt-4 mt-4 border-t border-white/5 lg:border-t-0 lg:mt-0 lg:pt-0">
+                      {(parseFloat(inv.recurringTotal) || 0) > 0 && (
+                        <div className="col-span-2 sm:col-span-3 pt-4 mt-2 sm:mt-4 border-t border-white/5 lg:border-t-0 lg:mt-0 lg:pt-0">
                           <p className="text-[10px] text-brand-secondary uppercase font-bold mb-1">Monthly Recurring</p>
-                          <p className="text-lg font-bold text-brand-secondary flex items-center gap-2">
-                            ₹{inv.recurringTotal.toLocaleString()}
+                          <p className="text-base sm:text-lg font-bold text-brand-secondary flex items-center gap-2">
+                            ₹{parseFloat(inv.recurringTotal).toLocaleString()}
                             <span className="text-[10px] text-gray-500 font-normal">/ mo</span>
                           </p>
-                          <p className="text-[8px] text-gray-600 italic">Active until terminated</p>
+                          <p className="text-[8px] text-gray-600 italic">Monthly recurring amount will be provided till the plan will be canceled or terminated.</p>
                         </div>
                       )}
                     </div>
                   </div>
 
-                  <div className="px-8 py-4 bg-white/[0.02] flex items-center gap-6">
+                  <div className="px-6 md:px-8 py-4 bg-white/[0.02] flex items-center gap-4 md:gap-6">
                     <div className="flex-grow h-2 bg-white/5 rounded-full overflow-hidden">
                       <motion.div 
                         initial={{ width: 0 }}
@@ -124,10 +126,13 @@ export default function InstallmentTracker() {
                         className="h-full bg-brand-secondary shadow-[0_0_15px_rgba(59,130,246,0.5)]"
                       />
                     </div>
-                    <span className="text-xs font-bold text-brand-secondary shrink-0">{progress.toFixed(0)}% Complete</span>
+                    <span className="text-xs font-bold text-brand-secondary shrink-0 text-right">
+                      {progress.toFixed(0)}% Complete<br/>
+                      <span className="text-[9px] text-gray-500 font-normal">({total - paid} payments left)</span>
+                    </span>
                   </div>
 
-                  <div className="p-8 grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="p-6 md:p-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     {inv.installments?.map((inst, i) => (
                       <div 
                         key={i} 
@@ -142,7 +147,7 @@ export default function InstallmentTracker() {
                         </div>
                         <div className="flex justify-between items-end">
                           <p className="text-sm font-bold">₹{inst.amount.toLocaleString()}</p>
-                          {user?.role === 'admin' && (
+                          {(user?.role === 'admin' || user?.role === 'manager') && (
                             <button 
                               onClick={() => togglePaid(inv.id, i, inst.paid)}
                               className={`text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full transition-all ${inst.paid ? 'text-gray-600 hover:text-red-500' : 'bg-brand-secondary/10 text-brand-secondary hover:bg-brand-secondary hover:text-white'}`}

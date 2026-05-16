@@ -9,7 +9,7 @@ import { useAuth } from '../context/AuthContext';
 export default function Shop() {
   const navigate = useNavigate();
   const { user, openAuthModal } = useAuth();
-  const { cart, toggleItem } = useCart();
+  const { cart, toggleItem, isSelected, getQuantity, setQuantity } = useCart();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -89,13 +89,12 @@ export default function Shop() {
             </h2>
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
               {servers.map(plan => {
-                const isSelected = cart.includes(plan.product_key || String(plan.id));
                 return (
                   <motion.div
                     key={plan.id}
                     whileHover={{ y: -5 }}
                     onClick={() => toggleItem(plan.product_key || String(plan.id))}
-                    className={`glass-card flex flex-col relative border-2 transition-all p-6 cursor-pointer group ${isSelected ? 'border-brand-primary bg-brand-primary/5' : 'border-white/5 hover:border-brand-primary/30'}`}
+                    className={`glass-card flex flex-col relative border-2 transition-all p-6 cursor-pointer group ${isSelected(plan.product_key || String(plan.id)) ? 'border-brand-primary bg-brand-primary/5' : 'border-white/5 hover:border-brand-primary/30'}`}
                   >
                     {plan.tag && (
                       <div className="absolute -top-3 -right-3 bg-brand-primary text-[10px] font-bold px-3 py-1 rounded-full shadow-lg">
@@ -116,9 +115,9 @@ export default function Shop() {
                     </ul>
 
                     <button 
-                      className={`w-full py-2.5 rounded-xl font-medium transition-colors ${isSelected ? 'bg-brand-primary text-white shadow-lg shadow-brand-primary/20' : 'bg-white/5 hover:bg-white/10'}`}
+                      className={`w-full py-2.5 rounded-xl font-medium transition-colors ${isSelected(plan.product_key || String(plan.id)) ? 'bg-brand-primary text-white shadow-lg shadow-brand-primary/20' : 'bg-white/5 hover:bg-white/10'}`}
                     >
-                      {isSelected ? 'Selected' : 'Select'}
+                      {isSelected(plan.product_key || String(plan.id)) ? 'Selected ✓' : 'Select'}
                     </button>
                   </motion.div>
                 );
@@ -136,17 +135,16 @@ export default function Shop() {
             </h2>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
               {addons.map(addon => {
-                const isSelected = cart.includes(addon.product_key || String(addon.id));
                 return (
                   <div 
                     key={addon.id} 
                     onClick={() => toggleItem(addon.product_key || String(addon.id))}
-                    className={`glass p-5 rounded-2xl flex flex-col justify-between border-2 cursor-pointer transition-all ${isSelected ? 'border-brand-secondary bg-brand-secondary/5' : 'border-white/5 hover:border-white/20'}`}
+                    className={`glass p-5 rounded-2xl flex flex-col justify-between border-2 cursor-pointer transition-all ${isSelected(addon.product_key || String(addon.id)) ? 'border-brand-secondary bg-brand-secondary/5' : 'border-white/5 hover:border-white/20'}`}
                   >
                     <div className="mb-4">
                       <div className="flex justify-between items-start">
                         <h3 className="font-bold text-lg mb-1">{addon.name}</h3>
-                        {isSelected && <Check className="w-4 h-4 text-brand-secondary" />}
+                        {isSelected(addon.product_key || String(addon.id)) && <Check className="w-4 h-4 text-brand-secondary" />}
                       </div>
                       <p className="text-xs text-gray-500 mb-2">{addon.description}</p>
                       <PriceDisplay product={addon} isSmall />
@@ -167,17 +165,16 @@ export default function Shop() {
             </h2>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {bots.map(bot => {
-                const isSelected = cart.includes(bot.product_key || String(bot.id));
                 return (
                   <div 
                     key={bot.id} 
                     onClick={() => toggleItem(bot.product_key || String(bot.id))}
-                    className={`glass-card border-2 cursor-pointer transition-all flex flex-col ${isSelected ? 'border-green-400 bg-green-400/5' : 'border-white/5 hover:border-white/20'}`}
+                    className={`glass-card border-2 cursor-pointer transition-all flex flex-col ${isSelected(bot.product_key || String(bot.id)) ? 'border-green-400 bg-green-400/5' : 'border-white/5 hover:border-white/20'}`}
                   >
                     <div className="mb-4 flex-grow">
                       <div className="flex justify-between items-start mb-2">
                         <h3 className="font-bold text-lg">{bot.name}</h3>
-                        {isSelected && <Check className="w-4 h-4 text-green-400" />}
+                        {isSelected(bot.product_key || String(bot.id)) && <Check className="w-4 h-4 text-green-400" />}
                       </div>
                       <p className="text-xs text-gray-500 mb-2">{bot.description}</p>
                       <PriceDisplay product={bot} />
@@ -207,17 +204,16 @@ export default function Shop() {
             </h2>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {scripts.map(script => {
-                const isSelected = cart.includes(script.product_key || String(script.id));
                 return (
                   <div 
                     key={script.id} 
                     onClick={() => toggleItem(script.product_key || String(script.id))}
-                    className={`glass-card border-2 cursor-pointer transition-all flex flex-col ${isSelected ? 'border-teal-400 bg-teal-400/5' : 'border-white/5 hover:border-white/20'}`}
+                    className={`glass-card border-2 cursor-pointer transition-all flex flex-col ${isSelected(script.product_key || String(script.id)) ? 'border-teal-400 bg-teal-400/5' : 'border-white/5 hover:border-white/20'}`}
                   >
                     <div className="mb-4 flex-grow">
                       <div className="flex justify-between items-start mb-2">
                         <h3 className="font-bold text-lg">{script.name}</h3>
-                        {isSelected && <Check className="w-4 h-4 text-teal-400" />}
+                        {isSelected(script.product_key || String(script.id)) && <Check className="w-4 h-4 text-teal-400" />}
                       </div>
                       <p className="text-xs text-gray-500 mb-2">{script.description}</p>
                       <PriceDisplay product={script} />
@@ -238,17 +234,16 @@ export default function Shop() {
             </h2>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {events.map(event => {
-                const isSelected = cart.includes(event.product_key || String(event.id));
                 return (
                   <div 
                     key={event.id} 
                     onClick={() => toggleItem(event.product_key || String(event.id))}
-                    className={`glass-card border-2 cursor-pointer transition-all flex flex-col ${isSelected ? 'border-orange-400 bg-orange-400/5' : 'border-white/5 hover:border-white/20'}`}
+                    className={`glass-card border-2 cursor-pointer transition-all flex flex-col ${isSelected(event.product_key || String(event.id)) ? 'border-orange-400 bg-orange-400/5' : 'border-white/5 hover:border-white/20'}`}
                   >
                     <div className="mb-4 flex-grow">
                       <div className="flex justify-between items-start mb-2">
                         <h3 className="font-bold text-lg">{event.name}</h3>
-                        {isSelected && <Check className="w-4 h-4 text-orange-400" />}
+                        {isSelected(event.product_key || String(event.id)) && <Check className="w-4 h-4 text-orange-400" />}
                       </div>
                       <p className="text-xs text-gray-500 mb-2">{event.description}</p>
                       <PriceDisplay product={event} />
@@ -263,30 +258,73 @@ export default function Shop() {
         {/* --- JOINS --- */}
         {joins.length > 0 && (
           <section className="mb-20">
-            <h2 className="text-2xl font-bold mb-8 flex items-center gap-3">
+            <h2 className="text-2xl font-bold mb-2 flex items-center gap-3">
               <Sparkles className="w-6 h-6 text-pink-400" />
               Joins & Members
             </h2>
+            <p className="text-gray-500 text-sm mb-4">Select how many members/tokens you want. Quantity = thousands (e.g. 2 = 2K).</p>
             <div className="mb-6 p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/20 text-yellow-500/80 text-xs font-medium text-center">
-              Disclaimer: Our Join & Member growth services are strictly promotional and adhere to Discord's Terms of Service. We do not use self-bots or engage in artificial inflation that violates platform guidelines.
+              Disclaimer: Our Join & Member growth services are strictly promotional and adhere to Discord's Terms of Service.
             </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {joins.map(join => {
-                const isSelected = cart.includes(join.product_key || String(join.id));
+                const key = join.product_key || String(join.id);
+                const selected = isSelected(key);
+                const qty = getQuantity(key);
+                const isMemberType = /member|join|offline|online/i.test(join.name);
+                const isTokenType  = /token/i.test(join.name);
+                const hasQty = isMemberType || isTokenType;
+                const qtyLabel = isMemberType
+                  ? `${qty}K Members`
+                  : isTokenType
+                  ? `${qty.toLocaleString()} Tokens`
+                  : `Qty: ${qty}`;
+
                 return (
-                  <div 
-                    key={join.id} 
-                    onClick={() => toggleItem(join.product_key || String(join.id))}
-                    className={`glass-card border-2 cursor-pointer transition-all flex flex-col ${isSelected ? 'border-pink-400 bg-pink-400/5' : 'border-white/5 hover:border-white/20'}`}
+                  <div
+                    key={join.id}
+                    className={`glass-card border-2 transition-all flex flex-col ${selected ? 'border-pink-400 bg-pink-400/5' : 'border-white/5 hover:border-white/20'}`}
                   >
-                    <div className="mb-4 flex-grow">
+                    <div
+                      onClick={() => toggleItem(key)}
+                      className="cursor-pointer p-6 pb-3 flex-grow"
+                    >
                       <div className="flex justify-between items-start mb-2">
                         <h3 className="font-bold text-lg">{join.name}</h3>
-                        {isSelected && <Check className="w-4 h-4 text-pink-400" />}
+                        {selected && <Check className="w-4 h-4 text-pink-400 shrink-0" />}
                       </div>
                       <p className="text-xs text-gray-500 mb-2">{join.description}</p>
                       <PriceDisplay product={join} />
                     </div>
+
+                    {selected && hasQty && (
+                      <div className="px-6 pb-5">
+                        <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-2">
+                          Quantity — <span className="text-pink-400">{qtyLabel}</span>
+                        </p>
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setQuantity(key, Math.max(1, qty - (isMemberType ? 1 : 100))); }}
+                            className="w-9 h-9 rounded-xl bg-white/5 hover:bg-pink-500/20 border border-white/10 flex items-center justify-center text-white font-bold text-lg transition-all"
+                          >−</button>
+                          <input
+                            type="number"
+                            min="1"
+                            value={qty}
+                            onClick={e => e.stopPropagation()}
+                            onChange={e => setQuantity(key, parseInt(e.target.value) || 1)}
+                            className="flex-1 text-center bg-white/5 border border-white/10 rounded-xl py-2 text-sm font-bold text-white focus:outline-none focus:border-pink-400 transition-all"
+                          />
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setQuantity(key, qty + (isMemberType ? 1 : 100)); }}
+                            className="w-9 h-9 rounded-xl bg-white/5 hover:bg-pink-500/20 border border-white/10 flex items-center justify-center text-white font-bold text-lg transition-all"
+                          >+</button>
+                        </div>
+                        {isMemberType && (
+                          <p className="text-[10px] text-gray-600 mt-1.5 text-center">Each unit = 1,000 members</p>
+                        )}
+                      </div>
+                    )}
                   </div>
                 );
               })}

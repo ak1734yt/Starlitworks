@@ -1,4 +1,4 @@
-import os, json, time, base64, secrets
+import os, json, time, base64, secrets, datetime
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from typing import Optional
@@ -9,7 +9,65 @@ router = APIRouter()
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
 UPLOADS_DIR = os.path.join(DATA_DIR, "uploads")
+INVOICES_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "invoices")
 os.makedirs(UPLOADS_DIR, exist_ok=True)
+os.makedirs(INVOICES_DIR, exist_ok=True)
+
+def auto_generate_invoice(order_id: int):
+    db = get_db()
+    order = db.execute("SELECT * FROM orders WHERE id = ?", (order_id,)).fetchone()
+    if not order: return
+    user = db.execute("SELECT name FROM users WHERE id = ?", (order["user_id"],)).fetchone()
+    db.close()
+    
+    # Check if invoice already exists for this order
+    for fname in os.listdir(INVOICES_DIR):
+        if not fname.endswith(".json"): continue
+        with open(os.path.join(INVOICES_DIR, fname)) as f:
+            existing = json.load(f)
+            if str(existing.get("orderId")) == str(order_id):
+                return # Already generated
+
+    inv_id = f"INV-{order_id}-{int(time.time())}"
+    client_name = user["name"] if user else "Client"
+    
+    amount = float(order["quoted_price"] if order["quoted_price"] else order["total_amount"])
+    cgst = float(order["cgst"] or 0)
+    sgst = float(order["sgst"] or 0)
+    
+    inv = {
+        "id": inv_id,
+        "invoiceNumber": inv_id,
+        "orderId": order_id,
+        "userId": order["user_id"],
+        "invoiceDate": datetime.datetime.now().strftime("%Y-%m-%d"),
+        "savedAt": datetime.datetime.utcnow().isoformat(),
+        "client": { "name": client_name, "serverName": order["service_name"] },
+        "org": {"name": "Starlit Siege Works", "emails": ["support@starlitsiegeworks.com"], "phone": "+91 9876543210"},
+        "items": [{ "id": secrets.token_hex(4), "desc": order["service_name"], "qty": 1, "rate": amount, "total": amount }],
+        "subtotal": amount - cgst - sgst,
+        "taxTotal": cgst + sgst,
+        "grandTotal": amount,
+        "currency": "₹",
+        "paymentType": order["payment_plan"] or "full",
+        "paymentStatus": "pending"
+    }
+
+    if inv["paymentType"] == "installment":
+        # Generate some default installments for manual tracking
+        inv["installments"] = [
+            {"month": "Payment 1 (Setup)", "amount": amount * 0.5, "paid": False, "status": "pending"},
+            {"month": "Payment 2 (Final)", "amount": amount * 0.5, "paid": False, "status": "pending"}
+        ]
+        inv["recurringTotal"] = 0
+
+    with open(os.path.join(INVOICES_DIR, f"{inv_id}.json"), "w") as f:
+        json.dump(inv, f, indent=2)
+    try:
+        from routers.invoice_routes import format_invoice_txt
+        with open(os.path.join(INVOICES_DIR, f"{inv_id}.txt"), "w", encoding="utf-8") as f:
+            f.write(format_invoice_txt(inv))
+    except: pass
 
 class OrderBody(BaseModel):
     service_id: str
@@ -100,6 +158,7 @@ def accept_order(order_id: int, user=Depends(get_current_user)):
     if not row: db.close(); raise HTTPException(404, "Not found")
     db.execute("UPDATE orders SET status='accepted', updated_at=? WHERE id=?", (int(time.time()), order_id))
     db.commit(); db.close()
+    auto_generate_invoice(order_id)
     return {"success": True}
 
 @router.post("/orders/{order_id}/payment-proof")
@@ -141,9 +200,17 @@ async def admin_update_order(order_id: int, body: AdminOrderUpdate, user=Depends
     if body.status not in valid: raise HTTPException(400, "Invalid status.")
     accepted_by = user["id"] if body.status in ("accepted","quoted") else None
     db = get_db()
+    
+    row = db.execute("SELECT * FROM orders WHERE id = ?", (order_id,)).fetchone()
+    if not row: db.close(); raise HTTPException(404, "Order not found")
+    
     db.execute("UPDATE orders SET status=?, quoted_price=?, admin_notes=?, accepted_by=COALESCE(?,accepted_by), updated_at=? WHERE id=?",
                (body.status, body.quoted_price, body.admin_notes, accepted_by, int(time.time()), order_id))
     db.commit(); db.close()
+    
+    if body.status == "accepted" and row["status"] != "accepted":
+        auto_generate_invoice(order_id)
+        
     log_activity(user["id"], "UPDATE_ORDER", f"Order {order_id} -> {body.status}")
     await send_discord_webhook(os.getenv("DISCORD_WEBHOOK_ORDERS"), {"embeds": [{"title": f"Order Updated #{order_id}", "description": f"Status: **{body.status}**", "color": 16776960}]})
     return {"success": True}

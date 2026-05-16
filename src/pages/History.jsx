@@ -515,6 +515,7 @@ export default function History() {
                 </button>
               </div>
 
+              <div className="space-y-4">
                 {(() => {
                   let vault = {};
                   try { 
