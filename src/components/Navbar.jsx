@@ -10,7 +10,7 @@ import SystemHealth from "./SystemHealth";
 const Navbar = () => {
   const location = useLocation();
   const navigate  = useNavigate();
-  const { user, logout, openAuthModal } = useAuth();
+  const { user, logout, openAuthModal, loading } = useAuth();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
 
