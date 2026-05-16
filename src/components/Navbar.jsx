@@ -5,8 +5,6 @@ import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import ProfileModal from "./ProfileModal";
 import NotificationCenter from "./NotificationCenter";
-import SystemHealth from "./SystemHealth";
-
 const Navbar = () => {
   const location = useLocation();
   const navigate  = useNavigate();
@@ -39,11 +37,6 @@ const Navbar = () => {
             <p className="text-[10px] text-brand-primary font-bold tracking-widest uppercase">Premium Solutions</p>
           </div>
         </Link>
-
-        {/* System Health Status (Desktop Only) */}
-        <div className="hidden xl:block absolute left-1/2 -translate-x-1/2">
-          <SystemHealth />
-        </div>
 
         {/* Right Section Group (Nav + Auth) */}
         <div className="flex items-center gap-8">

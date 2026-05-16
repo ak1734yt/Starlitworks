@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { LayoutDashboard, IndianRupee, FileText, Users, ShoppingBag, Loader2, Save, X, Edit, Plus, Trash2, Search, Filter, Star, CreditCard, MessageSquare, Check, ExternalLink, Download, Globe, MapPin, Activity, Zap } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import Navbar from '../components/Navbar';
+import SystemHealth from '../components/SystemHealth';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
@@ -189,6 +190,9 @@ export default function Admin() {
                 );
               })}
             </nav>
+          </div>
+          <div className="p-6 mt-auto border-t border-white/5">
+            <SystemHealth />
           </div>
         </aside>
 
