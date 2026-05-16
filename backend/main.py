@@ -43,6 +43,10 @@ app.include_router(invoice_routes.router, prefix="/api")
 def root():
     return {"message": "Starlit Siege Works API v2.0 — Python/FastAPI", "status": "online", "docs": "/docs"}
 
+@app.get("/api/health")
+def health_check():
+    return {"status": "online", "core": "optimal"}
+
 # ── Run (EnderCloud / local) ───────────────────────────────────────────────────
 if __name__ == "__main__":
     import uvicorn

@@ -41,9 +41,12 @@ const Navbar = () => {
         </Link>
 
         {/* System Health Status (Desktop Only) */}
-        <div className="hidden xl:block">
+        <div className="hidden xl:block absolute left-1/2 -translate-x-1/2">
           <SystemHealth />
         </div>
+
+        {/* Right Section Group (Nav + Auth) */}
+        <div className="flex items-center gap-8">
 
         {/* Nav links */}
         <div className="hidden lg:flex items-center gap-8 text-sm font-medium text-gray-300">
@@ -145,6 +148,7 @@ const Navbar = () => {
               </button>
             </div>
           )}
+        </div>
         </div>
       </div>
     </motion.nav>
