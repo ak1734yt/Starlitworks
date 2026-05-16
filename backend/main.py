@@ -4,9 +4,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 from database import init_db
+from notifications import start_notification_service
 
 load_dotenv()
 init_db()
+start_notification_service()
 
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 

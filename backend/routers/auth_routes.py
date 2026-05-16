@@ -6,6 +6,7 @@ from auth import (hash_password, verify_password, make_token, safe_user,
                   generate_2fa_secret, verify_totp, log_activity,
                   send_discord_webhook)
 from database import get_db
+from mailer import send_welcome_email, send_password_reset_email
 
 router = APIRouter()
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
@@ -60,6 +61,9 @@ def signup(body: SignupBody):
     user = dict(db.execute("SELECT * FROM users WHERE email = ?", (body.email,)).fetchone())
     db.execute("UPDATE users SET last_login = ? WHERE id = ?", (int(time.time()), user["id"]))
     db.commit(); db.close()
+    # Send welcome email in background (non-blocking)
+    import threading
+    threading.Thread(target=send_welcome_email, args=(body.name, body.email), daemon=True).start()
     return {"token": make_token(user), "user": safe_user(user)}
 
 @router.post("/auth/login")
@@ -128,6 +132,9 @@ def forgot_password(body: ForgotBody):
         db.commit()
         link = f"{FRONTEND_URL}/reset-password?token={token}"
         print(f"Reset link: {link}")
+        # Send email in background (non-blocking)
+        import threading
+        threading.Thread(target=send_password_reset_email, args=(body.email, link), daemon=True).start()
     db.close()
     return {"message": "If that email exists, a reset link has been sent."}
 
