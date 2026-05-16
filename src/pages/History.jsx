@@ -404,12 +404,13 @@ export default function History() {
                       </button>
                     </div>
                   </motion.div>
-                ))}
-              </AnimatePresence>
-            </div>
-          )
-        ))}
-      </main>
+                )
+              )}
+            </AnimatePresence>
+          </div>
+        )
+      )}
+    </main>
       {/* Chat Overlay */}
       <AnimatePresence>
         {chatOrder && (
