@@ -11,13 +11,25 @@ async function request(path, options = {}) {
     },
     ...options,
   });
-  const data = await res.json();
-  if (!res.ok) {
-    const error = new Error(data.error || 'An unexpected error occurred.');
-    error.status = res.status;
-    throw error;
+  const contentType = res.headers.get('content-type');
+  if (contentType && contentType.includes('application/json')) {
+    const data = await res.json();
+    if (!res.ok) {
+      const error = new Error(data.error || 'An unexpected error occurred.');
+      error.status = res.status;
+      throw error;
+    }
+    return data;
+  } else {
+    const text = await res.text();
+    if (!res.ok) {
+      if (text.includes('An error occurred')) {
+         throw new Error('Backend Server is currently offline or unreachable.');
+      }
+      throw new Error(`Server Error (${res.status}): ${text || 'An unexpected error occurred.'}`);
+    }
+    return text;
   }
-  return data;
 }
 
 // ─── Auth API ─────────────────────────────────────────────────────────────────
