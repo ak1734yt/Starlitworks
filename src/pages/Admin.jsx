@@ -385,9 +385,7 @@ export default function Admin() {
                         )}
                       </div>
 
-                      <div className="h-[400px] mt-6 border-t border-white/5 pt-6">
-                        <OrderChat orderId={order.id} />
-                      </div>
+
                     </div>
                   ))}
                 </div>
@@ -737,15 +735,7 @@ export default function Admin() {
                 </div>
               </form>
 
-              <div className="mt-8 pt-8 border-t border-white/10">
-                <h4 className="text-sm font-bold mb-4 flex items-center gap-2">
-                  <MessageSquare className="w-4 h-4 text-brand-primary" />
-                  Order Chat
-                </h4>
-                <div className="h-[400px]">
-                  <OrderChat orderId={editingOrder.id} />
-                </div>
-              </div>
+
             </motion.div>
           </motion.div>
         )}
