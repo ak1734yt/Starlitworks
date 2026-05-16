@@ -3,7 +3,7 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "http://luna.ender.co.in:5504/api/$1"
+      "destination": "http://152.53.55.180:5504/api/$1"
     },
     {
       "source": "/(.*)",
