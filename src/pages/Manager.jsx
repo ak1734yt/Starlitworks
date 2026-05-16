@@ -18,6 +18,15 @@ import {
   getAnalyticsLogs
 } from '../services/api';
 import OrderChat from '../components/OrderChat';
+
+const getScreenshotUrl = (url) => {
+  if (!url) return '';
+  if (url.startsWith('http')) {
+    const parts = url.split('/uploads/');
+    if (parts.length > 1) return '/uploads/' + parts[1];
+  }
+  return url;
+};
 import { CreditCard, ExternalLink, Check, X, ArrowLeft, MoreVertical, Layout, PieChart } from 'lucide-react';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, 
@@ -400,10 +409,10 @@ export default function Manager() {
                 <div className="relative group aspect-video lg:aspect-square bg-black/50 rounded-2xl overflow-hidden border border-white/10">
                   {order.payment_screenshot ? (
                     <>
-                      <img src={order.payment_screenshot} alt="Proof" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                      <img src={getScreenshotUrl(order.payment_screenshot)} alt="Proof" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
                       <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm">
                         <a 
-                          href={order.payment_screenshot} 
+                          href={getScreenshotUrl(order.payment_screenshot)} 
                           target="_blank" 
                           rel="noreferrer"
                           className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-xs font-bold flex items-center gap-2 border border-white/10 transition-all"
