@@ -162,6 +162,43 @@ def verify_payment(order_id: int, body: VerifyPaymentBody, user=Depends(require_
     db = get_db()
     db.execute("UPDATE orders SET status=?, payment_status=?, updated_at=? WHERE id=?", (status, pay_status, int(time.time()), order_id))
     db.commit(); db.close()
+
+    # Automatic Invoice Sync
+    if body.approved:
+        try:
+            INVOICES_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "invoices")
+            if os.path.exists(INVOICES_DIR):
+                for fname in os.listdir(INVOICES_DIR):
+                    if not fname.endswith(".json"): continue
+                    p = os.path.join(INVOICES_DIR, fname)
+                    with open(p) as f: inv = json.load(f)
+                    
+                    if str(inv.get("orderId")) == str(order_id):
+                        updated = False
+                        if inv.get("paymentType") == "installment":
+                            # Mark first pending installment as paid
+                            for inst in inv.get("installments", []):
+                                if not inst.get("paid"):
+                                    inst["paid"] = True
+                                    inst["status"] = "paid"
+                                    updated = True
+                                    break
+                        else:
+                            # Full payment
+                            inv["paymentStatus"] = "paid"
+                            updated = True
+                        
+                        if updated:
+                            with open(p, "w") as f: json.dump(inv, f, indent=2)
+                            # Also update the TXT version if helper exists
+                            try:
+                                from routers.invoice_routes import format_invoice_txt
+                                with open(os.path.join(INVOICES_DIR, f"{inv['id']}.txt"), "w", encoding="utf-8") as f:
+                                    f.write(format_invoice_txt(inv))
+                            except: pass
+        except Exception as e:
+            print(f"Error syncing invoice: {e}")
+
     log_activity(user["id"], "APPROVE_PAYMENT" if body.approved else "REJECT_PAYMENT", f"Order {order_id}")
     return {"success": True}
 

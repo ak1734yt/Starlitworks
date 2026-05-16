@@ -39,6 +39,7 @@ export default function CreateInvoice() {
   const [users, setUsers] = useState([]);
   const [orders, setOrders] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [selectedOrderId, setSelectedOrderId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showCatalog, setShowCatalog] = useState(false);
   const [showOrders, setShowOrders] = useState(false);
@@ -191,6 +192,7 @@ export default function CreateInvoice() {
     setClientName(order.client_name || '');
     const userMatch = users.find(u => u.name === order.client_name || u.id === order.user_id);
     if (userMatch) setSelectedUser(userMatch);
+    setSelectedOrderId(order.id);
 
     setShowOrders(false);
     toast.success(`Imported Order #${order.id}`);
@@ -209,6 +211,7 @@ export default function CreateInvoice() {
     invoiceDate,
     paymentType,
     userId: selectedUser?.id,
+    orderId: selectedOrderId,
     client: { name: clientName, serverName: clientName, gstin: clientGstin },
     org: ORG,
     items: tableData.map(t => ({ 

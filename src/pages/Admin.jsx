@@ -16,11 +16,8 @@ const TABS = [
   { id: 'clients',  label: 'Clients',          icon: Users },
   { id: 'pulse',    label: 'User Pulse',       icon: LayoutDashboard },
 ];
-import { 
-  getAdminOrders, updateOrderStatus, getInvoices, 
-  getAdminFeedbacks, updateFeedbackStatus, verifyPayment,
   createUserInvoice, deleteOrder, request, getPublicPrices,
-  getAnalyticsLogs, updateOrderVault
+  getAnalyticsLogs, updateOrderVault, updateInstallment
 } from '../services/api';
 import OrderChat from '../components/OrderChat';
 
@@ -38,6 +35,7 @@ export default function Admin() {
   const [editingOrder, setEditingOrder] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [newInvoice, setNewInvoice] = useState({
     userId: '',
     paymentPlan: 'full',
@@ -147,6 +145,23 @@ export default function Admin() {
     }
   };
 
+
+  const handleUpdateInstallmentStatus = async (invoiceId, index, status) => {
+    try {
+      await updateInstallment(invoiceId, index, status);
+      toast.success('Installment updated');
+      fetchData();
+      // Update local state if the modal is open
+      if (selectedInvoice && selectedInvoice.id === invoiceId) {
+        const next = { ...selectedInvoice };
+        next.installments[index].status = status;
+        next.installments[index].paid = (status.toLowerCase() === 'paid');
+        setSelectedInvoice(next);
+      }
+    } catch (err) {
+      toast.error(err.message);
+    }
+  };
 
   if (loading) {
     return (
@@ -467,15 +482,26 @@ export default function Admin() {
                     </thead>
                     <tbody className="divide-y divide-white/5">
                       {data.invoices.map((inv, i) => (
-                        <tr key={i} className="hover:bg-white/5 transition-colors">
-                          <td className="px-6 py-4 font-medium">{inv.invoiceNumber}</td>
+                        <tr 
+                          key={i} 
+                          onClick={() => { setSelectedInvoice(inv); setShowInvoiceModal(true); }}
+                          className="hover:bg-white/5 transition-colors cursor-pointer group"
+                        >
+                          <td className="px-6 py-4 font-medium group-hover:text-brand-primary transition-colors">{inv.invoiceNumber}</td>
                           <td className="px-6 py-4">{inv.client?.name}</td>
                           <td className="px-6 py-4 text-gray-400">{inv.invoiceDate}</td>
                           <td className="px-6 py-4 text-green-400 font-medium">{inv.currency}{inv.grandTotal}</td>
-                          <td className="px-6 py-4 capitalize">{inv.paymentType}</td>
+                          <td className="px-6 py-4">
+                            <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold ${inv.paymentType === 'installment' ? 'bg-purple-500/10 text-purple-400' : 'bg-blue-500/10 text-blue-400'}`}>
+                              {inv.paymentType}
+                            </span>
+                          </td>
                           <td className="px-6 py-4 text-right">
-                            <button onClick={() => handleDownloadInvoice(inv.id)} className="text-brand-primary hover:text-white transition-colors text-xs font-medium flex items-center gap-1 justify-end ml-auto">
-                              <Download className="w-3 h-3" /> Download
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); handleDownloadInvoice(inv.id); }} 
+                              className="p-2 hover:bg-brand-primary/10 rounded-lg text-brand-primary transition-all"
+                            >
+                              <Download className="w-4 h-4" />
                             </button>
                           </td>
                         </tr>
@@ -736,6 +762,145 @@ export default function Admin() {
               </form>
 
 
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      
+      {/* --- INVOICE DETAILS MODAL --- */}
+      <AnimatePresence>
+        {showInvoiceModal && selectedInvoice && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] flex items-center justify-center p-6">
+            <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowInvoiceModal(false)} />
+            <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }} className="bg-[#0A0A0A] border border-white/10 rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-hidden shadow-2xl relative z-10 flex flex-col">
+              
+              <div className="p-8 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-brand-primary/10 flex items-center justify-center border border-brand-primary/20">
+                    <FileText className="w-6 h-6 text-brand-primary" />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold tracking-tight">Invoice {selectedInvoice.invoiceNumber}</h2>
+                    <p className="text-[10px] text-gray-500 uppercase tracking-widest font-black">Linked to Order #{selectedInvoice.orderId || 'N/A'}</p>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <button onClick={() => handleDownloadInvoice(selectedInvoice.id)} className="p-3 hover:bg-white/5 rounded-xl transition-all border border-white/10 text-brand-primary" title="Download TXT">
+                    <Download className="w-5 h-5" />
+                  </button>
+                  <button onClick={() => setShowInvoiceModal(false)} className="p-3 hover:bg-red-500/10 hover:text-red-500 rounded-xl transition-all border border-white/10">
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-10 custom-scrollbar">
+                <div className="grid md:grid-cols-2 gap-10 mb-10">
+                  <div className="space-y-4">
+                    <h4 className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Client Information</h4>
+                    <div className="p-6 bg-white/[0.02] border border-white/5 rounded-2xl">
+                      <p className="font-bold text-lg">{selectedInvoice.client?.name}</p>
+                      <p className="text-sm text-gray-400">{selectedInvoice.client?.serverName}</p>
+                      <p className="text-[10px] font-mono text-gray-600 mt-2">GSTIN: {selectedInvoice.client?.gstin || 'N/A'}</p>
+                    </div>
+                  </div>
+                  <div className="space-y-4">
+                    <h4 className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Invoice Summary</h4>
+                    <div className="p-6 bg-white/[0.02] border border-white/5 rounded-2xl space-y-2">
+                      <div className="flex justify-between">
+                        <span className="text-gray-500 text-xs">Generated At</span>
+                        <span className="text-xs">{selectedInvoice.invoiceDate}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500 text-xs">Payment Type</span>
+                        <span className="text-xs font-bold capitalize text-brand-primary">{selectedInvoice.paymentType}</span>
+                      </div>
+                      <div className="flex justify-between pt-2 border-t border-white/5">
+                        <span className="text-gray-400 font-bold">Total Amount</span>
+                        <span className="text-xl font-black text-green-400">{selectedInvoice.currency}{selectedInvoice.grandTotal}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-6">
+                  <h4 className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Billing Breakdown</h4>
+                  <div className="bg-white/[0.01] border border-white/5 rounded-2xl overflow-hidden">
+                    <table className="w-full text-sm text-left">
+                      <thead className="bg-white/5 border-b border-white/5">
+                        <tr>
+                          <th className="px-6 py-4 font-medium text-gray-400">Description</th>
+                          <th className="px-6 py-4 text-center font-medium text-gray-400">Qty</th>
+                          <th className="px-6 py-4 text-right font-medium text-gray-400">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/5">
+                        {selectedInvoice.items?.map((item, idx) => (
+                          <tr key={idx}>
+                            <td className="px-6 py-4 font-medium text-white">{item.description}</td>
+                            <td className="px-6 py-4 text-center">{item.qty}</td>
+                            <td className="px-6 py-4 text-right font-mono">{selectedInvoice.currency}{item.price}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {selectedInvoice.paymentType === 'installment' && selectedInvoice.installments && (
+                  <div className="mt-10 space-y-6">
+                    <h4 className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Payment Schedule & Installments</h4>
+                    <div className="grid gap-4">
+                      {selectedInvoice.installments.map((inst, idx) => (
+                        <div key={idx} className="flex items-center justify-between p-6 bg-white/[0.02] border border-white/5 rounded-2xl group hover:border-brand-primary/20 transition-all">
+                          <div className="flex items-center gap-6">
+                            <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center font-black text-xs text-gray-500">
+                              #{idx + 1}
+                            </div>
+                            <div>
+                              <p className="font-bold">{inst.month}</p>
+                              <p className="text-xs font-mono text-gray-500">{selectedInvoice.currency}{inst.amount?.toLocaleString()}</p>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-2">
+                               <div className={`w-2 h-2 rounded-full ${
+                                 inst.status === 'paid' ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]' :
+                                 inst.status === 'overdue' ? 'bg-red-500 animate-pulse' :
+                                 inst.status === 'due' ? 'bg-yellow-500' : 'bg-gray-600'
+                               }`} />
+                               <span className={`text-[10px] font-black uppercase tracking-widest ${
+                                 inst.status === 'paid' ? 'text-green-500' :
+                                 inst.status === 'overdue' ? 'text-red-500' :
+                                 inst.status === 'due' ? 'text-yellow-500' : 'text-gray-500'
+                               }`}>{inst.status || (inst.paid ? 'paid' : 'pending')}</span>
+                            </div>
+                            
+                            <select 
+                              value={inst.status || (inst.paid ? 'paid' : 'pending')}
+                              onChange={(e) => handleUpdateInstallmentStatus(selectedInvoice.id, idx, e.target.value)}
+                              className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-[10px] font-black uppercase tracking-widest outline-none focus:border-brand-primary transition-all cursor-pointer"
+                            >
+                              <option value="pending" className="bg-brand-bg">Pending</option>
+                              <option value="paid" className="bg-brand-bg text-green-500">Mark Paid</option>
+                              <option value="due" className="bg-brand-bg text-yellow-500">Mark Due</option>
+                              <option value="overdue" className="bg-brand-bg text-red-500">Overdue</option>
+                            </select>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {selectedInvoice.notes && (
+                <div className="p-8 bg-black/30 border-t border-white/5">
+                  <p className="text-[10px] font-black text-gray-600 uppercase tracking-widest mb-2">Notes</p>
+                  <p className="text-xs text-gray-400 italic leading-relaxed">"{selectedInvoice.notes}"</p>
+                </div>
+              )}
             </motion.div>
           </motion.div>
         )}

@@ -39,7 +39,7 @@ def format_invoice_txt(inv: dict) -> str:
 
 class InstallmentBody(BaseModel):
     index: int
-    paid: bool
+    status: str  # 'paid', 'pending', 'due', 'overdue'
 
 @router.post("/admin/invoices/user", status_code=201)
 async def create_user_invoice(body: dict, user=Depends(require_admin)):
@@ -89,7 +89,8 @@ def update_installment(inv_id: str, body: InstallmentBody, user=Depends(require_
     with open(p) as f: inv = json.load(f)
     if not inv.get("installments") or body.index >= len(inv["installments"]):
         raise HTTPException(400, "Invalid installment index")
-    inv["installments"][body.index]["paid"] = body.paid
+    inv["installments"][body.index]["status"] = body.status
+    inv["installments"][body.index]["paid"] = (body.status.lower() == "paid")
     with open(p, "w") as f: json.dump(inv, f, indent=2)
     with open(os.path.join(INVOICES_DIR, f"{inv_id}.txt"), "w", encoding="utf-8") as f:
         f.write(format_invoice_txt(inv))
