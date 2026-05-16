@@ -515,17 +515,27 @@ export default function History() {
                 </button>
               </div>
 
-              <div className="grid gap-4 relative">
                 {(() => {
                   let vault = {};
-                  try { vault = JSON.parse(vaultOrder.vault_data || '{}') || {}; } catch(e) {}
+                  try { 
+                    const raw = vaultOrder.vault_data;
+                    if (typeof raw === 'string') {
+                      vault = JSON.parse(raw || '{}') || {};
+                    } else if (raw && typeof raw === 'object') {
+                      vault = raw;
+                    }
+                  } catch(e) {
+                    console.error("Vault parse error:", e);
+                  }
+                  
                   const entries = Object.entries(vault);
                   
                   if (entries.length === 0) {
                     return (
                       <div className="p-12 text-center border-2 border-dashed border-white/5 rounded-2xl">
                         <Activity className="w-12 h-12 text-gray-700 mx-auto mb-4" />
-                        <p className="text-gray-500">No assets have been uploaded to your vault yet. Please contact support.</p>
+                        <p className="text-gray-400 font-bold">The Starlit Vault is empty.</p>
+                        <p className="text-gray-600 text-[10px] mt-1 uppercase tracking-widest font-black">There's nothing here yet.</p>
                       </div>
                     );
                   }

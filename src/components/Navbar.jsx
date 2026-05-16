@@ -5,12 +5,14 @@ import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import ProfileModal from "./ProfileModal";
 import NotificationCenter from "./NotificationCenter";
+import { getUserInvoicesByAdmin } from "../services/api";
 const Navbar = () => {
   const location = useLocation();
   const navigate  = useNavigate();
   const { user, logout, openAuthModal, loading } = useAuth();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [hasInstallments, setHasInstallments] = useState(false);
 
   const isHome = location.pathname === "/";
 
@@ -18,6 +20,16 @@ const Navbar = () => {
     if (!user) { openAuthModal(path, 'login'); return; }
     navigate(path);
   };
+
+  useEffect(() => {
+    if (user) {
+      getUserInvoicesByAdmin(user.id).then(invs => {
+        if (Array.isArray(invs)) {
+          setHasInstallments(invs.some(i => i.paymentType === 'installment'));
+        }
+      }).catch(() => {});
+    }
+  }, [user]);
 
   return (
     <>
@@ -51,7 +63,9 @@ const Navbar = () => {
           {user && (
             <>
               <Link to="/history" className="hover:text-brand-primary transition-colors flex items-center gap-1.5"><History className="w-3.5 h-3.5"/>History</Link>
-              <Link to="/tracker" className="hover:text-brand-primary transition-colors flex items-center gap-1.5"><CreditCard className="w-3.5 h-3.5"/>Tracker</Link>
+              {hasInstallments && (
+                <Link to="/tracker" className="hover:text-brand-primary transition-colors flex items-center gap-1.5"><CreditCard className="w-3.5 h-3.5"/>Tracker</Link>
+              )}
               {(user.role === 'admin' || user.role === 'manager') && (
                 <Link to="/admin" className="hover:text-yellow-400 transition-colors flex items-center gap-1.5 text-yellow-500">
                   <Shield className="w-3.5 h-3.5"/>Admin
