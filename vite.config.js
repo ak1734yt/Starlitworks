@@ -21,6 +21,11 @@ export default defineConfig({
         target: 'http://152.53.55.180:5504',
         changeOrigin: true,
         secure: false,
+      },
+      '/uploads': {
+        target: 'http://152.53.55.180:5504',
+        changeOrigin: true,
+        secure: false,
       }
     }
   }

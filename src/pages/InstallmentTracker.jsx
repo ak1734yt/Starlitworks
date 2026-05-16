@@ -3,19 +3,22 @@ import { getInvoices, updateInstallment } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CreditCard, TrendingUp, Calendar, CheckCircle2, Circle, AlertCircle, ChevronRight, LayoutDashboard } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
 
 export default function InstallmentTracker() {
   const { showToast } = useToast();
+  const { user } = useAuth();
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const load = async () => {
+    if (!user) return;
     setLoading(true);
     try {
-      const all = await getInvoices();
+      const all = await getUserInvoicesByAdmin(user.id);
       setInvoices(all.filter(inv => inv.paymentType === 'installment'));
-    } catch { showToast('Backend not reachable', 'error'); }
+    } catch { showToast('Failed to load tracking data', 'error'); }
     finally { setLoading(false); }
   };
 
@@ -129,12 +132,14 @@ export default function InstallmentTracker() {
                         </div>
                         <div className="flex justify-between items-end">
                           <p className="text-sm font-bold">₹{inst.amount.toLocaleString()}</p>
-                          <button 
-                            onClick={() => togglePaid(inv.id, i, inst.paid)}
-                            className={`text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full transition-all ${inst.paid ? 'text-gray-600 hover:text-red-500' : 'bg-brand-secondary/10 text-brand-secondary hover:bg-brand-secondary hover:text-white'}`}
-                          >
-                            {inst.paid ? 'Revert' : 'Mark Paid'}
-                          </button>
+                          {user?.role === 'admin' && (
+                            <button 
+                              onClick={() => togglePaid(inv.id, i, inst.paid)}
+                              className={`text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full transition-all ${inst.paid ? 'text-gray-600 hover:text-red-500' : 'bg-brand-secondary/10 text-brand-secondary hover:bg-brand-secondary hover:text-white'}`}
+                            >
+                              {inst.paid ? 'Revert' : 'Mark Paid'}
+                            </button>
+                          )}
                         </div>
                       </div>
                     ))}

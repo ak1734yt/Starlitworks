@@ -516,13 +516,21 @@ export default function History() {
               </div>
 
               <div className="grid gap-4 relative">
-                {Object.entries(JSON.parse(vaultOrder.vault_data || '{}')).length === 0 ? (
-                  <div className="p-12 text-center border-2 border-dashed border-white/5 rounded-2xl">
-                    <Activity className="w-12 h-12 text-gray-700 mx-auto mb-4" />
-                    <p className="text-gray-500">No assets have been uploaded to your vault yet. Please contact support.</p>
-                  </div>
-                ) : (
-                  Object.entries(JSON.parse(vaultOrder.vault_data || '{}')).map(([key, val]) => (
+                {(() => {
+                  let vault = {};
+                  try { vault = JSON.parse(vaultOrder.vault_data || '{}') || {}; } catch(e) {}
+                  const entries = Object.entries(vault);
+                  
+                  if (entries.length === 0) {
+                    return (
+                      <div className="p-12 text-center border-2 border-dashed border-white/5 rounded-2xl">
+                        <Activity className="w-12 h-12 text-gray-700 mx-auto mb-4" />
+                        <p className="text-gray-500">No assets have been uploaded to your vault yet. Please contact support.</p>
+                      </div>
+                    );
+                  }
+
+                  return entries.map(([key, val]) => (
                     <div key={key} className="glass-card p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 group">
                       <div>
                         <p className="text-[10px] font-black text-brand-primary uppercase tracking-widest mb-1">{key}</p>
@@ -538,8 +546,8 @@ export default function History() {
                         <Check className="w-4 h-4" />
                       </button>
                     </div>
-                  ))
-                )}
+                  ));
+                })()}
               </div>
 
               <div className="mt-8 p-4 bg-yellow-500/5 border border-yellow-500/10 rounded-xl flex gap-3 items-center">

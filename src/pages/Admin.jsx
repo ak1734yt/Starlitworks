@@ -717,13 +717,16 @@ export default function Admin() {
                 <div className="space-y-3">
                   <textarea 
                     placeholder='{"Bot Token": "MTAy...", "License": "SSW-99X"}'
-                    value={JSON.stringify(JSON.parse(editingOrder.vault_data || '{}'), null, 2)}
-                    onChange={(e) => {
+                    value={(() => {
                       try {
-                        const parsed = JSON.parse(e.target.value);
-                        setEditingOrder({ ...editingOrder, vault_data: JSON.stringify(parsed) });
-                      } catch {}
-                    }}
+                        return typeof editingOrder.vault_data === 'string' 
+                          ? JSON.stringify(JSON.parse(editingOrder.vault_data || '{}'), null, 2)
+                          : JSON.stringify(editingOrder.vault_data || {}, null, 2);
+                      } catch {
+                        return editingOrder.vault_data || '';
+                      }
+                    })()}
+                    onChange={(e) => setEditingOrder({ ...editingOrder, vault_data: e.target.value })}
                     className="w-full h-24 bg-black/50 border border-white/5 rounded-xl p-3 text-xs font-mono text-brand-primary focus:border-brand-primary outline-none transition-all resize-none"
                   />
                   <p className="text-[9px] text-gray-600 italic">Enter assets as JSON format. These will be visible only to the client once the order is completed.</p>
