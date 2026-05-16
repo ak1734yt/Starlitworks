@@ -23,6 +23,7 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, 
   Tooltip, ResponsiveContainer 
 } from 'recharts';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-hot-toast';
 
@@ -254,9 +255,11 @@ export default function Manager() {
             </button>
           </div>
         </header>
+        
+        <AnimatePresence mode="wait">
 
         {activeTab === 'logs' && (
-          <div className="space-y-8">
+          <motion.div key="logs" initial={{opacity:0, y:10}} animate={{opacity:1, y:0}} exit={{opacity:0, y:-10}} className="space-y-8">
             {/* Graph Pattern */}
             <div className="bg-[#0A0A0A] border border-white/10 rounded-2xl p-6 shadow-2xl">
               <div className="flex items-center justify-between mb-6">
@@ -340,11 +343,11 @@ export default function Manager() {
               </table>
             </div>
           </div>
-        </div>
-      )}
+        </motion.div>
+        )}
 
         {activeTab === 'payments' && (
-          <div className="grid gap-8">
+          <motion.div key="payments" initial={{opacity:0, y:10}} animate={{opacity:1, y:0}} exit={{opacity:0, y:-10}} className="grid gap-8">
             {orders.filter(o => o.status === 'payment_pending').length === 0 ? (
               <div className="bg-[#0A0A0A] border border-white/10 rounded-2xl py-20 text-center text-gray-500 shadow-2xl">
                 No pending payments to verify.
@@ -423,10 +426,11 @@ export default function Manager() {
               </div>
             ))}
           </div>
+          </motion.div>
         )}
 
         {activeTab === 'users' && (
-          <div className="grid grid-cols-1 gap-6">
+          <motion.div key="users" initial={{opacity:0, y:10}} animate={{opacity:1, y:0}} exit={{opacity:0, y:-10}} className="grid grid-cols-1 gap-6">
             <div className="bg-[#0A0A0A] border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
               <div className="overflow-x-auto">
                 <table className="w-full text-left">
@@ -500,10 +504,11 @@ export default function Manager() {
               </div>
             </div>
           </div>
+          </motion.div>
         )}
 
         {activeTab === 'pricing' && (
-          <div className="space-y-6">
+          <motion.div key="pricing" initial={{opacity:0, y:10}} animate={{opacity:1, y:0}} exit={{opacity:0, y:-10}} className="space-y-6">
             <div className="flex justify-end">
               <button 
                 onClick={() => setShowProductModal(true)}
@@ -595,10 +600,11 @@ export default function Manager() {
               );
             })}
           </div>
+          </motion.div>
         )}
 
         {activeTab === 'portfolio' && (
-          <div className="space-y-10">
+          <motion.div key="portfolio" initial={{opacity:0, y:10}} animate={{opacity:1, y:0}} exit={{opacity:0, y:-10}} className="space-y-10">
             <div className="bg-[#0A0A0A] border border-white/10 rounded-2xl p-8 shadow-2xl">
               <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
                 <Plus className="w-5 h-5 text-brand-primary" />
@@ -690,10 +696,11 @@ export default function Manager() {
               ))}
             </div>
           </div>
+          </motion.div>
         )}
 
         {activeTab === 'site-editor' && (
-          <div className="space-y-10">
+          <motion.div key="site-editor" initial={{opacity:0, y:10}} animate={{opacity:1, y:0}} exit={{opacity:0, y:-10}} className="space-y-10">
             <form onSubmit={handleSiteSettingsSubmit} className="space-y-8">
               {/* Hero Section */}
               <div className="bg-[#0A0A0A] border border-white/10 rounded-2xl p-8 shadow-2xl">
@@ -972,10 +979,11 @@ export default function Manager() {
               </div>
             </form>
           </div>
+          </motion.div>
         )}
 
         {activeTab === 'coupons' && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+          <motion.div key="coupons" initial={{opacity:0, y:10}} animate={{opacity:1, y:0}} exit={{opacity:0, y:-10}} className="grid grid-cols-1 lg:grid-cols-2 gap-10">
             <div className="bg-[#0A0A0A] border border-white/10 rounded-2xl p-8 shadow-2xl">
               <div className="flex items-center gap-3 mb-8">
                 <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center">
@@ -1126,6 +1134,7 @@ export default function Manager() {
             </div>
           </motion.div>
         )}
+        </AnimatePresence>
       </main>
 
       {/* Add Product Modal */}
