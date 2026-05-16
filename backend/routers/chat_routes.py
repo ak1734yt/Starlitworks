@@ -57,7 +57,7 @@ async def send_chat(order_id: int, body: ChatBody, user=Depends(get_current_user
                 f.write(base64.b64decode(m.group(2)))
             content = f"/uploads/{fname}"
 
-    db.execute(
+    result = db.execute(
         "INSERT INTO chat_messages (order_id, user_id, message_type, content) VALUES (?,?,?,?)",
         (order_id, user["id"], body.message_type, content)
     )
