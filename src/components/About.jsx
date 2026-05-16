@@ -28,8 +28,7 @@ const About = ({ settings = {} }) => {
   // Fallbacks if database is empty
   const defaultServers = [
     { name: "Cozy Clouds", link: "https://discord.gg/cozyclouds", members: "1.5k+", focus: "Chill, Socialize and fun" },
-    { name: "Tech Support Hub", link: "https://discord.gg/example2", members: "8k+", focus: "Tech & Utility" },
-  ];
+];
 
   const defaultProjects = [
     { title: "Advanced Invoice Pro", tech: "React, Node.js, SQLite", desc: "Automated billing system with installment tracking and PDF generation." },

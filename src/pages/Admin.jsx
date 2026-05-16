@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router-dom';
 
 const TABS = [
   { id: 'orders',   label: 'Service Requests', icon: ShoppingBag },
+  { id: 'chats',    label: 'Order Chats',      icon: MessageSquare },
   { id: 'payments', label: 'Payments',         icon: CreditCard },
   { id: 'invoices', label: 'Invoices',         icon: FileText },
   { id: 'feedbacks',label: 'Feedbacks',        icon: Star },
@@ -43,6 +44,7 @@ export default function Admin() {
     taxRate: 0,
     items: [{ desc: '', amount: 0 }]
   });
+  const [selectedChatOrderId, setSelectedChatOrderId] = useState(null);
 
   const token = localStorage.getItem('ssw_token');
 
@@ -181,6 +183,11 @@ export default function Admin() {
                         {data.orders.filter(o => o.status === 'pending').length}
                       </span>
                     )}
+                    {tab.id === 'chats' && data.orders.reduce((acc, o) => acc + (o.admin_unread_count || 0), 0) > 0 && (
+                      <span className="ml-auto bg-brand-primary text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-[0_0_10px_rgba(124,58,237,0.5)]">
+                        {data.orders.reduce((acc, o) => acc + (o.admin_unread_count || 0), 0)}
+                      </span>
+                    )}
                     {tab.id === 'payments' && data.orders.filter(o => o.status === 'payment_pending').length > 0 && (
                       <span className="ml-auto bg-brand-secondary text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
                         {data.orders.filter(o => o.status === 'payment_pending').length}
@@ -264,7 +271,68 @@ export default function Admin() {
                 </div>
               </motion.div>
             )}
+            {/* --- CHATS TAB --- */}
+            {activeTab === 'chats' && (
+              <motion.div key="chats" initial={{opacity:0, y:10}} animate={{opacity:1, y:0}} exit={{opacity:0, y:-10}} className="h-[calc(100vh-200px)]">
+                <div className="flex h-full gap-6">
+                  {/* Chat List */}
+                  <div className="w-80 bg-brand-card border border-brand-border rounded-2xl overflow-hidden flex flex-col">
+                    <div className="p-4 border-b border-white/5 bg-white/5">
+                      <h3 className="font-bold text-sm">Conversations</h3>
+                    </div>
+                    <div className="flex-1 overflow-y-auto divide-y divide-white/5 scrollbar-thin scrollbar-thumb-white/10">
+                      {data.orders.length === 0 ? (
+                        <div className="p-8 text-center text-gray-500 text-xs italic">No orders yet.</div>
+                      ) : data.orders
+                          .sort((a, b) => (b.admin_unread_count || 0) - (a.admin_unread_count || 0))
+                          .map(order => (
+                        <button 
+                          key={order.id} 
+                          onClick={() => setSelectedChatOrderId(order.id)}
+                          className={`w-full text-left p-4 hover:bg-white/5 transition-colors flex items-start gap-3 relative ${selectedChatOrderId === order.id ? 'bg-white/5' : ''}`}
+                        >
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm bg-gradient-to-br ${order.admin_unread_count > 0 ? 'from-brand-primary to-brand-secondary text-white' : 'from-white/10 to-white/5 text-gray-500'}`}>
+                            {order.client_name[0]?.toUpperCase()}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="font-bold text-xs truncate text-white">{order.client_name}</p>
+                              {order.admin_unread_count > 0 && (
+                                <span className="bg-brand-primary text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full ring-2 ring-brand-card">
+                                  {order.admin_unread_count}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[10px] text-gray-500 truncate uppercase tracking-widest mt-0.5">{order.service_name}</p>
+                            <p className="text-[9px] text-gray-400 mt-1">Order #{order.id}</p>
+                          </div>
+                          {selectedChatOrderId === order.id && (
+                            <div className="absolute left-0 top-0 bottom-0 w-1 bg-brand-primary" />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
 
+                  {/* Active Chat */}
+                  <div className="flex-1 bg-brand-card border border-brand-border rounded-2xl overflow-hidden flex flex-col relative">
+                    {selectedChatOrderId ? (
+                      <OrderChat orderId={selectedChatOrderId} />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center h-full text-center p-12 space-y-4">
+                        <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center">
+                          <MessageSquare className="w-8 h-8 text-gray-700" />
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-lg">Select a conversation</h3>
+                          <p className="text-sm text-gray-500 max-w-xs mx-auto">Choose an order from the list on the left to start discussing with the client.</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </motion.div>
+            )}
             {/* --- PAYMENTS TAB --- */}
             {activeTab === 'payments' && (
               <motion.div key="payments" initial={{opacity:0, y:10}} animate={{opacity:1, y:0}} exit={{opacity:0, y:-10}}>

@@ -27,6 +27,14 @@ def get_chat(order_id: int, user=Depends(get_current_user)):
         "SELECT c.*, u.name, u.role, u.avatar_url FROM chat_messages c JOIN users u ON c.user_id = u.id WHERE c.order_id = ? ORDER BY c.created_at ASC",
         (order_id,)
     ).fetchall()
+
+    # Reset unread counts
+    if user["role"] == "client":
+        db.execute("UPDATE orders SET client_unread_count = 0 WHERE id = ?", (order_id,))
+    else:
+        db.execute("UPDATE orders SET admin_unread_count = 0 WHERE id = ?", (order_id,))
+    
+    db.commit()
     db.close()
     return [dict(m) for m in messages]
 
@@ -49,10 +57,17 @@ async def send_chat(order_id: int, body: ChatBody, user=Depends(get_current_user
                 f.write(base64.b64decode(m.group(2)))
             content = f"/uploads/{fname}"
 
-    result = db.execute(
+    db.execute(
         "INSERT INTO chat_messages (order_id, user_id, message_type, content) VALUES (?,?,?,?)",
         (order_id, user["id"], body.message_type, content)
     )
+
+    # Increment unread counts
+    if user["role"] == "client":
+        db.execute("UPDATE orders SET admin_unread_count = admin_unread_count + 1 WHERE id = ?", (order_id,))
+    else:
+        db.execute("UPDATE orders SET client_unread_count = client_unread_count + 1 WHERE id = ?", (order_id,))
+
     db.commit()
     new_msg = dict(db.execute(
         "SELECT c.*, u.name, u.role, u.avatar_url FROM chat_messages c JOIN users u ON c.user_id = u.id WHERE c.id = ?",

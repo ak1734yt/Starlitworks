@@ -202,5 +202,13 @@ def init_db():
     count = conn.execute("SELECT COUNT(*) FROM site_settings").fetchone()[0]
     if count == 0:
         conn.executemany("INSERT OR IGNORE INTO site_settings (key, value) VALUES (?, ?)", DEFAULT_SETTINGS)
+    
+    # Safe migrations for chat unread counts
+    try:
+        conn.execute("ALTER TABLE orders ADD COLUMN admin_unread_count INTEGER DEFAULT 0")
+        conn.execute("ALTER TABLE orders ADD COLUMN client_unread_count INTEGER DEFAULT 0")
+    except sqlite3.OperationalError:
+        pass # Columns already exist
+
     conn.commit()
     conn.close()

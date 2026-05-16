@@ -5,26 +5,13 @@ import { getPortfolio } from "../services/api";
 
 const projects = [
   {
-    title: "GameVault Bot",
-    category: "Gaming",
-    members: "45K members",
+    title: "Cozy Clouds",
+    category: "Commmunity",
+    members: "1.5K members",
     image: "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&q=80&w=600",
-    description: "Advanced gaming community bot with leaderboards, tournaments, and economy."
+    description: "Chill, Socialize and fun"
   },
-  {
-    title: "TechHub Server",
-    category: "Tech",
-    members: "28K members",
-    image: "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&q=80&w=600",
-    description: "Professional tech community with automated job listings and skill verification."
-  },
-  {
-    title: "ArtSpace Community",
-    category: "Creative",
-    members: "62K members",
-    image: "https://images.unsplash.com/photo-1513364776144-60967b0f800f?auto=format&fit=crop&q=80&w=600",
-    description: "Creative platform with portfolio showcasing, voting, and monetization features."
-  }
+  
 ];
 
 const Portfolio = () => {
