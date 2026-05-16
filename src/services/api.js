@@ -1,6 +1,6 @@
 const API = '/api';
 
-async function request(path, options = {}) {
+export async function request(path, options = {}) {
   const token = localStorage.getItem('ssw_token');
   const res = await fetch(`${API}${path}`, {
     headers: {
