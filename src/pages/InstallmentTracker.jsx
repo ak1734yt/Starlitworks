@@ -103,6 +103,16 @@ export default function InstallmentTracker() {
                         <p className="text-[10px] text-red-400/60 uppercase font-bold mb-1">Outstanding</p>
                         <p className="text-lg font-bold text-red-400">₹{pendingAmt.toLocaleString()}</p>
                       </div>
+                      {inv.recurringTotal > 0 && (
+                        <div className="pt-4 mt-4 border-t border-white/5 lg:border-t-0 lg:mt-0 lg:pt-0">
+                          <p className="text-[10px] text-brand-secondary uppercase font-bold mb-1">Monthly Recurring</p>
+                          <p className="text-lg font-bold text-brand-secondary flex items-center gap-2">
+                            ₹{inv.recurringTotal.toLocaleString()}
+                            <span className="text-[10px] text-gray-500 font-normal">/ mo</span>
+                          </p>
+                          <p className="text-[8px] text-gray-600 italic">Active until terminated</p>
+                        </div>
+                      )}
                     </div>
                   </div>
 

@@ -9,7 +9,7 @@ export default function CookieConsent() {
   useEffect(() => {
     const consent = localStorage.getItem('ssw_cookie_consent');
     if (!consent) {
-      setTimeout(() => setShow(true), 2000);
+      setShow(true);
     }
   }, []);
 
@@ -73,12 +73,13 @@ export default function CookieConsent() {
   return (
     <AnimatePresence>
       {show && (
-        <motion.div 
-          initial={{ y: 100, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: 100, opacity: 0 }}
-          className="fixed bottom-6 left-6 right-6 z-[100] md:left-auto md:max-w-md"
-        >
+        <div className="fixed inset-0 z-[200] flex items-end md:items-center justify-center p-6 bg-black/40 backdrop-blur-sm">
+          <motion.div 
+            initial={{ y: 100, opacity: 0, scale: 0.9 }}
+            animate={{ y: 0, opacity: 1, scale: 1 }}
+            exit={{ y: 100, opacity: 0, scale: 0.9 }}
+            className="w-full max-w-md"
+          >
           <div className="bg-[#0A0A0A]/90 backdrop-blur-xl border border-white/10 rounded-3xl p-6 shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
             <div className="flex gap-4">
               <div className="w-12 h-12 rounded-2xl bg-brand-primary/10 flex items-center justify-center shrink-0">

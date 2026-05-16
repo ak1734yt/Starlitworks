@@ -23,6 +23,54 @@ import Admin          from "./pages/Admin";
 import Manager        from "./pages/Manager";
 import Profile        from "./pages/Profile";
 
+// Silent analytics tracker for returning users
+function PulseTracker() {
+  const { user } = useAuth();
+  
+  useEffect(() => {
+    const consent = localStorage.getItem('ssw_cookie_consent');
+    const pulseSent = sessionStorage.getItem('ssw_pulse_session_sent');
+    
+    if (consent === 'true' && !pulseSent) {
+      const sendPulse = async () => {
+        try {
+          // IP-based tracking as baseline
+          const geoRes = await fetch('https://ipapi.co/json/');
+          const geoData = await geoRes.json();
+          
+          const trackingData = {
+            userAgent: navigator.userAgent,
+            platform: navigator.platform,
+            screen: `${window.screen.width}x${window.screen.height}`,
+            language: navigator.language,
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            ip: geoData.ip,
+            city: geoData.city,
+            region: geoData.region,
+            country: geoData.country_name,
+            org: geoData.org
+          };
+
+          const token = localStorage.getItem('ssw_token');
+          await fetch('/api/analytics/track', {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            },
+            body: JSON.stringify(trackingData)
+          });
+          
+          sessionStorage.setItem('ssw_pulse_session_sent', 'true');
+        } catch (e) {}
+      };
+      sendPulse();
+    }
+  }, [user]);
+
+  return null;
+}
+
 // Inner wrapper so we can access AuthContext for global overlays
 function AppInner() {
   const { showTransition } = useAuth();
@@ -45,6 +93,7 @@ function AppInner() {
       <TransitionScreen show={showTransition} />
       <AuthModal />
       <CookieConsent />
+      <PulseTracker />
       <Routes>
         {/* Public */}
         <Route path="/"               element={<Home />} />
