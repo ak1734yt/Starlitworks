@@ -50,5 +50,5 @@ def health_check():
 # ── Run (EnderCloud / local) ───────────────────────────────────────────────────
 if __name__ == "__main__":
     import uvicorn
-    port = int(os.getenv("PORT", 5000))
+    port = int(os.getenv("PORT", 5504))
     uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)

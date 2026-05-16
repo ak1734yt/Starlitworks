@@ -8,17 +8,17 @@ export default defineConfig({
     allowedHosts: true,
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:5000',
+        target: 'http://luna.ender.co.in:5504',
         changeOrigin: true,
         secure: false,
       },
       '/docs': {
-        target: 'http://127.0.0.1:5000',
+        target: 'http://luna.ender.co.in:5504',
         changeOrigin: true,
         secure: false,
       },
       '/openapi.json': {
-        target: 'http://127.0.0.1:5000',
+        target: 'http://luna.ender.co.in:5504',
         changeOrigin: true,
         secure: false,
       }
