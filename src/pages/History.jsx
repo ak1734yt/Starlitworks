@@ -408,7 +408,7 @@ export default function History() {
               </AnimatePresence>
             </div>
           )
-        )}
+        ))}
       </main>
       {/* Chat Overlay */}
       <AnimatePresence>
