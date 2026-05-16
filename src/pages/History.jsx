@@ -3,8 +3,7 @@ import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, AlertCircle, Clock, ShoppingBag, MessageSquare, Check, X, ShieldAlert, Send, CreditCard } from 'lucide-react';
 import OrderChat from '../components/OrderChat';
-import { negotiateOrder, acceptOrder } from '../services/api';
-import { getUserInvoicesByAdmin } from '../services/api';
+import { negotiateOrder, acceptOrder, getUserInvoicesByAdmin, getMyOrders } from '../services/api';
 import Navbar from '../components/Navbar';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -39,11 +38,7 @@ export default function History() {
         navigate('/login');
         return;
       }
-      const res = await fetch('/api/orders/mine', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (!res.ok) throw new Error('Failed to fetch');
-      const data = await res.json();
+      const data = await getMyOrders();
       setOrders(data);
 
       if (user?.id) {

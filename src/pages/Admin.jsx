@@ -9,7 +9,9 @@ import { useNavigate } from 'react-router-dom';
 
 import {
   createUserInvoice, deleteOrder, request, getPublicPrices,
-  getAnalyticsLogs, updateOrderVault, updateInstallment
+  getAnalyticsLogs, updateOrderVault, updateInstallment,
+  getAdminOrders, getInvoices, getAdminFeedbacks, updateOrderStatus,
+  verifyPayment, updateFeedbackStatus
 } from '../services/api';
 import OrderChat from '../components/OrderChat';
 
@@ -729,20 +731,27 @@ export default function Admin() {
                   </h4>
                   <span className="text-[10px] text-gray-500 font-bold uppercase">Client Assets</span>
                 </div>
-                <div className="space-y-3">
+                <div className="space-y-3" key={editingOrder.id}>
                   <textarea 
                     placeholder='{"Bot Token": "MTAy...", "License": "SSW-99X"}'
-                    value={(() => {
+                    defaultValue={(() => {
                       try {
-                        return typeof editingOrder.vault_data === 'string' 
-                          ? JSON.stringify(JSON.parse(editingOrder.vault_data || '{}'), null, 2)
-                          : JSON.stringify(editingOrder.vault_data || {}, null, 2);
+                        const raw = editingOrder.vault_data;
+                        if (typeof raw === 'string') return raw;
+                        return JSON.stringify(raw || {}, null, 2);
                       } catch {
-                        return editingOrder.vault_data || '';
+                        return '';
                       }
                     })()}
-                    onChange={(e) => setEditingOrder({ ...editingOrder, vault_data: e.target.value })}
-                    className="w-full h-24 bg-black/50 border border-white/5 rounded-xl p-3 text-xs font-mono text-brand-primary focus:border-brand-primary outline-none transition-all resize-none"
+                    onChange={(e) => {
+                      try {
+                        const val = e.target.value;
+                        setEditingOrder({ ...editingOrder, vault_data: val });
+                      } catch(err) {
+                        console.error(err);
+                      }
+                    }}
+                    className="w-full h-32 bg-black/50 border border-white/5 rounded-xl p-3 text-xs font-mono text-brand-primary focus:border-brand-primary outline-none transition-all resize-none"
                   />
                   <p className="text-[9px] text-gray-600 italic">Enter assets as JSON format. These will be visible only to the client once the order is completed.</p>
                 </div>
