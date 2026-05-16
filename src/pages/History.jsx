@@ -309,19 +309,17 @@ export default function History() {
                         </div>
                       )}
 
-                      {order.status === 'in_progress' && (
-                        <div className="col-span-2 p-3 bg-indigo-500/5 border border-indigo-500/20 rounded-xl flex items-center justify-center gap-2">
-                          <div className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" />
-                          <p className="text-[10px] text-indigo-400 font-bold uppercase tracking-widest">Project in Progress</p>
-                        </div>
-                      )}
-
-                      {order.status === 'completed' && (
+                      {(order.status === 'accepted' || order.status === 'in_progress' || order.status === 'completed') && (
                         <button 
                           onClick={() => setVaultOrder(order)}
-                          className="col-span-2 py-2.5 bg-green-500 rounded-xl text-xs font-bold text-white hover:shadow-[0_0_20px_rgba(34,197,94,0.4)] transition-all flex items-center justify-center gap-2"
+                          className={`col-span-2 py-2.5 rounded-xl text-xs font-bold text-white transition-all flex items-center justify-center gap-2 ${
+                            order.status === 'completed' 
+                              ? 'bg-green-500 hover:shadow-[0_0_20px_rgba(34,197,94,0.4)]' 
+                              : 'bg-brand-primary hover:shadow-[0_0_20px_rgba(124,58,237,0.4)]'
+                          }`}
                         >
-                          <ShieldAlert className="w-3.5 h-3.5" /> Access The Vault
+                          <ShieldAlert className="w-3.5 h-3.5" /> 
+                          {order.status === 'completed' ? 'Access The Vault' : 'View Secure Assets'}
                         </button>
                       )}
                     </div>
@@ -541,7 +539,9 @@ export default function History() {
                     <div key={key} className="glass-card p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 group">
                       <div>
                         <p className="text-[10px] font-black text-brand-primary uppercase tracking-widest mb-1">{key}</p>
-                        <p className="font-mono text-sm text-gray-300 break-all">{val}</p>
+                        <p className="font-mono text-sm text-gray-300 break-all">
+                          {typeof val === 'object' ? JSON.stringify(val) : val}
+                        </p>
                       </div>
                       <button 
                         onClick={() => {
