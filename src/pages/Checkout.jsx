@@ -162,10 +162,10 @@ export default function Checkout() {
     );
   }
 
-  const subtotal = data?.price || 0;
-  const discount = coupon 
+  const subtotal = Number(data?.price || 0);
+  const discount = Number(coupon 
     ? (coupon.discount_type === 'percentage' ? (subtotal * coupon.discount_value / 100) : coupon.discount_value)
-    : 0;
+    : 0);
   const totalBeforeTax = Math.max(0, subtotal - discount);
   const taxAmount = totalBeforeTax * 0.18;
   const cgst = taxAmount / 2;

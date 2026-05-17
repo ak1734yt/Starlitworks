@@ -659,7 +659,7 @@ export default function CreateInvoice() {
                           <div className="flex justify-between items-start mb-6">
                             <span className="px-3 py-1 bg-white/5 rounded-full text-[9px] font-black uppercase tracking-widest text-gray-500 border border-white/5">{product.category}</span>
                             <div className="text-right">
-                              <p className="text-lg font-black font-mono text-white group-hover:text-brand-primary transition-colors">₹{product.price.toLocaleString()}</p>
+                              <p className="text-lg font-black font-mono text-white group-hover:text-brand-primary transition-colors">₹{Number(product.price || 0).toLocaleString()}</p>
                               {product.unit_label && <p className="text-[9px] text-gray-600 uppercase font-black">{product.unit_label}</p>}
                             </div>
                           </div>

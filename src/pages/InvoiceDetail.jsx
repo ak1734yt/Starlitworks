@@ -140,10 +140,10 @@ export default function InvoiceDetail() {
   }
 
   // Calculate pricing values
-  const subtotal = invoice.subtotal || 0;
-  const tax = invoice.taxTotal || 0;
-  const grandTotal = invoice.grandTotal || 0;
-  const discount = invoice.discountAmount || 0;
+  const subtotal = Number(invoice.subtotal || 0);
+  const tax = Number(invoice.taxTotal || 0);
+  const grandTotal = Number(invoice.grandTotal || 0);
+  const discount = Number(invoice.discountAmount || 0);
 
   return (
     <div className="min-h-screen bg-[#050505] text-white selection:bg-brand-primary/30">
@@ -242,8 +242,8 @@ export default function InvoiceDetail() {
                         <tr key={idx} className="hover:bg-white/[0.01]">
                           <td className="py-4 font-medium text-white">{item.desc || item.description}</td>
                           <td className="py-4 text-center">{item.qty || 1}</td>
-                          <td className="py-4 text-right font-mono">₹{(item.rate || item.amount || 0).toLocaleString()}</td>
-                          <td className="py-4 text-right font-mono font-bold text-white">₹{(item.total || (item.qty * item.rate) || item.amount || 0).toLocaleString()}</td>
+                          <td className="py-4 text-right font-mono">₹{Number(item.rate || item.amount || 0).toLocaleString()}</td>
+                          <td className="py-4 text-right font-mono font-bold text-white">₹{Number(item.total || (item.qty * (item.rate || 0)) || item.amount || 0).toLocaleString()}</td>
                         </tr>
                       ))}
                     </tbody>

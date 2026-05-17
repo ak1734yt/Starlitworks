@@ -56,7 +56,7 @@ export default function Shop() {
     }
     return (
       <div className={`flex items-baseline gap-1 ${isSmall ? '' : 'mb-6'}`}>
-        <span className={`font-bold text-white ${isSmall ? 'text-sm' : 'text-2xl font-display'}`}>₹{product.price.toLocaleString()}</span>
+        <span className={`font-bold text-white ${isSmall ? 'text-sm' : 'text-2xl font-display'}`}>₹{Number(product.price || 0).toLocaleString()}</span>
         {product.unit_label && <span className="text-gray-500 text-xs">{product.unit_label}</span>}
       </div>
     );
@@ -106,7 +106,7 @@ export default function Shop() {
                     <PriceDisplay product={plan} />
                     
                     <ul className="space-y-3 mb-8">
-                      {plan.features.map((f, i) => (
+                      {(Array.isArray(plan.features) ? plan.features : []).map((f, i) => (
                         <li key={i} className="flex items-start gap-2 text-xs text-gray-400 leading-relaxed">
                           <Check className="w-3.5 h-3.5 text-brand-primary mt-0.5 shrink-0" />
                           {f}
@@ -180,7 +180,7 @@ export default function Shop() {
                       <PriceDisplay product={bot} />
                       
                       <ul className="space-y-2">
-                        {bot.features.map((f, i) => (
+                        {(Array.isArray(bot.features) ? bot.features : []).map((f, i) => (
                           <li key={i} className="text-[11px] text-gray-400 flex items-center gap-2">
                             <div className="w-1.5 h-1.5 rounded-full bg-green-400/50" />
                             {f}
@@ -341,19 +341,19 @@ export default function Shop() {
             </h2>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
               {infra.map(item => {
-                const isSelected = cart.includes(item.product_key || String(item.id));
+                const selected = isSelected(item.product_key || String(item.id));
                 return (
                   <div 
                     key={item.id} 
                     onClick={() => toggleItem(item.product_key || String(item.id))}
-                    className={`glass p-5 rounded-2xl flex items-center justify-between border-2 cursor-pointer transition-colors ${isSelected ? 'border-blue-400 bg-blue-400/5' : 'border-white/5 hover:border-white/20'}`}
+                    className={`glass p-5 rounded-2xl flex items-center justify-between border-2 cursor-pointer transition-colors ${selected ? 'border-blue-400 bg-blue-400/5' : 'border-white/5 hover:border-white/20'}`}
                   >
                     <div>
                       <span className="font-medium block">{item.name}</span>
                       <span className="text-[10px] text-gray-500 block mb-1">{item.description}</span>
                       <PriceDisplay product={item} isSmall />
                     </div>
-                    {isSelected ? (
+                    {selected ? (
                       <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-white"><Check className="w-3 h-3" /></div>
                     ) : (
                       <div className="w-6 h-6 rounded-full border border-white/20" />
