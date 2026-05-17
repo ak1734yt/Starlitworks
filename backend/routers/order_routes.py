@@ -239,10 +239,26 @@ def verify_payment(order_id: int, body: VerifyPaymentBody, user=Depends(require_
     if not row: db.close(); raise HTTPException(404, "Order not found")
 
     if body.approved:
-        # Move to accepted (or in_progress if we want to skip accepted)
-        # Actually, if payment is verified, the order is now officially ACCEPTED.
-        status = "accepted" 
-        pay_status = "completed"
+        # Check if this is a credit top-up order
+        if str(row["service_id"]) == "credit_topup" or str(row["service_name"]).startswith("Add Credit"):
+            status = "completed"
+            pay_status = "completed"
+            
+            # Auto credit user
+            user_id = row["user_id"]
+            amount_to_add = float(row["total_amount"] or row["quoted_price"] or 0)
+            
+            user_row = db.execute("SELECT details FROM users WHERE id=?", (user_id,)).fetchone()
+            if user_row:
+                user_details = json.loads(user_row["details"] or "{}")
+                current_credits = float(user_details.get("credits", 0.0))
+                new_credits = current_credits + amount_to_add
+                user_details["credits"] = new_credits
+                
+                db.execute("UPDATE users SET details=? WHERE id=?", (json.dumps(user_details), user_id))
+        else:
+            status = "accepted" 
+            pay_status = "completed"
     else:
         status = "quoted" # Back to quoted so they can click "Proceed to Payment" again
         pay_status = "rejected"
@@ -253,6 +269,7 @@ def verify_payment(order_id: int, body: VerifyPaymentBody, user=Depends(require_
     db.commit(); db.close()
 
     log_activity(user["id"], "VERIFY_PAYMENT", f"Order {order_id} Approved={body.approved}")
+
 
     # Automatic Invoice Sync
     if body.approved:

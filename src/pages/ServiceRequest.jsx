@@ -8,7 +8,7 @@ import Navbar from '../components/Navbar';
 
 export default function ServiceRequest() {
   const { user } = useAuth();
-  const { cart, clearCart } = useCart();
+  const { cart, cartIds, clearCart } = useCart();
   const navigate = useNavigate();
 
   const [products, setProducts]       = useState([]);
@@ -21,7 +21,7 @@ export default function ServiceRequest() {
   const [error, setError]             = useState('');
 
   useEffect(() => {
-    if (cart.length === 0 && !success) {
+    if (cartIds.length === 0 && !success) {
       navigate('/shop');
       return;
     }
@@ -32,17 +32,17 @@ export default function ServiceRequest() {
         setProducts(data);
       })
       .catch(() => setProducts([]));
-  }, [cart, success, navigate]);
+  }, [cartIds, success, navigate]);
 
-  const selectedProducts = products.filter(p => cart.includes(p.product_key) || cart.includes(String(p.id)));
+  const selectedProducts = products.filter(p => cartIds.includes(p.product_key) || cartIds.includes(String(p.id)) || cartIds.includes(Number(p.id)));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (cart.length === 0) return;
+    if (cartIds.length === 0) return;
     
     setError(''); setLoading(true);
     
-    const combinedIds = cart.join(', ');
+    const combinedIds = cartIds.join(', ');
     const combinedNames = selectedProducts.map(p => p.name).join(', ');
 
     try {

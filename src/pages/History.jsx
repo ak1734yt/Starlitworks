@@ -14,6 +14,36 @@ import Navbar from '../components/Navbar';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
+const getFriendlyServiceName = (name) => {
+  if (!name || String(name).includes('[object Object]') || String(name).trim() === '') {
+    return 'Custom Premium Setup';
+  }
+  return name;
+};
+
+const getFriendlyInvoiceDesc = (inv) => {
+  const item = inv.items?.[0];
+  if (!item) return 'Custom Deliverable';
+  
+  if (typeof item === 'string') {
+    if (item.includes('[object Object]')) return 'Custom Setup Pack';
+    return item;
+  }
+  
+  const desc = item.description || item.desc || item.name;
+  if (!desc) return 'Custom Deliverable';
+  
+  if (typeof desc === 'object') {
+    return 'Custom Deliverable';
+  }
+  
+  if (String(desc).includes('[object Object]')) {
+    return 'Custom Setup Pack';
+  }
+  
+  return String(desc);
+};
+
 export default function History() {
   const { user } = useAuth();
   const [orders, setOrders] = useState([]);
@@ -348,9 +378,13 @@ export default function History() {
                       ) : (
                         <div className="space-y-3">
                           {orders.slice(0, 3).map(o => (
-                            <div key={o.id} className="p-3 bg-white/[0.01] border border-white/5 rounded-xl flex justify-between items-center">
+                            <div 
+                              key={o.id} 
+                              onClick={() => { setPortalTab('services'); setChatOrder(o); }}
+                              className="p-3 bg-white/[0.01] border border-white/5 rounded-xl flex justify-between items-center cursor-pointer hover:bg-white/5 hover:border-brand-primary/30 transition-all hover:scale-[1.01] active:scale-[0.99] group"
+                            >
                               <div>
-                                <h4 className="font-bold text-xs text-white truncate max-w-[150px]">{o.service_name}</h4>
+                                <h4 className="font-bold text-xs text-white truncate max-w-[150px] group-hover:text-brand-primary transition-colors">{getFriendlyServiceName(o.service_name)}</h4>
                                 <p className="text-[9px] text-gray-500 font-mono mt-0.5">#{o.id}</p>
                               </div>
                               <span className={`text-[8px] font-black px-2 py-0.5 rounded-full uppercase ${
@@ -381,13 +415,17 @@ export default function History() {
                       ) : (
                         <div className="space-y-3">
                           {invoices.slice(0, 3).map(inv => (
-                            <div key={inv.id} className="p-3 bg-white/[0.01] border border-white/5 rounded-xl flex justify-between items-center">
+                            <div 
+                              key={inv.id} 
+                              onClick={() => navigate(`/invoice/${inv.id}`)}
+                              className="p-3 bg-white/[0.01] border border-white/5 rounded-xl flex justify-between items-center cursor-pointer hover:bg-white/5 hover:border-brand-secondary/30 transition-all hover:scale-[1.01] active:scale-[0.99] group"
+                            >
                               <div>
-                                <h4 className="font-bold text-xs text-white truncate max-w-[150px]">{inv.items?.[0]?.desc || 'Custom Deliverable'}</h4>
+                                <h4 className="font-bold text-xs text-white truncate max-w-[150px] group-hover:text-brand-secondary transition-colors">{getFriendlyInvoiceDesc(inv)}</h4>
                                 <p className="text-[9px] text-gray-500 font-mono mt-0.5">₹{inv.grandTotal?.toLocaleString()}</p>
                               </div>
                               <span className={`text-[8px] font-black px-2 py-0.5 rounded-full uppercase ${
-                                inv.paymentStatus === 'paid' ? 'bg-green-500/10 text-green-500' : 'bg-yellow-500/10 text-yellow-500'
+                                inv.paymentStatus === 'paid' ? 'bg-green-500/10 text-green-500 border border-green-500/20' : 'bg-yellow-500/10 text-yellow-500 border border-yellow-500/20'
                               }`}>
                                 {inv.paymentStatus || 'Pending'}
                               </span>
@@ -532,7 +570,7 @@ export default function History() {
                                 {order.status?.replace('_', ' ')}
                               </span>
                             </div>
-                            <h4 className="font-bold text-white text-base leading-tight">{order.service_name}</h4>
+                            <h4 className="font-bold text-white text-base leading-tight">{getFriendlyServiceName(order.service_name)}</h4>
                             <p className="text-xs text-gray-500 line-clamp-1">{order.description}</p>
                           </div>
 
@@ -658,7 +696,7 @@ export default function History() {
                               #{inv.id || inv.invoiceNumber}
                             </td>
                             <td className="py-4 text-xs max-w-[200px] truncate text-gray-300">
-                              {inv.items?.[0]?.desc || 'Custom Deliverable'}
+                              {getFriendlyInvoiceDesc(inv)}
                             </td>
                             <td className="py-4 text-xs text-gray-400">
                               {inv.invoiceDate}
@@ -859,7 +897,7 @@ export default function History() {
                         <KeyRound className="w-3 h-3 text-brand-primary" /> Secure vault released
                       </div>
                       <h3 className="text-3xl font-display font-black text-white">The Starlit <span className="text-gradient">Vault</span></h3>
-                      <p className="text-gray-500 text-xs mt-1">Order #{vaultOrder.id} • {vaultOrder.service_name}</p>
+                      <p className="text-gray-500 text-xs mt-1">Order #{vaultOrder.id} • {getFriendlyServiceName(vaultOrder.service_name)}</p>
                     </div>
                   </div>
 

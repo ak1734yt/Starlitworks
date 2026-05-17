@@ -248,3 +248,32 @@ async def upload_avatar(file: UploadFile = File(...), user=Depends(get_current_u
     db.execute("UPDATE users SET avatar_url=? WHERE id=?", (url, user["id"]))
     db.commit(); db.close()
     return {"url": url}
+
+class ChangePasswordBody(BaseModel):
+    current_password: str
+    new_password: str
+
+@router.post("/auth/change-password")
+def change_password(body: ChangePasswordBody, user=Depends(get_current_user)):
+    if len(body.new_password) < 8:
+        raise HTTPException(400, "Password must be at least 8 characters.")
+    db = get_db()
+    row = db.execute("SELECT * FROM users WHERE id = ?", (user["id"],)).fetchone()
+    if not row:
+        db.close()
+        raise HTTPException(404, "User not found")
+    user_data = dict(row)
+    if user_data.get("provider", "local") != "local":
+         db.close()
+         raise HTTPException(400, "Social login accounts cannot change password directly.")
+    if not verify_password(body.current_password, user_data.get("password_hash") or ""):
+         db.close()
+         raise HTTPException(400, "Incorrect current password.")
+    
+    h = hash_password(body.new_password)
+    db.execute("UPDATE users SET password_hash = ? WHERE id = ?", (h, user["id"]))
+    db.commit()
+    db.close()
+    log_activity(user["id"], "CHANGE_PASSWORD", "User successfully changed password")
+    return {"success": True, "message": "Password changed successfully."}
+
