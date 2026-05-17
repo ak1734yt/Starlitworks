@@ -5,7 +5,7 @@ import {
   ShoppingBag, Tag, CreditCard, ShieldCheck, 
   ArrowRight, Loader2, Star, QrCode, 
   Upload, CheckCircle, Info, ShieldAlert,
-  Sparkles
+  Sparkles, X
 } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import { validateCoupon, getPublicPrices, getOrder, submitPaymentProof, createOrder, request } from '../services/api';
@@ -24,6 +24,7 @@ export default function Checkout() {
   const [paymentMethod, setPaymentMethod] = useState('manual'); // 'manual' or 'online'
   const [submitting, setSubmitting] = useState(false);
   const [showQR, setShowQR] = useState(false);
+  const [showQRModal, setShowQRModal] = useState(false);
   const [qrData, setQrData] = useState(null);
   const [paymentPlan, setPaymentPlan] = useState('full'); // 'full', 'advance', 'emi'
 
@@ -332,74 +333,25 @@ export default function Checkout() {
                       </div>
                     </section>
                   )}
-                  {/* QR Core Experience */}
-                  <section className="relative">
-                    <div className="absolute -inset-20 bg-brand-primary/10 blur-[120px] rounded-full pointer-events-none opacity-40 animate-pulse" />
-                    <div className="glass-card p-0 overflow-hidden relative border-brand-primary/30 bg-black/60 backdrop-blur-3xl shadow-[0_0_50px_-12px_rgba(124,58,237,0.3)] starlit-pattern">
-                      <div className="relative h-48 overflow-hidden">
-                        <img src="/banner.png" alt="" className="w-full h-full object-cover opacity-30 scale-110 group-hover:scale-100 transition-transform duration-1000" />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent" />
-                        <div className="absolute inset-0 flex flex-col items-center justify-end pb-10">
-                          <div className="flex items-center gap-3 mb-3">
-                             <div className="h-[1px] w-8 bg-brand-primary/50" />
-                             <Sparkles className="w-5 h-5 text-brand-primary animate-pulse" />
-                             <div className="h-[1px] w-8 bg-brand-primary/50" />
-                          </div>
-                          <h4 className="font-bold text-3xl tracking-tight mb-2 bg-clip-text text-transparent bg-gradient-to-b from-white to-white/50">
-                            Scan & Authenticate
-                          </h4>
-                          <div className="flex gap-4 items-center opacity-40 hover:opacity-100 transition-all duration-500">
-                             <span className="text-[9px] font-bold tracking-[0.3em] uppercase">PhonePe</span>
-                             <div className="w-1 h-1 rounded-full bg-brand-primary" />
-                             <span className="text-[9px] font-bold tracking-[0.3em] uppercase">Google Pay</span>
-                             <div className="w-1 h-1 rounded-full bg-brand-primary" />
-                             <span className="text-[9px] font-bold tracking-[0.3em] uppercase">Paytm</span>
-                          </div>
-                        </div>
+                  {/* Payment Trigger CTA */}
+                  <section className="glass-card p-10 relative overflow-hidden border border-brand-primary/20 bg-brand-primary/5">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-brand-primary/10 blur-3xl -mr-16 -mt-16 animate-pulse" />
+                    <div className="flex flex-col md:flex-row items-center justify-between gap-6 relative z-10">
+                      <div>
+                        <h4 className="font-bold text-xl flex items-center gap-2">
+                          <Sparkles className="w-5 h-5 text-brand-primary animate-pulse" />
+                          Ready to Invest
+                        </h4>
+                        <p className="text-xs text-gray-500 mt-1">Scan our secure, encrypted merchant QR code to transfer your funds.</p>
                       </div>
-
-                      <div className="p-12 text-center relative">
-                        <motion.div 
-                          initial={{ scale: 0.95, opacity: 0 }}
-                          whileInView={{ scale: 1, opacity: 1 }}
-                          viewport={{ once: true }}
-                          className="max-w-xs mx-auto space-y-12"
-                        >
-                          {/* QR Wrapper with premium frame */}
-                          <div className="relative inline-block group">
-                            <div className="absolute -inset-1 bg-gradient-to-tr from-brand-primary via-brand-secondary to-brand-accent rounded-[2.5rem] blur opacity-30 group-hover:opacity-60 transition duration-1000 group-hover:duration-200 animate-tilt"></div>
-                            <div className="relative bg-white p-8 rounded-[2rem] shadow-2xl border border-white/20">
-                              {qrData ? (
-                                <img src={`data:image/png;base64,${qrData.qr_base64}`} alt="Secure UPI QR" className="w-64 h-64 mx-auto" />
-                              ) : (
-                                <div className="w-64 h-64 mx-auto flex items-center justify-center bg-gray-100 rounded-xl">
-                                  <Loader2 className="w-8 h-8 animate-spin text-brand-primary" />
-                                </div>
-                              )}
-                              
-                              {/* Centered Brand Overlay for QR */}
-                              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-14 h-14 bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] flex items-center justify-center border border-gray-100 overflow-hidden">
-                                <div className="absolute inset-0 bg-brand-primary/5" />
-                                <Sparkles className="w-7 h-7 text-brand-primary relative z-10" />
-                              </div>
-                            </div>
-                          </div>
-      
-                          <div className="relative group">
-                            <div className="absolute -inset-1 bg-gradient-to-r from-brand-primary to-brand-secondary rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000" />
-                            <div className="relative bg-black/60 border border-white/10 rounded-2xl p-6 backdrop-blur-xl">
-                              <p className="text-[10px] text-brand-primary/80 uppercase font-bold tracking-[0.3em] mb-2">Net Payable Amount</p>
-                              <p className="text-4xl font-display font-bold text-white tracking-tight">
-                                ₹{amountToPay.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                              </p>
-                            </div>
-                          </div>
-                          
-                          <p className="text-xs text-gray-500 font-medium px-4 leading-relaxed">
-                            Once payment is done, please capture a screenshot of the transaction details and upload it below for verification.
-                          </p>
-                        </motion.div>
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowQRModal(true)}
+                        className="w-full md:w-auto py-4 px-8 bg-brand-primary hover:bg-brand-primary/90 text-white rounded-2xl font-bold text-sm shadow-[0_0_20px_rgba(124,58,237,0.4)] hover:shadow-[0_0_30px_rgba(124,58,237,0.6)] hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2"
+                      >
+                        <QrCode className="w-4 h-4" />
+                        Pay Now with UPI / QR
+                      </button>
                     </div>
                   </section>
 
@@ -545,7 +497,7 @@ export default function Checkout() {
               </div>
 
               {/* Coupon Section */}
-              {type === 'product' && !coupon && (
+              {!coupon && (
                 <div className="space-y-4 mb-10 relative">
                   <div className="flex items-center gap-2 mb-2">
                     <Tag className="w-3 h-3 text-brand-primary" />
@@ -594,6 +546,107 @@ export default function Checkout() {
 
         </motion.div>
       </main>
+
+      {/* --- PRESET QR POPUP MODAL --- */}
+      <AnimatePresence>
+        {showQRModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            {/* Backdrop with extreme glass blur */}
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowQRModal(false)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-md"
+            />
+            
+            {/* Modal Card */}
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              className="relative w-full max-w-md bg-[#070707] border border-white/10 rounded-[2.5rem] overflow-hidden shadow-[0_0_80px_rgba(124,58,237,0.25)] z-10"
+            >
+              {/* Header Banner */}
+              <div className="relative h-40 overflow-hidden border-b border-white/10">
+                <img src="/banner.png" alt="" className="w-full h-full object-cover opacity-35 scale-105" />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#070707] via-[#070707]/70 to-transparent" />
+                
+                <button 
+                  onClick={() => setShowQRModal(false)}
+                  className="absolute top-6 right-6 p-2 rounded-full bg-black/40 border border-white/10 text-gray-400 hover:text-white transition-all hover:scale-105"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+                
+                <div className="absolute inset-0 flex flex-col items-center justify-end pb-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Sparkles className="w-4 h-4 text-brand-primary animate-pulse" />
+                    <span className="text-[10px] font-bold tracking-[0.3em] uppercase text-brand-primary">Secure Payout Portal</span>
+                  </div>
+                  <h4 className="font-bold text-2xl tracking-tight">Scan & Transfer</h4>
+                </div>
+              </div>
+
+              {/* QR and Amount Details */}
+              <div className="p-8 text-center space-y-6">
+                {/* QR Code Container */}
+                <div className="relative inline-block group">
+                  <div className="absolute -inset-1 bg-gradient-to-tr from-brand-primary via-brand-secondary to-brand-accent rounded-[2rem] blur opacity-30 group-hover:opacity-55 transition duration-1000 animate-tilt"></div>
+                  <div className="relative bg-white p-6 rounded-[2rem] shadow-2xl border border-gray-100">
+                    {qrData ? (
+                      <img src={`data:image/png;base64,${qrData.qr_base64}`} alt="Secure UPI QR" className="w-52 h-52 mx-auto" />
+                    ) : (
+                      <div className="w-52 h-52 mx-auto flex items-center justify-center bg-gray-100 rounded-xl">
+                        <Loader2 className="w-8 h-8 animate-spin text-brand-primary" />
+                      </div>
+                    )}
+                    
+                    {/* Brand overlay on QR */}
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 bg-white rounded-2xl shadow-xl flex items-center justify-center border border-gray-100">
+                      <Sparkles className="w-5 h-5 text-brand-primary animate-pulse" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Net Payable Amount */}
+                <div className="max-w-xs mx-auto relative group">
+                  <div className="absolute -inset-0.5 bg-gradient-to-r from-brand-primary to-brand-secondary rounded-2xl blur opacity-20" />
+                  <div className="relative bg-white/[0.02] border border-white/15 rounded-2xl p-4 backdrop-blur-xl">
+                    <p className="text-[9px] text-brand-primary/80 uppercase font-bold tracking-[0.2em] mb-1">Net Payable Amount ({paymentPlan === 'full' ? 'Lump Sum' : paymentPlan === 'advance' ? '50% Milestone' : 'Tiered EMI'})</p>
+                    <p className="text-2xl font-display font-bold text-white tracking-tight">
+                      ₹{amountToPay.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Supported Apps */}
+                <div className="flex gap-4 items-center justify-center opacity-40">
+                  <span className="text-[8px] font-bold tracking-[0.2em] uppercase">PhonePe</span>
+                  <div className="w-1 h-1 rounded-full bg-brand-primary" />
+                  <span className="text-[8px] font-bold tracking-[0.2em] uppercase">Google Pay</span>
+                  <div className="w-1 h-1 rounded-full bg-brand-primary" />
+                  <span className="text-[8px] font-bold tracking-[0.2em] uppercase">Paytm</span>
+                </div>
+
+                <p className="text-[10px] text-gray-500 max-w-sm mx-auto leading-relaxed">
+                  Scan this QR code with any UPI app to complete your transfer. Once transfer is successful, click the button below to submit receipt details.
+                </p>
+
+                {/* Confirm Action */}
+                <button
+                  type="button"
+                  onClick={() => setShowQRModal(false)}
+                  className="w-full py-4 bg-brand-primary hover:bg-brand-primary/95 text-white rounded-2xl font-bold text-sm shadow-[0_5px_25px_rgba(124,58,237,0.35)] transition-all flex items-center justify-center gap-2"
+                >
+                  I've Completed the Payment
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -23,6 +23,7 @@ import Admin          from "./pages/Admin";
 import Manager        from "./pages/Manager";
 import Profile        from "./pages/Profile";
 import ToS            from "./pages/ToS";
+import InvoiceDetail  from "./pages/InvoiceDetail";
 
 // Silent analytics tracker for returning users
 function PulseTracker() {
@@ -112,6 +113,8 @@ function AppInner() {
         <Route path="/tracker"        element={<ProtectedRoute><InstallmentTracker /></ProtectedRoute>} />
         <Route path="/product/:id"    element={<ProtectedRoute><ProductDetails /></ProtectedRoute>} />
         <Route path="/checkout/:id"   element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
+        <Route path="/invoice/:id"    element={<ProtectedRoute><InvoiceDetail /></ProtectedRoute>} />
+        <Route path="/checkout/invoice/:id" element={<ProtectedRoute><InvoiceDetail /></ProtectedRoute>} />
         <Route path="/profile"        element={<ProtectedRoute><Profile /></ProtectedRoute>} />
 
         {/* Protected — admin/manager */}
