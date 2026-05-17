@@ -37,13 +37,20 @@ app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
 # ── Security Middleware ───────────────────────────────────────────────────────
 @app.middleware("http")
 async def security_header_check(request: Request, call_next):
-    # Only check sensitive API routes
-    if request.url.path.startswith("/api/") and not request.url.path.startswith("/api/health"):
-        starlit_key = request.headers.get("X-Starlit-Key")
-        expected_key = os.getenv("JWT_SECRET", "b3b985dfebb6061ef6c960d20dbf0cfea3e56a2f34675a0755f32204a37491ca7c69faec1605e42bcafc7d90f91bab7160ce3291bbeef94449155427f695457c")
-        if not starlit_key or starlit_key != expected_key:
-            from fastapi.responses import JSONResponse
-            return JSONResponse(status_code=403, content={"error": "Security Check Failed: Unauthorized API Access"})
+    if request.url.path.startswith("/api/"):
+        exempt_prefixes = [
+            "/api/health",
+            "/api/auth/google",
+            "/api/auth/discord",
+            "/api/auth/microsoft",
+            "/api/auth/apple"
+        ]
+        if not any(request.url.path.startswith(prefix) for prefix in exempt_prefixes):
+            starlit_key = request.headers.get("X-Starlit-Key")
+            expected_key = os.getenv("JWT_SECRET", "b3b985dfebb6061ef6c960d20dbf0cfea3e56a2f34675a0755f32204a37491ca7c69faec1605e42bcafc7d90f91bab7160ce3291bbeef94449155427f695457c")
+            if not starlit_key or starlit_key != expected_key:
+                from fastapi.responses import JSONResponse
+                return JSONResponse(status_code=403, content={"error": "Security Check Failed: Unauthorized API Access"})
             
     response = await call_next(request)
     return response
