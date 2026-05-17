@@ -7,6 +7,7 @@ async function request(path, options = {}) {
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      'X-Starlit-Key': 'ssw_super_secret_change_me_in_production',
       ...options.headers,
     },
     ...options,

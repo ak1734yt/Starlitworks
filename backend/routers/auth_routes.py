@@ -11,6 +11,11 @@ from mailer import send_welcome_email, send_password_reset_email
 router = APIRouter()
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
+# Simple in-memory rate limiter for login
+login_attempts = {}
+MAX_LOGIN_ATTEMPTS = 5
+LOGIN_BLOCK_SECONDS = 60
+
 class SignupBody(BaseModel):
     name: str
     email: EmailStr
@@ -67,7 +72,22 @@ def signup(body: SignupBody):
     return {"token": make_token(user), "user": safe_user(user)}
 
 @router.post("/auth/login")
-def login(body: LoginBody):
+def login(body: LoginBody, request: Request):
+    client_ip = request.client.host
+    now = time.time()
+    
+    # Rate Limiting Logic
+    if client_ip in login_attempts:
+        attempts, last_time = login_attempts[client_ip]
+        if now - last_time > LOGIN_BLOCK_SECONDS:
+            login_attempts[client_ip] = [1, now] # Reset
+        elif attempts >= MAX_LOGIN_ATTEMPTS:
+            raise HTTPException(429, "Too many login attempts. Please try again later.")
+        else:
+            login_attempts[client_ip] = [attempts + 1, now]
+    else:
+        login_attempts[client_ip] = [1, now]
+
     db = get_db()
     row = db.execute("SELECT * FROM users WHERE email = ?", (body.email,)).fetchone()
     db.close()
@@ -84,20 +104,36 @@ def login(body: LoginBody):
 def login_2fa(body: TwoFALoginBody):
     db = get_db()
     row = db.execute("SELECT * FROM users WHERE id = ?", (body.userId,)).fetchone()
-    db.close()
-    if not row: raise HTTPException(404, "User not found")
+    if not row: db.close(); raise HTTPException(404, "User not found")
     user = dict(row)
-    if not verify_totp(user["two_factor_secret"], body.code):
-        raise HTTPException(401, "Invalid 2FA code")
+    
+    is_valid_totp = verify_totp(user["two_factor_secret"], body.code)
+    is_backup_code = False
+    
+    if not is_valid_totp:
+        # Check if code is a backup code
+        backup_codes = json.loads(user.get("backup_codes") or "[]")
+        if body.code in backup_codes:
+            is_backup_code = True
+            backup_codes.remove(body.code)
+            db.execute("UPDATE users SET backup_codes = ? WHERE id = ?", (json.dumps(backup_codes), user["id"]))
+            db.commit()
+    
+    db.close()
+    
+    if not is_valid_totp and not is_backup_code:
+        raise HTTPException(401, "Invalid 2FA or backup code")
+        
     return {"token": make_token(user), "user": safe_user(user)}
 
 @router.post("/auth/2fa/setup")
 def setup_2fa(user=Depends(get_current_user)):
     secret, qr = generate_2fa_secret(user["email"])
+    backup_codes = [secrets.token_hex(4).upper() for _ in range(5)]
     db = get_db()
-    db.execute("UPDATE users SET two_factor_secret = ? WHERE id = ?", (secret, user["id"]))
+    db.execute("UPDATE users SET two_factor_secret = ?, backup_codes = ? WHERE id = ?", (secret, json.dumps(backup_codes), user["id"]))
     db.commit(); db.close()
-    return {"qrCodeUrl": qr, "secret": secret}
+    return {"qrCodeUrl": qr, "secret": secret, "backup_codes": backup_codes}
 
 @router.post("/auth/2fa/verify")
 def verify_2fa(body: TwoFACodeBody, user=Depends(get_current_user)):

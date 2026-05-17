@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, AlertCircle, Clock, ShoppingBag, MessageSquare, Check, X, ShieldAlert, Send, CreditCard } from 'lucide-react';
+import { Search, AlertCircle, Clock, ShoppingBag, MessageSquare, Check, X, ShieldAlert, Send, CreditCard, Zap } from 'lucide-react';
 import OrderChat from '../components/OrderChat';
 import { negotiateOrder, acceptOrder, getUserInvoicesByAdmin, getMyOrders } from '../services/api';
 import Navbar from '../components/Navbar';
@@ -203,7 +203,24 @@ export default function History() {
                     </div>
 
                     <div className="flex-grow mb-6">
-                      <p className="text-sm text-gray-400 line-clamp-3 mb-4">{order.description}</p>
+                      <p className="text-sm text-gray-400 line-clamp-2 mb-4">{order.description}</p>
+                      
+                      <div className="grid grid-cols-2 gap-4 mb-4">
+                        <div className="p-3 rounded-2xl bg-white/[0.02] border border-white/5 group-hover:border-white/10 transition-all">
+                          <p className="text-[8px] font-black text-gray-600 uppercase tracking-[0.2em] mb-1">Target Timeline</p>
+                          <div className="flex items-center gap-2">
+                            <Activity className="w-3.5 h-3.5 text-brand-primary" />
+                            <p className="text-[11px] font-bold text-gray-300">{order.timeline || 'Calculating...'}</p>
+                          </div>
+                        </div>
+                        <div className="p-3 rounded-2xl bg-white/[0.02] border border-white/5 group-hover:border-white/10 transition-all">
+                          <p className="text-[8px] font-black text-gray-600 uppercase tracking-[0.2em] mb-1">Client Discord</p>
+                          <div className="flex items-center gap-2">
+                            <MapPin className="w-3.5 h-3.5 text-brand-secondary" />
+                            <p className="text-[11px] font-bold text-gray-300 truncate">{order.discord_username || 'Not Linked'}</p>
+                          </div>
+                        </div>
+                      </div>
                       
                       {/* Project Roadmap */}
                       <div className="mt-4 pt-4 border-t border-white/5">
@@ -243,18 +260,15 @@ export default function History() {
                       )}
                     </div>
 
-                    <div className="flex items-center justify-between py-4 border-t border-white/5">
-                      <div>
-                        <p className="text-[10px] text-gray-600 uppercase font-bold mb-1">Requested On</p>
-                        <p className="text-xs text-gray-400">{new Date(order.created_at * 1000).toLocaleDateString()}</p>
+                    <div className="flex items-center justify-between py-5 border-t border-white/5 relative">
+                      <div className="absolute inset-0 bg-brand-primary/[0.02] opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <div className="relative">
+                        <p className="text-[9px] text-gray-600 uppercase font-bold tracking-widest mb-1">Requested On</p>
+                        <p className="text-xs text-gray-400 font-mono">{new Date(order.created_at * 1000).toLocaleDateString()}</p>
                       </div>
-                      <div className="text-right">
-                        <p className="text-[10px] text-gray-600 uppercase font-bold mb-1">Quote Price</p>
-                        {order.quoted_price ? (
-                          <p className="text-sm font-bold text-white">₹{order.quoted_price.toLocaleString()}</p>
-                        ) : (
-                          <p className="text-xs text-gray-500 italic">Pending...</p>
-                        )}
+                      <div className="text-right relative">
+                        <p className="text-[9px] text-gray-600 uppercase font-bold tracking-widest mb-1">Project Valuation</p>
+                        <p className="text-xl font-display font-bold text-white tracking-tight">₹{(order.quoted_price || 0).toLocaleString()}</p>
                       </div>
                     </div>
 
@@ -268,10 +282,10 @@ export default function History() {
                       
                       {order.status === 'quoted' && !order.negotiation_status && (
                         <button 
-                          onClick={() => handleAccept(order.id)}
+                          onClick={() => navigate(`/checkout/${order.id}`)}
                           className="flex items-center justify-center gap-2 py-2.5 bg-brand-primary/10 border border-brand-primary/20 rounded-xl text-xs font-bold text-brand-primary hover:bg-brand-primary hover:text-white transition-all shadow-lg shadow-brand-primary/10"
                         >
-                          <Check className="w-3.5 h-3.5" /> Approve
+                          <CreditCard className="w-3.5 h-3.5" /> Proceed to Payment
                         </button>
                       )}
 

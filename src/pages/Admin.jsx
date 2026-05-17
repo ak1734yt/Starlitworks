@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LayoutDashboard, IndianRupee, FileText, Users, ShoppingBag, Loader2, Save, X, Edit, Plus, Trash2, Search, Filter, Star, CreditCard, MessageSquare, Check, ExternalLink, Download, Globe, MapPin, Activity, Zap } from 'lucide-react';
+import { LayoutDashboard, IndianRupee, FileText, Users, ShoppingBag, Loader2, Save, X, Edit, Plus, Trash2, Search, Filter, Star, CreditCard, MessageSquare, Check, ExternalLink, Download, Globe, MapPin, Activity, Zap, Tag } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import Navbar from '../components/Navbar';
 import SystemHealth from '../components/SystemHealth';
@@ -11,7 +11,7 @@ import {
   createUserInvoice, deleteOrder, request, getPublicPrices,
   getAnalyticsLogs, updateOrderVault, updateInstallment,
   getAdminOrders, getInvoices, getAdminFeedbacks, updateOrderStatus,
-  verifyPayment, updateFeedbackStatus
+  verifyPayment, updateFeedbackStatus, getCoupons, createCoupon
 } from '../services/api';
 import OrderChat from '../components/OrderChat';
 
@@ -22,6 +22,7 @@ const TABS = [
   { id: 'invoices', label: 'Invoices',         icon: FileText },
   { id: 'feedbacks',label: 'Feedbacks',        icon: Star },
   { id: 'clients',  label: 'Clients',          icon: Users },
+  { id: 'coupons',  label: 'Coupons',          icon: Tag },
   { id: 'pulse',    label: 'User Pulse',       icon: LayoutDashboard },
 ];
 
@@ -40,13 +41,14 @@ export default function Admin() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('orders');
   
-  const [data, setData] = useState({ orders: [], invoices: [], prices: [], clients: [], feedbacks: [], pulse: [] });
+  const [data, setData] = useState({ orders: [], invoices: [], prices: [], clients: [], feedbacks: [], pulse: [], coupons: [] });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   
   // Modals / Editing state
   const [editingOrder, setEditingOrder] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all');
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [newInvoice, setNewInvoice] = useState({
@@ -56,6 +58,23 @@ export default function Admin() {
     items: [{ desc: '', amount: 0 }]
   });
   const [selectedChatOrderId, setSelectedChatOrderId] = useState(null);
+  const [newCoupon, setNewCoupon] = useState({ code: '', discount_type: 'percentage', discount_value: 10, max_uses: 10 });
+  const [creatingCoupon, setCreatingCoupon] = useState(false);
+
+  const handleCreateCoupon = async (e) => {
+    e.preventDefault();
+    setCreatingCoupon(true);
+    try {
+      await createCoupon(newCoupon);
+      toast.success('Coupon created successfully');
+      setNewCoupon({ code: '', discount_type: 'percentage', discount_value: 10, max_uses: 10 });
+      fetchData();
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setCreatingCoupon(false);
+    }
+  };
 
   const token = localStorage.getItem('ssw_token');
 
@@ -63,16 +82,17 @@ export default function Admin() {
     setLoading(true);
     try {
       const token = localStorage.getItem('ssw_token');
-      const [orders, invoices, feedbacks, clients, prices, pulse] = await Promise.all([
+      const [orders, invoices, feedbacks, clients, prices, pulse, coupons] = await Promise.all([
         getAdminOrders(),
         getInvoices(),
         getAdminFeedbacks(),
         request('/admin/clients'),
         getPublicPrices(),
-        getAnalyticsLogs()
+        getAnalyticsLogs(),
+        getCoupons()
       ]);
       
-      setData({ orders, invoices, feedbacks, clients, prices, pulse });
+      setData({ orders, invoices, feedbacks, clients, prices, pulse, coupons });
     } catch (err) {
       toast.error('Failed to fetch data');
       console.error(err);
@@ -188,15 +208,19 @@ export default function Admin() {
     );
   }
 
-  const filteredOrders = data.orders.filter(o => o.client_name?.toLowerCase().includes(searchTerm.toLowerCase()) || o.service_name.toLowerCase().includes(searchTerm.toLowerCase()));
+  const filteredOrders = data.orders.filter(o => {
+    const matchesSearch = o.client_name?.toLowerCase().includes(searchTerm.toLowerCase()) || o.service_name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = filterStatus === 'all' || o.status === filterStatus;
+    return matchesSearch && matchesStatus;
+  });
 
   return (
     <div className="min-h-screen bg-brand-bg text-white">
       <Navbar />
       
-      <div className="flex h-screen pt-20">
+      <div className="flex flex-col lg:flex-row min-h-screen lg:h-screen pt-20 overflow-x-hidden">
         {/* Sidebar */}
-        <aside className="w-64 border-r border-white/5 bg-brand-bg flex flex-col">
+        <aside className="hidden lg:flex w-64 border-r border-white/5 bg-brand-bg flex-col shrink-0">
           <div className="p-6">
             <h2 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-6">Admin Panel</h2>
             <nav className="space-y-2">
@@ -235,20 +259,74 @@ export default function Admin() {
           </div>
         </aside>
 
+        {/* Mobile Horizontal Tabs */}
+        <div className="lg:hidden bg-brand-bg/50 backdrop-blur-md border-b border-white/5 px-6 py-4 overflow-x-auto whitespace-nowrap scrollbar-none flex gap-3 z-40 sticky top-20">
+          {TABS.map(tab => {
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => { setActiveTab(tab.id); setSearchTerm(''); }}
+                className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold tracking-wider uppercase transition-all ${
+                  isActive 
+                    ? 'bg-brand-primary text-white shadow-lg shadow-brand-primary/20' 
+                    : 'text-gray-400 hover:text-white bg-white/5 border border-white/5'
+                }`}
+              >
+                <tab.icon className="w-3.5 h-3.5" />
+                {tab.label}
+                {tab.id === 'orders' && data.orders.filter(o => o.status === 'pending').length > 0 && (
+                  <span className="bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+                    {data.orders.filter(o => o.status === 'pending').length}
+                  </span>
+                )}
+                {tab.id === 'chats' && data.orders.reduce((acc, o) => acc + (o.admin_unread_count || 0), 0) > 0 && (
+                  <span className="bg-brand-primary text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-[0_0_10px_rgba(124,58,237,0.5)]">
+                    {data.orders.reduce((acc, o) => acc + (o.admin_unread_count || 0), 0)}
+                  </span>
+                )}
+                {tab.id === 'payments' && data.orders.filter(o => o.status === 'payment_pending').length > 0 && (
+                  <span className="bg-brand-secondary text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+                    {data.orders.filter(o => o.status === 'payment_pending').length}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
         {/* Main Content */}
-        <main className="flex-1 overflow-y-auto p-8">
-          <header className="flex items-center justify-between mb-8">
+        <main className="flex-1 overflow-y-auto p-4 md:p-8">
+          <header className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-8">
             <h1 className="text-2xl font-bold font-display">{TABS.find(t => t.id === activeTab)?.label}</h1>
             
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-              <input 
-                type="text" 
-                placeholder="Search..." 
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-                className="bg-white/5 border border-white/10 rounded-xl pl-9 pr-4 py-2 text-sm focus:outline-none focus:border-brand-primary w-64"
-              />
+            <div className="flex items-center gap-4">
+              {activeTab === 'orders' && (
+                <select 
+                  value={filterStatus}
+                  onChange={e => setFilterStatus(e.target.value)}
+                  className="bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-gray-300 focus:outline-none focus:border-brand-primary"
+                >
+                  <option value="all" className="bg-brand-bg">All Statuses</option>
+                  <option value="pending" className="bg-brand-bg">Pending</option>
+                  <option value="quoted" className="bg-brand-bg">Quoted</option>
+                  <option value="accepted" className="bg-brand-bg">Accepted</option>
+                  <option value="payment_pending" className="bg-brand-bg">Payment Pending</option>
+                  <option value="in_progress" className="bg-brand-bg">In Progress</option>
+                  <option value="completed" className="bg-brand-bg">Completed</option>
+                  <option value="rejected" className="bg-brand-bg">Rejected</option>
+                </select>
+              )}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                <input 
+                  type="text" 
+                  placeholder="Search..." 
+                  value={searchTerm}
+                  onChange={e => setSearchTerm(e.target.value)}
+                  className="bg-white/5 border border-white/10 rounded-xl pl-9 pr-4 py-2 text-sm focus:outline-none focus:border-brand-primary w-64"
+                />
+              </div>
             </div>
           </header>
 
@@ -257,58 +335,60 @@ export default function Admin() {
             {activeTab === 'orders' && (
               <motion.div key="orders" initial={{opacity:0, y:10}} animate={{opacity:1, y:0}} exit={{opacity:0, y:-10}}>
                 <div className="bg-brand-card border border-brand-border rounded-2xl overflow-hidden">
-                  <table className="w-full text-left text-sm">
-                    <thead className="bg-white/5 border-b border-white/5">
-                      <tr>
-                        <th className="px-6 py-4 font-medium text-gray-400">Date</th>
-                        <th className="px-6 py-4 font-medium text-gray-400">Client</th>
-                        <th className="px-6 py-4 font-medium text-gray-400">Service</th>
-                        <th className="px-6 py-4 font-medium text-gray-400">Status</th>
-                        <th className="px-6 py-4 font-medium text-gray-400">Timeline</th>
-                        <th className="px-6 py-4 text-right">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-white/5">
-                      {filteredOrders.length === 0 ? (
-                        <tr><td colSpan="6" className="px-6 py-8 text-center text-gray-500">No requests found.</td></tr>
-                      ) : filteredOrders.map(order => (
-                        <tr key={order.id} className="hover:bg-white/5 transition-colors">
-                          <td className="px-6 py-4 text-gray-400">{new Date(order.created_at * 1000).toLocaleDateString()}</td>
-                          <td className="px-6 py-4">
-                            <p className="font-medium text-white">{order.client_name}</p>
-                            <p className="text-xs text-gray-500">{order.client_email}</p>
-                          </td>
-                          <td className="px-6 py-4 font-medium">{order.service_name}</td>
-                          <td className="px-6 py-4">
-                            <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                              order.status === 'pending' ? 'bg-yellow-500/10 text-yellow-500' :
-                              order.status === 'quoted' ? 'bg-blue-500/10 text-blue-400' :
-                              order.status === 'accepted' ? 'bg-green-500/10 text-green-400' :
-                              'bg-gray-500/10 text-gray-400'
-                            }`}>
-                              {order.status}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 text-gray-400 capitalize">{order.timeline || 'None'}</td>
-                          <td className="px-6 py-4 text-right space-x-3">
-                            <button onClick={() => setEditingOrder(order)} className="text-brand-primary hover:text-white transition-colors text-xs font-medium">Review</button>
-                            <button onClick={() => handleDeleteOrder(order.id)} className="text-gray-700 hover:text-red-500 transition-colors">
-                               <Trash2 className="w-4 h-4" />
-                            </button>
-                          </td>
+                  <div className="overflow-x-auto scrollbar-thin">
+                    <table className="w-full text-left text-sm min-w-[800px]">
+                      <thead className="bg-white/5 border-b border-white/5">
+                        <tr>
+                          <th className="px-6 py-4 font-medium text-gray-400">Date</th>
+                          <th className="px-6 py-4 font-medium text-gray-400">Client</th>
+                          <th className="px-6 py-4 font-medium text-gray-400">Service</th>
+                          <th className="px-6 py-4 font-medium text-gray-400">Status</th>
+                          <th className="px-6 py-4 font-medium text-gray-400">Timeline</th>
+                          <th className="px-6 py-4 text-right">Action</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody className="divide-y divide-white/5">
+                        {filteredOrders.length === 0 ? (
+                          <tr><td colSpan="6" className="px-6 py-8 text-center text-gray-500">No requests found.</td></tr>
+                        ) : filteredOrders.map(order => (
+                          <tr key={order.id} className="hover:bg-white/5 transition-colors">
+                            <td className="px-6 py-4 text-gray-400">{new Date(order.created_at * 1000).toLocaleDateString()}</td>
+                            <td className="px-6 py-4">
+                              <p className="font-medium text-white">{order.client_name}</p>
+                              <p className="text-xs text-gray-500">{order.client_email}</p>
+                            </td>
+                            <td className="px-6 py-4 font-medium">{order.service_name}</td>
+                            <td className="px-6 py-4">
+                              <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                                order.status === 'pending' ? 'bg-yellow-500/10 text-yellow-500' :
+                                order.status === 'quoted' ? 'bg-blue-500/10 text-blue-400' :
+                                order.status === 'accepted' ? 'bg-green-500/10 text-green-400' :
+                                'bg-gray-500/10 text-gray-400'
+                              }`}>
+                                {order.status}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-gray-400 capitalize">{order.timeline || 'None'}</td>
+                            <td className="px-6 py-4 text-right space-x-3">
+                              <button onClick={() => setEditingOrder(order)} className="text-brand-primary hover:text-white transition-colors text-xs font-medium">Review</button>
+                              <button onClick={() => handleDeleteOrder(order.id)} className="text-gray-700 hover:text-red-500 transition-colors">
+                                 <Trash2 className="w-4 h-4" />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </motion.div>
             )}
             {/* --- CHATS TAB --- */}
             {activeTab === 'chats' && (
               <motion.div key="chats" initial={{opacity:0, y:10}} animate={{opacity:1, y:0}} exit={{opacity:0, y:-10}} className="h-[calc(100vh-200px)]">
-                <div className="flex h-full gap-6">
+                <div className="flex h-full gap-6 flex-col md:flex-row">
                   {/* Chat List */}
-                  <div className="w-80 bg-brand-card border border-brand-border rounded-2xl overflow-hidden flex flex-col">
+                  <div className={`w-full md:w-80 bg-brand-card border border-brand-border rounded-2xl overflow-hidden flex flex-col ${selectedChatOrderId ? 'hidden md:flex' : 'flex'}`}>
                     <div className="p-4 border-b border-white/5 bg-white/5">
                       <h3 className="font-bold text-sm">Conversations</h3>
                     </div>
@@ -347,7 +427,15 @@ export default function Admin() {
                   </div>
 
                   {/* Active Chat */}
-                  <div className="flex-1 bg-brand-card border border-brand-border rounded-2xl overflow-hidden flex flex-col relative">
+                  <div className={`flex-1 bg-brand-card border border-brand-border rounded-2xl overflow-hidden flex flex-col relative ${selectedChatOrderId ? 'flex' : 'hidden md:flex'}`}>
+                    {selectedChatOrderId && (
+                      <button 
+                        onClick={() => setSelectedChatOrderId(null)}
+                        className="md:hidden flex items-center gap-2 p-4 border-b border-white/5 bg-white/5 text-xs text-brand-primary font-bold uppercase tracking-wider hover:text-white transition-all"
+                      >
+                        ← Back to Inbox
+                      </button>
+                    )}
                     {selectedChatOrderId ? (
                       <OrderChat orderId={selectedChatOrderId} />
                     ) : (
@@ -423,56 +511,57 @@ export default function Admin() {
                 </div>
               </motion.div>
             )}
-
             {/* --- FEEDBACKS TAB --- */}
             {activeTab === 'feedbacks' && (
               <motion.div key="feedbacks" initial={{opacity:0, y:10}} animate={{opacity:1, y:0}} exit={{opacity:0, y:-10}}>
                 <div className="bg-brand-card border border-brand-border rounded-2xl overflow-hidden">
-                  <table className="w-full text-left text-sm">
-                    <thead className="bg-white/5 border-b border-white/5">
-                      <tr>
-                        <th className="px-6 py-4 font-medium text-gray-400">User</th>
-                        <th className="px-6 py-4 font-medium text-gray-400">Rating</th>
-                        <th className="px-6 py-4 font-medium text-gray-400">Comment</th>
-                        <th className="px-6 py-4 font-medium text-gray-400">Status</th>
-                        <th className="px-6 py-4 text-right">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-white/5">
-                      {data.feedbacks.length === 0 ? (
-                        <tr><td colSpan="5" className="px-6 py-8 text-center text-gray-500">No feedbacks found.</td></tr>
-                      ) : data.feedbacks.map(f => (
-                        <tr key={f.id} className="hover:bg-white/5 transition-colors">
-                          <td className="px-6 py-4 font-medium text-white">{f.name}</td>
-                          <td className="px-6 py-4">
-                            <div className="flex gap-0.5 text-yellow-500">
-                              {[...Array(5)].map((_, i) => (
-                                <Star key={i} className={`w-3 h-3 ${i < f.rating ? 'fill-current' : 'text-gray-600'}`} />
-                              ))}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 text-gray-400 truncate max-w-xs">{f.comment}</td>
-                          <td className="px-6 py-4">
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                              f.status === 'approved' ? 'bg-green-500/10 text-green-400' :
-                              f.status === 'rejected' ? 'bg-red-500/10 text-red-400' :
-                              'bg-yellow-500/10 text-yellow-500'
-                            }`}>
-                              {f.status}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 text-right space-x-2">
-                            {f.status !== 'approved' && (
-                              <button onClick={() => handleUpdateFeedback(f.id, 'approved')} className="text-green-400 hover:text-white transition-colors text-xs font-medium">Approve</button>
-                            )}
-                            {f.status !== 'rejected' && (
-                              <button onClick={() => handleUpdateFeedback(f.id, 'rejected')} className="text-red-400 hover:text-white transition-colors text-xs font-medium">Reject</button>
-                            )}
-                          </td>
+                  <div className="overflow-x-auto scrollbar-thin">
+                    <table className="w-full text-left text-sm min-w-[800px]">
+                      <thead className="bg-white/5 border-b border-white/5">
+                        <tr>
+                          <th className="px-6 py-4 font-medium text-gray-400">User</th>
+                          <th className="px-6 py-4 font-medium text-gray-400">Rating</th>
+                          <th className="px-6 py-4 font-medium text-gray-400">Comment</th>
+                          <th className="px-6 py-4 font-medium text-gray-400">Status</th>
+                          <th className="px-6 py-4 text-right">Action</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody className="divide-y divide-white/5">
+                        {data.feedbacks.length === 0 ? (
+                          <tr><td colSpan="5" className="px-6 py-8 text-center text-gray-500">No feedbacks found.</td></tr>
+                        ) : data.feedbacks.map(f => (
+                          <tr key={f.id} className="hover:bg-white/5 transition-colors">
+                            <td className="px-6 py-4 font-medium text-white">{f.name}</td>
+                            <td className="px-6 py-4">
+                              <div className="flex gap-0.5 text-yellow-500">
+                                {[...Array(5)].map((_, i) => (
+                                  <Star key={i} className={`w-3 h-3 ${i < f.rating ? 'fill-current' : 'text-gray-600'}`} />
+                                ))}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 text-gray-400 truncate max-w-xs">{f.comment}</td>
+                            <td className="px-6 py-4">
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                                f.status === 'approved' ? 'bg-green-500/10 text-green-400' :
+                                f.status === 'rejected' ? 'bg-red-500/10 text-red-400' :
+                                'bg-yellow-500/10 text-yellow-500'
+                              }`}>
+                                {f.status}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-right space-x-2">
+                              {f.status !== 'approved' && (
+                                <button onClick={() => handleUpdateFeedback(f.id, 'approved')} className="text-green-400 hover:text-white transition-colors text-xs font-medium">Approve</button>
+                              )}
+                              {f.status !== 'rejected' && (
+                                <button onClick={() => handleUpdateFeedback(f.id, 'rejected')} className="text-red-400 hover:text-white transition-colors text-xs font-medium">Reject</button>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </motion.div>
             )}
@@ -486,33 +575,34 @@ export default function Admin() {
                   </button>
                 </div>
                 <div className="bg-brand-card border border-brand-border rounded-2xl overflow-hidden">
-                  <table className="w-full text-left text-sm">
-                    <thead className="bg-white/5 border-b border-white/5">
-                      <tr>
-                        <th className="px-6 py-4 font-medium text-gray-400">Invoice #</th>
-                        <th className="px-6 py-4 font-medium text-gray-400">Client</th>
-                        <th className="px-6 py-4 font-medium text-gray-400">Date</th>
-                        <th className="px-6 py-4 font-medium text-gray-400">Total</th>
-                        <th className="px-6 py-4 font-medium text-gray-400">Type</th>
-                        <th className="px-6 py-4 text-right font-medium text-gray-400">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-white/5">
-                      {data.invoices.map((inv, i) => (
-                        <tr 
-                          key={i} 
-                          onClick={() => { setSelectedInvoice(inv); setShowInvoiceModal(true); }}
-                          className="hover:bg-white/5 transition-colors cursor-pointer group"
-                        >
-                          <td className="px-6 py-4 font-medium group-hover:text-brand-primary transition-colors">{inv.invoiceNumber}</td>
-                          <td className="px-6 py-4">{inv.client?.name}</td>
-                          <td className="px-6 py-4 text-gray-400">{inv.invoiceDate}</td>
-                          <td className="px-6 py-4 text-green-400 font-medium">{inv.currency}{inv.grandTotal}</td>
-                          <td className="px-6 py-4">
-                            <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold ${inv.paymentType === 'installment' ? 'bg-purple-500/10 text-purple-400' : 'bg-blue-500/10 text-blue-400'}`}>
-                              {inv.paymentType}
-                            </span>
-                          </td>
+                  <div className="overflow-x-auto scrollbar-thin">
+                    <table className="w-full text-left text-sm min-w-[800px]">
+                      <thead className="bg-white/5 border-b border-white/5">
+                        <tr>
+                          <th className="px-6 py-4 font-medium text-gray-400">Invoice #</th>
+                          <th className="px-6 py-4 font-medium text-gray-400">Client</th>
+                          <th className="px-6 py-4 font-medium text-gray-400">Date</th>
+                          <th className="px-6 py-4 font-medium text-gray-400">Total</th>
+                          <th className="px-6 py-4 font-medium text-gray-400">Type</th>
+                          <th className="px-6 py-4 text-right font-medium text-gray-400">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/5">
+                        {data.invoices.map((inv, i) => (
+                          <tr 
+                            key={i} 
+                            onClick={() => { setSelectedInvoice(inv); setShowInvoiceModal(true); }}
+                            className="hover:bg-white/5 transition-colors cursor-pointer group"
+                          >
+                            <td className="px-6 py-4 font-medium group-hover:text-brand-primary transition-colors">{inv.invoiceNumber}</td>
+                            <td className="px-6 py-4">{inv.client?.name}</td>
+                            <td className="px-6 py-4 text-gray-400">{inv.invoiceDate}</td>
+                            <td className="px-6 py-4 text-green-400 font-medium">{inv.currency}{inv.grandTotal}</td>
+                            <td className="px-6 py-4">
+                              <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold ${inv.paymentType === 'installment' ? 'bg-purple-500/10 text-purple-400' : 'bg-blue-500/10 text-blue-400'}`}>
+                                {inv.paymentType}
+                              </span>
+                            </td>
                           <td className="px-6 py-4 text-right">
                             <button 
                               onClick={(e) => { e.stopPropagation(); handleDownloadInvoice(inv.id); }} 
@@ -533,7 +623,7 @@ export default function Admin() {
             {activeTab === 'clients' && (
               <motion.div key="clients" initial={{opacity:0, y:10}} animate={{opacity:1, y:0}} exit={{opacity:0, y:-10}}>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {data.clients.map(client => (
+                  {data.clients.filter(c => c.name?.toLowerCase().includes(searchTerm.toLowerCase()) || c.email?.toLowerCase().includes(searchTerm.toLowerCase())).map(client => (
                     <div key={client.id} className="glass p-6 rounded-2xl flex items-center gap-4">
                       {client.avatar_url ? (
                         <img src={client.avatar_url} alt="" className="w-12 h-12 rounded-full object-cover" />
@@ -556,6 +646,79 @@ export default function Admin() {
                       </div>
                     </div>
                   ))}
+                </div>
+              </motion.div>
+            )}
+
+            {/* --- COUPONS TAB --- */}
+            {activeTab === 'coupons' && (
+              <motion.div key="coupons" initial={{opacity:0, y:10}} animate={{opacity:1, y:0}} exit={{opacity:0, y:-10}}>
+                <div className="grid md:grid-cols-3 gap-6">
+                  <div className="md:col-span-1">
+                    <div className="bg-brand-card border border-brand-border rounded-2xl p-6">
+                      <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><Tag className="w-5 h-5 text-brand-primary" /> Create Coupon</h3>
+                      <form onSubmit={handleCreateCoupon} className="space-y-4">
+                        <div>
+                          <label className="block text-xs text-gray-400 mb-1">Coupon Code (Leave empty for random)</label>
+                          <input type="text" value={newCoupon.code} onChange={e => setNewCoupon({...newCoupon, code: e.target.value.toUpperCase()})} placeholder="e.g. SUMMER20" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-brand-primary uppercase" />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-xs text-gray-400 mb-1">Type</label>
+                            <select value={newCoupon.discount_type} onChange={e => setNewCoupon({...newCoupon, discount_type: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-brand-primary">
+                              <option value="percentage">Percentage (%)</option>
+                              <option value="fixed">Fixed (₹)</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-xs text-gray-400 mb-1">Value</label>
+                            <input type="number" required min="1" value={newCoupon.discount_value} onChange={e => setNewCoupon({...newCoupon, discount_value: Number(e.target.value)})} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-brand-primary" />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-400 mb-1">Max Uses</label>
+                          <input type="number" required min="1" value={newCoupon.max_uses} onChange={e => setNewCoupon({...newCoupon, max_uses: Number(e.target.value)})} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-brand-primary" />
+                        </div>
+                        <button type="submit" disabled={creatingCoupon} className="w-full btn-primary flex items-center justify-center gap-2 py-2.5">
+                          {creatingCoupon ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />} Generate Coupon
+                        </button>
+                      </form>
+                    </div>
+                  </div>
+                  <div className="md:col-span-2">
+                    <div className="bg-brand-card border border-brand-border rounded-2xl overflow-hidden">
+                      <table className="w-full text-left text-sm">
+                        <thead className="bg-white/5 border-b border-white/5">
+                          <tr>
+                            <th className="px-6 py-4 font-medium text-gray-400">Code</th>
+                            <th className="px-6 py-4 font-medium text-gray-400">Discount</th>
+                            <th className="px-6 py-4 font-medium text-gray-400">Uses</th>
+                            <th className="px-6 py-4 font-medium text-gray-400">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/5">
+                          {data.coupons.length === 0 ? (
+                            <tr><td colSpan="4" className="px-6 py-8 text-center text-gray-500">No coupons generated yet.</td></tr>
+                          ) : data.coupons.map(coupon => (
+                            <tr key={coupon.id} className="hover:bg-white/5 transition-colors">
+                              <td className="px-6 py-4 font-mono font-bold text-white">{coupon.code}</td>
+                              <td className="px-6 py-4 text-brand-primary font-bold">
+                                {coupon.discount_type === 'percentage' ? `${coupon.discount_value}% OFF` : `₹${coupon.discount_value} OFF`}
+                              </td>
+                              <td className="px-6 py-4 text-gray-400">
+                                {coupon.used_count} / {coupon.max_uses}
+                              </td>
+                              <td className="px-6 py-4">
+                                <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold ${coupon.used_count >= coupon.max_uses ? 'bg-red-500/10 text-red-500' : 'bg-green-500/10 text-green-500'}`}>
+                                  {coupon.used_count >= coupon.max_uses ? 'Exhausted' : 'Active'}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
                 </div>
               </motion.div>
             )}

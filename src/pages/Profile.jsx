@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { updateProfile } from '../services/api';
 import Navbar from '../components/Navbar';
@@ -11,6 +12,7 @@ export default function Profile() {
   const [show2FAModal, setShow2FAModal] = useState(false);
   const [qrCode, setQrCode] = useState('');
   const [twoFactorSecret, setTwoFactorSecret] = useState('');
+  const [backupCodes, setBackupCodes] = useState([]);
   const [twoFactorCode, setTwoFactorCode] = useState('');
   const [confirmStep, setConfirmStep] = useState(false);
   
@@ -34,9 +36,10 @@ export default function Profile() {
 
   const handleSetup2FA = async () => {
     try {
-      const { qrCodeUrl, secret } = await setup2FA();
+      const { qrCodeUrl, secret, backup_codes } = await setup2FA();
       setQrCode(qrCodeUrl);
       setTwoFactorSecret(secret);
+      setBackupCodes(backup_codes || []);
       setConfirmStep(true);
       setShow2FAModal(true);
     } catch (err) {
@@ -247,10 +250,22 @@ export default function Profile() {
 
               {qrCode && <img src={qrCode} alt="QR Code" className="mx-auto w-48 h-48 rounded-2xl border-4 border-white mb-6" />}
               
-              <div className="bg-white/5 p-4 rounded-xl border border-white/5 mb-8">
+              <div className="bg-white/5 p-4 rounded-xl border border-white/5 mb-6">
                 <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest mb-1">Secret Key</p>
                 <code className="text-brand-primary text-sm font-mono tracking-widest">{twoFactorSecret}</code>
               </div>
+
+              {backupCodes.length > 0 && (
+                <div className="bg-red-500/10 p-4 rounded-xl border border-red-500/20 mb-8 text-left">
+                  <p className="text-[10px] text-red-400 uppercase font-bold tracking-widest mb-2 flex items-center gap-1.5"><Shield className="w-3 h-3" /> Backup Codes</p>
+                  <p className="text-xs text-red-300 mb-3">Save these! You will need them if you lose access to your authenticator app.</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {backupCodes.map((code, idx) => (
+                      <code key={idx} className="bg-black/30 px-2 py-1.5 rounded text-white font-mono text-center tracking-widest text-xs border border-white/5">{code}</code>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div className="space-y-4">
                 <div className="text-left">

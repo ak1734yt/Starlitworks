@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS users (
     location             TEXT    DEFAULT '',
     two_factor_secret    TEXT,
     two_factor_enabled   INTEGER DEFAULT 0,
+    backup_codes         TEXT    DEFAULT '[]',
     created_at           INTEGER DEFAULT (strftime('%s','now')),
     last_login           INTEGER
 );
@@ -203,10 +204,15 @@ def init_db():
     if count == 0:
         conn.executemany("INSERT OR IGNORE INTO site_settings (key, value) VALUES (?, ?)", DEFAULT_SETTINGS)
     
-    # Safe migrations for chat unread counts
+    # Safe migrations for chat unread counts and 2FA backup codes
     try:
         conn.execute("ALTER TABLE orders ADD COLUMN admin_unread_count INTEGER DEFAULT 0")
         conn.execute("ALTER TABLE orders ADD COLUMN client_unread_count INTEGER DEFAULT 0")
+    except sqlite3.OperationalError:
+        pass # Columns already exist
+        
+    try:
+        conn.execute("ALTER TABLE users ADD COLUMN backup_codes TEXT DEFAULT '[]'")
     except sqlite3.OperationalError:
         pass # Columns already exist
 

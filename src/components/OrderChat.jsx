@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { 
   Send, Image, Mic, Link as LinkIcon, X, 
   Download, Play, Pause, Paperclip, Loader2,
-  Check, CheckCheck, Smile, MessageSquare
+  Check, CheckCheck, Smile, MessageSquare, Square
 } from 'lucide-react';
 import { getChatMessages, sendChatMessage } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -15,6 +15,11 @@ export default function OrderChat({ orderId, onClose }) {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [attachment, setAttachment] = useState(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
+  const recordingIntervalRef = useRef(null);
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
 
@@ -27,6 +32,15 @@ export default function OrderChat({ orderId, onClose }) {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  useEffect(() => {
+    return () => {
+      if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current);
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+        mediaRecorderRef.current.stop();
+      }
+    };
+  }, []);
 
   const fetchMessages = async () => {
     try {
@@ -69,6 +83,11 @@ export default function OrderChat({ orderId, onClose }) {
     const file = e.target.files[0];
     if (!file) return;
 
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('File exceeds 10MB limit.');
+      return;
+    }
+
     const isImage = file.type.startsWith('image/');
     const isAudio = file.type.startsWith('audio/');
     const actualType = isImage ? 'media' : (isAudio ? 'voice' : 'link');
@@ -82,6 +101,58 @@ export default function OrderChat({ orderId, onClose }) {
       });
     };
     reader.readAsDataURL(file);
+  };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setAttachment({
+            name: `Voice_Note_${new Date().getTime()}.webm`,
+            type: 'voice',
+            base64: reader.result
+          });
+        };
+        reader.readAsDataURL(audioBlob);
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+      setRecordingTime(0);
+      recordingIntervalRef.current = setInterval(() => {
+        setRecordingTime(prev => prev + 1);
+      }, 1000);
+    } catch (err) {
+      toast.error('Microphone access denied or not supported.');
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      clearInterval(recordingIntervalRef.current);
+    }
+  };
+
+  const formatTime = (seconds) => {
+    const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+    const s = (seconds % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
   };
 
   return (
@@ -211,14 +282,39 @@ export default function OrderChat({ orderId, onClose }) {
             />
           </div>
 
-          <div className="flex-1 relative">
-            <input 
-              type="text" 
-              placeholder="Type your message..."
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-brand-primary transition-all"
-            />
+          <div className="flex-1 relative flex items-center">
+            {isRecording ? (
+              <div className="flex-1 flex items-center justify-between bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-2.5">
+                <div className="flex items-center gap-2 text-red-500">
+                  <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                  <span className="text-sm font-mono">{formatTime(recordingTime)}</span>
+                </div>
+                <button 
+                  type="button" 
+                  onClick={stopRecording}
+                  className="p-1 hover:bg-red-500/20 rounded-lg text-red-400"
+                >
+                  <Square className="w-4 h-4 fill-current" />
+                </button>
+              </div>
+            ) : (
+              <input 
+                type="text" 
+                placeholder="Type your message..."
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-brand-primary transition-all pr-12"
+              />
+            )}
+            {!isRecording && !newMessage && (
+              <button 
+                type="button"
+                onClick={startRecording}
+                className="absolute right-2 p-1.5 text-gray-400 hover:text-brand-primary transition-colors"
+              >
+                <Mic className="w-4 h-4" />
+              </button>
+            )}
           </div>
 
           <button 

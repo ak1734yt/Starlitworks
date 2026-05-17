@@ -185,6 +185,13 @@ def create_coupon(body: CouponBody, user=Depends(require_manager)):
     log_activity(user["id"], "CREATE_COUPON", f"Created coupon {code}")
     return {"success": True, "code": code}
 
+@router.get("/manager/coupons")
+def manager_coupons(user=Depends(require_manager)):
+    db = get_db()
+    rows = db.execute("SELECT * FROM coupons ORDER BY created_at DESC").fetchall()
+    db.close()
+    return [dict(r) for r in rows]
+
 @router.get("/manager/stats/activity")
 def manager_stats(user=Depends(require_manager)):
     db = get_db()

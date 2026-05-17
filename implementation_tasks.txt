@@ -1,0 +1,94 @@
+STARLIT SIEGE WORKS - FULL IMPLEMENTATION TASK LIST
+===================================================
+
+1. PAYMENT & CHECKOUT WORKFLOW
+------------------------------
+- Self-QR Generator: Dynamic UPI QR code on checkout based on payment plan (Full/Advance/EMI).
+- Transaction ID Validation: Character length limits and format verification.
+- Payment Retry Logic: Allow users to re-upload proof if rejected by Admin.
+- Order Status Sync: Stay in 'payment_pending' until manual verification.
+- Proceed to Payment Flow: History -> View Invoice -> Pay Now -> Billing Panel.
+- Bug Fix: Resolve "Object missing" on billing page.
+- Bug Fix: Resolve "Invoice ID missing" on billing page.
+
+2. FRONTEND & USER EXPERIENCE
+-----------------------------
+- Banner Auto-Change: High-fidelity carousel for homepage banners.
+- 3D Model: Hero section integration for premium look.
+- Order Card Heading: Details for Item, User, Product, Budget, and Timeline.
+- Post-Order Redirect: Auto-redirect to History page after ordering.
+- History Actions: Integrated 'Chat', 'Edit Details', and 'Cancel' buttons on cards.
+- ToS Page: Implementation of Terms of Service and Conditions.
+- Footer: Functional button and navigation links.
+
+3. ADMIN & MANAGER DASHBOARD
+----------------------------
+- Advanced Order Filters: Filter by Date, Client, Product, Status, Budget, and Timeline.
+- Client Filters: Manage users by activity and role.
+- Coupon Generator: Admin UI to create and manage privilege codes.
+- Nav Pings: Visual notification badges for new requests/chats.
+- Token Unit Count: Implementation of token-based resource tracking.
+
+4. COMMUNICATION (ORDER CHAT)
+-----------------------------
+- Voice Notes: Recording and playback within order chats.
+- File Attachments: Media/file uploads with size limitations (e.g., 10MB).
+- Auto-Responder: Automated status update responses.
+
+5. SECURITY & INFRASTRUCTURE
+----------------------------
+- .env Setup: Migration of all hardcoded secrets to environment variables.
+- 2FA Integration: Finalize QR-based 2FA setup in user profiles.
+- Security Hardening: Implement code protection and unauthorized header checking.
+
+===================================================
+NEW FEATURE SUGGESTIONS (BEYOND PHASE 4)
+===================================================
+- Multi-Currency Display (Shop/Nav): INR/USD/EUR selector in top nav. Display only (Payments remain INR).
+- Starlit Palette (Themes): Toggle between Midnight, Snow, Cobalt, Amber, and Crimson themes.
+- AI-Powered Quote Estimator: Real-time price suggestions based on project description.
+- Milestone-Based Payments: Split large orders into 2-3 payment/delivery phases.
+- Interactive Progress Tracker: Live visual status bar showing exact percentage complete.
+
+===================================================
+TECHNICAL PSEUDO-CODE & LOGIC
+===================================================
+
+[CURRENCY CONVERSION]
+rates = { USD: 0.012, EUR: 0.011, INR: 1 }
+displayPrice = priceINR * rates[selectedCurrency]
+
+[THEME ENGINE]
+themes = {
+   midnight: { bg: '#050505', text: '#fff' },
+   snow:     { bg: '#fff',    text: '#000' },
+   cobalt:   { bg: '#0f172a', text: '#fff' }
+}
+applyTheme(name) -> document.body.style.setProperty('--bg', themes[name].bg)
+
+[PAYMENT FLOW LOGIC]
+if (order.status === 'quoted') {
+   button = "Proceed to Payment" -> redirect(/checkout/id)
+} else if (order.status === 'payment_pending') {
+   status = "Verifying Proof..."
+} else if (order.status === 'rejected') {
+   button = "Rejected: Retry Payment" -> redirect(/checkout/id)
+}
+
+[SECURITY HEADER CHECK]
+middleware:
+   starlit_key = headers.get("X-Starlit-Key")
+   if (starlit_key != CONFIG_SECRET) {
+      return 403 Forbidden
+   }
+
+[ATTACHMENT VALIDATION]
+onFileSelect(file):
+   if (file.size > 10MB) {
+      showError("File too large")
+      return
+   }
+   upload(file)
+
+===================================================
+Status: READY FOR IMPLEMENTATION

@@ -6,6 +6,7 @@ export async function request(path, options = {}) {
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      'X-Starlit-Key': import.meta.env.VITE_STARLIT_KEY || 'ssw_super_secret_change_me_in_production',
       ...options.headers,
     },
     ...options,
@@ -49,6 +50,7 @@ export const getManagerPrices = () => request('/manager/prices');
 export const createProduct = (data) => request('/manager/prices', { method: 'POST', body: JSON.stringify(data) });
 export const deleteProduct = (id) => request(`/manager/prices/${id}`, { method: 'DELETE' });
 export const updatePrice = (id, data) => request(`/manager/prices/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+export const getCoupons = () => request('/manager/coupons');
 export const createCoupon = (data) => request('/manager/coupons', { method: 'POST', body: JSON.stringify(data) });
 export const getManagerStats = () => request('/manager/stats/activity');
 export const getUserDetail = (id) => request(`/manager/users/${id}`);

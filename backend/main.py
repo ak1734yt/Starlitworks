@@ -29,8 +29,22 @@ UPLOADS_DIR = os.path.join(DATA_DIR, "uploads")
 os.makedirs(UPLOADS_DIR, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
 
+# ── Security Middleware ───────────────────────────────────────────────────────
+@app.middleware("http")
+async def security_header_check(request: Request, call_next):
+    # Only check sensitive API routes
+    if request.url.path.startswith("/api/") and not request.url.path.startswith("/api/health"):
+        starlit_key = request.headers.get("X-Starlit-Key")
+        expected_key = os.getenv("JWT_SECRET", "starlit_secret") # Using JWT_SECRET as internal key for now
+        if not starlit_key or starlit_key != expected_key:
+            from fastapi.responses import JSONResponse
+            return JSONResponse(status_code=403, content={"error": "Security Check Failed: Unauthorized API Access"})
+            
+    response = await call_next(request)
+    return response
+
 # ── Route Injection ───────────────────────────────────────────────────────────
-from routers import auth_routes, order_routes, chat_routes, admin_routes, analytics_routes, invoice_routes
+from routers import auth_routes, order_routes, chat_routes, admin_routes, analytics_routes, invoice_routes, payment_routes
 
 app.include_router(auth_routes.router, prefix="/api")
 app.include_router(order_routes.router, prefix="/api")
@@ -38,6 +52,7 @@ app.include_router(chat_routes.router, prefix="/api")
 app.include_router(admin_routes.router, prefix="/api")
 app.include_router(analytics_routes.router, prefix="/api")
 app.include_router(invoice_routes.router, prefix="/api")
+app.include_router(payment_routes.router, prefix="/api")
 
 @app.get("/")
 def root():

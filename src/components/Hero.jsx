@@ -1,12 +1,50 @@
 import { ArrowRight, Play } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { HERO_STATS } from "../constants/heroStats";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useState, useEffect } from "react";
+import { Canvas } from "@react-three/fiber";
+import { Float, MeshDistortMaterial, Sphere, Environment } from "@react-three/drei";
+
+const AnimatedSphere = () => {
+  return (
+    <Float speed={2} rotationIntensity={1.5} floatIntensity={2}>
+      <Sphere args={[1.5, 64, 64]}>
+        <MeshDistortMaterial
+          color="#7c3aed"
+          attach="material"
+          distort={0.4}
+          speed={2}
+          roughness={0.2}
+          metalness={0.8}
+        />
+      </Sphere>
+      <ambientLight intensity={0.5} />
+      <directionalLight position={[2, 2, 5]} intensity={1} />
+      <Environment preset="city" />
+    </Float>
+  );
+};
 
 
 const Hero = ({ settings = {} }) => {
   const navigate = useNavigate();
+  const [currentBanner, setCurrentBanner] = useState(0);
+  
+  const banners = [
+    settings.hero_banner || "/banner.png",
+    "https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&q=80&w=1200",
+    "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&q=80&w=1200"
+  ];
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentBanner((prev) => (prev + 1) % banners.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [banners.length]);
+
   return (
     <section className="relative pt-32 pb-20 overflow-hidden">
       {/* Background Decorative Elements */}
@@ -74,20 +112,31 @@ const Hero = ({ settings = {} }) => {
             transition={{ duration: 1 }}
             className="relative"
           >
-            {/* Main Visual Banner */}
-            <div className="relative group">
+            {/* Main Visual Banner & 3D Element */}
+            <div className="relative group aspect-[21/9] lg:aspect-square xl:aspect-[4/3]">
               <div className="absolute -inset-1 bg-gradient-to-r from-brand-primary to-brand-secondary rounded-3xl blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200" />
-              <div className="relative glass rounded-3xl overflow-hidden border-white/5 shadow-2xl">
-                <img 
-                  src={settings.hero_banner || "/banner.png"} 
-                  alt="Starlit Siege Banner"
-                  className="w-full aspect-[21/9] object-cover transform transition-transform duration-700 group-hover:scale-105"
-                  onError={(e) => {
-                    e.target.src = "https://images.unsplash.com/photo-1475274047050-1d0c0975c63e?auto=format&fit=crop&q=80&w=1200";
-                  }}
-                />
-
-                <div className="absolute inset-0 bg-gradient-to-t from-brand-bg/80 via-transparent to-transparent opacity-60" />
+              <div className="absolute inset-0 glass rounded-3xl overflow-hidden border-white/5 shadow-2xl bg-black/40">
+                <AnimatePresence mode="wait">
+                  <motion.img
+                    key={currentBanner}
+                    initial={{ opacity: 0, scale: 1.05 }}
+                    animate={{ opacity: 0.3, scale: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 1 }}
+                    src={banners[currentBanner]}
+                    alt="Starlit Siege Banner"
+                    className="absolute inset-0 w-full h-full object-cover"
+                    onError={(e) => { e.target.src = "https://images.unsplash.com/photo-1475274047050-1d0c0975c63e?auto=format&fit=crop&q=80&w=1200"; }}
+                  />
+                </AnimatePresence>
+                <div className="absolute inset-0 bg-gradient-to-t from-brand-bg/90 via-brand-bg/50 to-transparent z-10" />
+                
+                {/* 3D Canvas Overlay */}
+                <div className="absolute inset-0 z-20">
+                  <Canvas camera={{ position: [0, 0, 5], fov: 45 }}>
+                    <AnimatedSphere />
+                  </Canvas>
+                </div>
               </div>
             </div>
             

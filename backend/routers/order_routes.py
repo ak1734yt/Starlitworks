@@ -163,6 +163,10 @@ def accept_order(order_id: int, user=Depends(get_current_user)):
 
 @router.post("/orders/{order_id}/payment-proof")
 async def submit_payment_proof(order_id: int, body: PaymentProofBody, user=Depends(get_current_user)):
+    import re
+    if not re.match(r"^[a-zA-Z0-9_-]{8,30}$", body.transaction_id):
+        raise HTTPException(400, "Transaction ID must be 8-30 alphanumeric characters.")
+
     db = get_db()
     row = db.execute("SELECT * FROM orders WHERE id = ? AND user_id = ?", (order_id, user["id"])).fetchone()
     if not row: db.close(); raise HTTPException(404, "Order not found")
@@ -211,6 +215,12 @@ async def admin_update_order(order_id: int, body: AdminOrderUpdate, user=Depends
     if body.status == "accepted" and row["status"] != "accepted":
         auto_generate_invoice(order_id)
         
+    if body.status != row["status"]:
+        sys_msg = f"Order status updated to {body.status.upper().replace('_', ' ')}."
+        db.execute("INSERT INTO chat_messages (order_id, user_id, message_type, content) VALUES (?,?,?,?)",
+                   (order_id, user["id"], "text", sys_msg))
+        db.commit()
+
     log_activity(user["id"], "UPDATE_ORDER", f"Order {order_id} -> {body.status}")
     await send_discord_webhook(os.getenv("DISCORD_WEBHOOK_ORDERS"), {"embeds": [{"title": f"Order Updated #{order_id}", "description": f"Status: **{body.status}**", "color": 16776960}]})
     return {"success": True}
@@ -224,11 +234,25 @@ def admin_update_negotiation(order_id: int, body: NegotiationStatusBody, user=De
 
 @router.put("/admin/orders/{order_id}/verify-payment")
 def verify_payment(order_id: int, body: VerifyPaymentBody, user=Depends(require_admin)):
-    status = "in_progress" if body.approved else "accepted"
-    pay_status = "completed" if body.approved else "pending"
     db = get_db()
+    row = db.execute("SELECT * FROM orders WHERE id=?", (order_id,)).fetchone()
+    if not row: db.close(); raise HTTPException(404, "Order not found")
+
+    if body.approved:
+        # Move to accepted (or in_progress if we want to skip accepted)
+        # Actually, if payment is verified, the order is now officially ACCEPTED.
+        status = "accepted" 
+        pay_status = "completed"
+    else:
+        status = "quoted" # Back to quoted so they can click "Proceed to Payment" again
+        pay_status = "rejected"
+        # We might want to clear transaction_id to allow clean retry
+        db.execute("UPDATE orders SET transaction_id='', payment_screenshot='', payment_proof_submitted_at=0 WHERE id=?", (order_id,))
+
     db.execute("UPDATE orders SET status=?, payment_status=?, updated_at=? WHERE id=?", (status, pay_status, int(time.time()), order_id))
     db.commit(); db.close()
+
+    log_activity(user["id"], "VERIFY_PAYMENT", f"Order {order_id} Approved={body.approved}")
 
     # Automatic Invoice Sync
     if body.approved:

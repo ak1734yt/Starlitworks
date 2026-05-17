@@ -22,6 +22,7 @@ import ServiceRequest from "./pages/ServiceRequest";
 import Admin          from "./pages/Admin";
 import Manager        from "./pages/Manager";
 import Profile        from "./pages/Profile";
+import ToS            from "./pages/ToS";
 
 // Silent analytics tracker for returning users
 function PulseTracker() {
@@ -101,6 +102,7 @@ function AppInner() {
         <Route path="/login"          element={<Login />} />
         <Route path="/signup"         element={<SignUp />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/tos"            element={<ToS />} />
 
         {/* Protected — client */}
         <Route path="/shop"           element={<ProtectedRoute><Shop /></ProtectedRoute>} />

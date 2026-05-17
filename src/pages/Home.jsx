@@ -6,6 +6,7 @@ import Stats from "../components/Stats";
 import Portfolio from "../components/Portfolio";
 import Pricing from "../components/Pricing";
 import About from "../components/About";
+import Footer from "../components/Footer";
 import { motion } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 import { ArrowRight, MessageCircle, Star, Send, Loader2 } from "lucide-react";
@@ -219,22 +220,9 @@ function Home() {
               </motion.div>
             </div>
 
-            <div className="mt-20 flex flex-col md:flex-row justify-between items-center gap-8 text-gray-500 text-sm">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-white/5 overflow-hidden">
-                  <img src="/logo.png" alt="Logo" className="w-full h-full object-cover" />
-                </div>
-                <span>{siteSettings.footer_text || '© 2026 Starlit Siege Works. All rights reserved.'}</span>
-              </div>
-              <div className="flex gap-8">
-                <a href={siteSettings.discord_link || "#"} target="_blank" rel="noreferrer" className="hover:text-white transition-colors">Discord</a>
-                <a href="#" className="hover:text-white transition-colors">Privacy Policy</a>
-                <a href="#" className="hover:text-white transition-colors">Terms of Service</a>
-              </div>
-            </div>
-          </div>
         </section>
       </main>
+      <Footer />
     </div>
   );
 }

@@ -8,7 +8,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import Navbar from '../components/Navbar';
-import { validateCoupon, getPublicPrices, getOrder, submitPaymentProof, createOrder } from '../services/api';
+import { validateCoupon, getPublicPrices, getOrder, submitPaymentProof, createOrder, request } from '../services/api';
 import { toast } from 'react-hot-toast';
 import ORG from '../constants/orgData';
 
@@ -24,6 +24,7 @@ export default function Checkout() {
   const [paymentMethod, setPaymentMethod] = useState('manual'); // 'manual' or 'online'
   const [submitting, setSubmitting] = useState(false);
   const [showQR, setShowQR] = useState(false);
+  const [qrData, setQrData] = useState(null);
   const [paymentPlan, setPaymentPlan] = useState('full'); // 'full', 'advance', 'emi'
 
   // Form for manual payment
@@ -67,6 +68,19 @@ export default function Checkout() {
     }
   };
 
+  const loadSecureQR = async () => {
+    try {
+      const res = await request(`/orders/${id}/qr`);
+      setQrData(res);
+    } catch (err) {
+      toast.error('Failed to load secure payment data');
+    }
+  };
+
+  useEffect(() => {
+    if (id && !loading) loadSecureQR();
+  }, [id, loading, paymentPlan]);
+
   const handleApplyCoupon = async () => {
     if (!couponCode) return;
     setValidating(true);
@@ -96,6 +110,11 @@ export default function Checkout() {
     e.preventDefault();
     if (!proof.transaction_id || !proof.base64) {
       toast.error('Transaction ID and Screenshot are required');
+      return;
+    }
+
+    if (!/^[a-zA-Z0-9_-]{8,30}$/.test(proof.transaction_id)) {
+      toast.error('Transaction ID must be 8-30 alphanumeric characters');
       return;
     }
 
@@ -156,9 +175,7 @@ export default function Checkout() {
   if (paymentPlan === 'advance') amountToPay = finalTotal / 2;
   if (paymentPlan === 'emi') amountToPay = finalTotal / 3;
 
-  // UPI URL for QR
-  const upiUrl = `upi://pay?pa=${ORG.upiId}&pn=${encodeURIComponent(ORG.name)}&am=${amountToPay.toFixed(2)}&cu=INR&tn=${encodeURIComponent('SSW Order ' + (type === 'order' ? id : data.name))}`;
-  const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(upiUrl)}&bgcolor=ffffff`;
+
 
   return (
     <div className="min-h-screen bg-[#050505] text-white selection:bg-brand-primary/30">
@@ -216,14 +233,20 @@ export default function Checkout() {
                     <ShoppingBag className="w-8 h-8 text-brand-primary" />
                   </div>
                   <div>
-                    <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand-primary/80 mb-2 block">{data.category || 'Custom Solution'}</span>
-                    <h3 className="text-2xl font-bold mb-2 group-hover:text-brand-primary transition-colors">{data.name}</h3>
-                    <p className="text-sm text-gray-500 max-w-md leading-relaxed">{data.description}</p>
+                    <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand-primary/80 mb-2 block">{data?.category || 'Custom Solution'}</span>
+                    <h3 className="text-2xl font-bold mb-2 group-hover:text-brand-primary transition-colors">{data?.name || 'Project Service'}</h3>
+                    <p className="text-sm text-gray-500 max-w-md leading-relaxed">{data?.description || 'Premium service architecture and deployment.'}</p>
+                    {type === 'order' && (
+                      <div className="mt-4 inline-flex items-center gap-2 px-3 py-1 bg-brand-primary/10 rounded-lg border border-brand-primary/20">
+                        <Info className="w-3.5 h-3.5 text-brand-primary" />
+                        <span className="text-[10px] font-bold text-brand-primary uppercase tracking-wider">Ref ID: SSW-{id}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="text-right">
                   <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest mb-1">Estimated Value</p>
-                  <p className="text-3xl font-display font-bold">₹{totalBeforeTax.toLocaleString()}</p>
+                  <p className="text-3xl font-display font-bold">₹{(totalBeforeTax || 0).toLocaleString()}</p>
                 </div>
               </div>
             </div>
@@ -346,7 +369,13 @@ export default function Checkout() {
                           <div className="relative inline-block group">
                             <div className="absolute -inset-1 bg-gradient-to-tr from-brand-primary via-brand-secondary to-brand-accent rounded-[2.5rem] blur opacity-30 group-hover:opacity-60 transition duration-1000 group-hover:duration-200 animate-tilt"></div>
                             <div className="relative bg-white p-8 rounded-[2rem] shadow-2xl border border-white/20">
-                              <img src={qrImageUrl} alt="UPI QR Code" className="w-64 h-64 mx-auto" />
+                              {qrData ? (
+                                <img src={`data:image/png;base64,${qrData.qr_base64}`} alt="Secure UPI QR" className="w-64 h-64 mx-auto" />
+                              ) : (
+                                <div className="w-64 h-64 mx-auto flex items-center justify-center bg-gray-100 rounded-xl">
+                                  <Loader2 className="w-8 h-8 animate-spin text-brand-primary" />
+                                </div>
+                              )}
                               
                               {/* Centered Brand Overlay for QR */}
                               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-14 h-14 bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] flex items-center justify-center border border-gray-100 overflow-hidden">
@@ -393,10 +422,13 @@ export default function Checkout() {
                           type="text" 
                           placeholder="12-digit UPI Transaction ID"
                           required
+                          maxLength={12}
+                          pattern="[A-Za-z0-9]{12}"
                           value={proof.transaction_id}
-                          onChange={e => setProof({...proof, transaction_id: e.target.value})}
+                          onChange={e => setProof({...proof, transaction_id: e.target.value.toUpperCase()})}
                           className="w-full bg-white/[0.03] border border-white/10 rounded-2xl px-6 py-4 text-sm focus:border-brand-primary focus:bg-white/[0.05] outline-none transition-all font-mono placeholder:text-gray-700"
                         />
+                        <p className="text-[9px] text-gray-600 mt-2 ml-1 italic">* Enter exactly 12 alphanumeric characters as shown in your UPI app.</p>
                       </div>
 
                       <div className="space-y-3">
