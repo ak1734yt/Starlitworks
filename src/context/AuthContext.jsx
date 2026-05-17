@@ -113,6 +113,13 @@ export function AuthProvider({ children }) {
     redirectToOAuth(provider);
   }, []);
 
+  // Used by OAuthCallback page after backend redirect
+  const setUserFromToken = useCallback(async (token) => {
+    localStorage.setItem('ssw_token', token);
+    const { user } = await apiGetMe();
+    setUser(user);
+  }, []);
+
   const updateProfile = useCallback(async (data) => {
     const token = localStorage.getItem('ssw_token');
     const res = await fetch('/api/auth/profile', {
@@ -131,7 +138,7 @@ export function AuthProvider({ children }) {
       user, loading, showTransition,
       modalOpen, modalTab, intendedRoute,
       oauthStatus,
-      login, signup, logout, forgotPassword, loginWithOAuth,
+      login, signup, logout, forgotPassword, loginWithOAuth, setUserFromToken,
       openAuthModal, closeAuthModal, updateProfile,
       verify2FA, setup2FA: apiSetup2FA, confirm2FA: apiVerify2FA, disable2FA: apiDisable2FA
     }}>
