@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
-import ProfileModal from "./ProfileModal";
+
 import NotificationCenter from "./NotificationCenter";
 import { getUserInvoicesByAdmin, getInvoices } from "../services/api";
 const Navbar = () => {
@@ -11,7 +11,6 @@ const Navbar = () => {
   const navigate  = useNavigate();
   const { user, logout, openAuthModal, loading } = useAuth();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const [showProfileModal, setShowProfileModal] = useState(false);
   const [hasInstallments, setHasInstallments] = useState(false);
 
   const isHome = location.pathname === "/";
@@ -134,8 +133,8 @@ const Navbar = () => {
                     </div>
                     <div className="p-2 border-b border-white/5 bg-white/[0.02]">
                       <p className="px-3 py-1 text-[10px] font-bold text-gray-500 uppercase tracking-widest">Account</p>
-                      <button onClick={() => { setShowProfileModal(true); setUserMenuOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/5 rounded-lg transition-all">
-                        <Settings className="w-4 h-4" /> Edit Profile
+                      <button onClick={() => { navigate('/profile'); setUserMenuOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/5 rounded-lg transition-all">
+                        <Settings className="w-4 h-4" /> Manage Account
                       </button>
                       {(user.role === 'admin' || user.role === 'manager') && (
                         <button onClick={() => { navigate('/admin'); setUserMenuOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/5 rounded-lg transition-all">
@@ -176,8 +175,6 @@ const Navbar = () => {
         </div>
       </div>
     </motion.nav>
-
-    {showProfileModal && <ProfileModal onClose={() => setShowProfileModal(false)} />}
 
     {/* Mobile Menu Overlay */}
     <AnimatePresence>
@@ -222,10 +219,10 @@ const Navbar = () => {
                   </div>
                 </div>
                 <button 
-                  onClick={() => { setShowProfileModal(true); setUserMenuOpen(false); }}
+                  onClick={() => { navigate('/profile'); setUserMenuOpen(false); }}
                   className="w-full py-2 bg-white/5 hover:bg-white/10 rounded-xl text-xs font-bold transition-all"
                 >
-                  Edit Profile
+                  Manage Account
                 </button>
               </div>
             ) : (

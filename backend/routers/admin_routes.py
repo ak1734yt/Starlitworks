@@ -2,7 +2,7 @@ import os, json, time, secrets
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import Optional
-from auth import get_current_user, require_admin, require_manager, log_activity
+from auth import get_current_user, require_admin, require_manager, log_activity, create_notification
 from database import get_db
 
 router = APIRouter()
@@ -92,6 +92,28 @@ def update_feedback(fid: int, body: FeedbackStatusBody, user=Depends(require_adm
     db.execute("UPDATE feedbacks SET status = ? WHERE id = ?", (body.status, fid))
     db.commit(); db.close()
     return {"success": True}
+
+class CreditBody(BaseModel):
+    amount: float
+
+@router.post("/admin/users/{uid}/credits")
+def add_user_credits(uid: int, body: CreditBody, user=Depends(require_admin)):
+    db = get_db()
+    row = db.execute("SELECT details FROM users WHERE id = ?", (uid,)).fetchone()
+    if not row:
+        db.close()
+        raise HTTPException(404, "User not found")
+    try:
+        details = json.loads(row["details"] or "{}")
+    except:
+        details = {}
+    details["credits"] = details.get("credits", 0.0) + body.amount
+    db.execute("UPDATE users SET details = ? WHERE id = ?", (json.dumps(details), uid))
+    db.commit()
+    db.close()
+    create_notification(uid, "Credits Added", f"An admin has added ₹{body.amount} credits to your account.", "info")
+    log_activity(user["id"], "ADD_CREDITS", f"Added ₹{body.amount} credits to user {uid}")
+    return {"success": True, "new_balance": details["credits"]}
 
 # ── Manager ───────────────────────────────────────────────────────────────────
 @router.get("/manager/logs")

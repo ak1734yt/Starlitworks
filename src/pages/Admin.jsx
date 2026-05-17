@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LayoutDashboard, IndianRupee, FileText, Users, ShoppingBag, Loader2, Save, X, Edit, Plus, Trash2, Search, Filter, Star, CreditCard, MessageSquare, Check, ExternalLink, Download, Globe, MapPin, Activity, Zap, Tag } from 'lucide-react';
+import { LayoutDashboard, IndianRupee, FileText, Users, ShoppingBag, Loader2, Save, X, Edit, Plus, Trash2, Search, Filter, Star, CreditCard, MessageSquare, Check, ExternalLink, Download, Globe, MapPin, Activity, Zap, Tag, Bell, DollarSign } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import Navbar from '../components/Navbar';
 import SystemHealth from '../components/SystemHealth';
@@ -11,7 +11,8 @@ import {
   createUserInvoice, deleteOrder, request, getPublicPrices,
   getAnalyticsLogs, updateOrderVault, updateInstallment,
   getAdminOrders, getInvoices, getAdminFeedbacks, updateOrderStatus,
-  verifyPayment, updateFeedbackStatus, getCoupons, createCoupon
+  verifyPayment, updateFeedbackStatus, getCoupons, createCoupon,
+  adminUpdateInvoiceStatus, adminNotifyUserInvoice, adminEditInvoice, adminAddUserCredits
 } from '../services/api';
 import OrderChat from '../components/OrderChat';
 
@@ -60,6 +61,46 @@ export default function Admin() {
   const [selectedChatOrderId, setSelectedChatOrderId] = useState(null);
   const [newCoupon, setNewCoupon] = useState({ code: '', discount_type: 'percentage', discount_value: 10, max_uses: 10 });
   const [creatingCoupon, setCreatingCoupon] = useState(false);
+  const [addingCreditTo, setAddingCreditTo] = useState(null);
+  const [creditAmount, setCreditAmount] = useState(0);
+  const [submittingCredit, setSubmittingCredit] = useState(false);
+
+  const handleAddCredits = async (e) => {
+    e.preventDefault();
+    if (!addingCreditTo || creditAmount <= 0) return;
+    setSubmittingCredit(true);
+    try {
+      await adminAddUserCredits(addingCreditTo.id, creditAmount);
+      toast.success(`Successfully added ₹${creditAmount} credits to ${addingCreditTo.name}`);
+      setAddingCreditTo(null);
+      setCreditAmount(0);
+      fetchData();
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setSubmittingCredit(false);
+    }
+  };
+
+  const handleNotifyInvoice = async (invId) => {
+    try {
+      await adminNotifyUserInvoice(invId);
+      toast.success('User notified successfully!');
+    } catch (err) {
+      toast.error(err.message);
+    }
+  };
+
+  const handleToggleInvoicePaid = async (inv) => {
+    const newStatus = inv.paymentStatus === 'paid' ? 'pending' : 'paid';
+    try {
+      await adminUpdateInvoiceStatus(inv.id, newStatus);
+      toast.success(`Invoice marked as ${newStatus}`);
+      fetchData();
+    } catch (err) {
+      toast.error(err.message);
+    }
+  };
 
   const handleCreateCoupon = async (e) => {
     e.preventDefault();
@@ -599,17 +640,34 @@ export default function Admin() {
                             <td className="px-6 py-4 text-gray-400">{inv.invoiceDate}</td>
                             <td className="px-6 py-4 text-green-400 font-medium">{inv.currency}{inv.grandTotal}</td>
                             <td className="px-6 py-4">
-                              <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold ${inv.paymentType === 'installment' ? 'bg-purple-500/10 text-purple-400' : 'bg-blue-500/10 text-blue-400'}`}>
-                                {inv.paymentType}
+                              <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold ${inv.paymentStatus === 'paid' ? 'bg-green-500/10 text-green-400' : 'bg-yellow-500/10 text-yellow-400'}`}>
+                                {inv.paymentStatus || 'Pending'}
                               </span>
                             </td>
                           <td className="px-6 py-4 text-right">
-                            <button 
-                              onClick={(e) => { e.stopPropagation(); handleDownloadInvoice(inv.id); }} 
-                              className="p-2 hover:bg-brand-primary/10 rounded-lg text-brand-primary transition-all"
-                            >
-                              <Download className="w-4 h-4" />
-                            </button>
+                            <div className="flex items-center justify-end gap-2">
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); handleToggleInvoicePaid(inv); }}
+                                className="p-1.5 hover:bg-green-500/10 rounded-lg text-green-500 transition-all"
+                                title="Toggle Paid Status"
+                              >
+                                <Check className="w-4 h-4" />
+                              </button>
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); handleNotifyInvoice(inv.id); }}
+                                className="p-1.5 hover:bg-brand-primary/10 rounded-lg text-brand-primary transition-all"
+                                title="Notify User"
+                              >
+                                <Bell className="w-4 h-4" />
+                              </button>
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); handleDownloadInvoice(inv.id); }} 
+                                className="p-1.5 hover:bg-white/10 rounded-lg text-gray-400 transition-all"
+                                title="Download"
+                              >
+                                <Download className="w-4 h-4" />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -644,6 +702,28 @@ export default function Admin() {
                             {client.provider}
                           </span>
                         </div>
+                        {addingCreditTo?.id === client.id ? (
+                          <div className="mt-3 bg-black/20 p-2 rounded-xl border border-white/5">
+                            <form onSubmit={handleAddCredits} className="flex items-center gap-2">
+                              <div className="relative flex-1">
+                                <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-500" />
+                                <input type="number" required min="1" value={creditAmount} onChange={e => setCreditAmount(Number(e.target.value))} className="w-full bg-white/5 rounded-lg pl-6 pr-2 py-1 text-xs text-white outline-none" placeholder="Amount" />
+                              </div>
+                              <button type="submit" disabled={submittingCredit} className="p-1.5 bg-green-500/20 text-green-500 hover:bg-green-500 hover:text-white rounded-lg transition-colors">
+                                <Check className="w-3 h-3" />
+                              </button>
+                              <button type="button" onClick={() => setAddingCreditTo(null)} className="p-1.5 bg-red-500/20 text-red-500 hover:bg-red-500 hover:text-white rounded-lg transition-colors">
+                                <X className="w-3 h-3" />
+                              </button>
+                            </form>
+                          </div>
+                        ) : (
+                          <div className="mt-3 flex gap-2">
+                            <button onClick={() => setAddingCreditTo(client)} className="text-[10px] bg-brand-primary/10 text-brand-primary hover:bg-brand-primary hover:text-white px-3 py-1 rounded-full font-bold transition-colors">
+                              + Add Credits
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}

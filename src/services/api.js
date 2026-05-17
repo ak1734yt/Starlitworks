@@ -95,3 +95,7 @@ export const createUserInvoice = (data) => request('/admin/invoices/user', { met
 export const getUserInvoicesByAdmin = (userId) => request(`/invoices/user/${userId}`);
 export const deleteOrder = (id) => request(`/admin/orders/${id}`, { method: 'DELETE' });
 export const getAnalyticsLogs = () => request('/admin/analytics');
+export const adminUpdateInvoiceStatus = (id, status) => request(`/invoices/${id}/status`, { method: 'PUT', body: JSON.stringify({ status }) });
+export const adminNotifyUserInvoice = (id) => request(`/invoices/${id}/notify`, { method: 'POST' });
+export const adminEditInvoice = (id, data) => request(`/invoices/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+export const adminAddUserCredits = (userId, amount) => request(`/admin/users/${userId}/credits`, { method: 'POST', body: JSON.stringify({ amount }) });

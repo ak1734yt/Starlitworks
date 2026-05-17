@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from typing import Optional
-from auth import get_current_user, require_admin, log_activity
+from auth import get_current_user, require_admin, log_activity, create_notification
 from database import get_db
 
 router = APIRouter()
@@ -104,6 +104,44 @@ def delete_invoice(inv_id: str, user=Depends(require_admin)):
         if os.path.exists(p): os.remove(p)
     log_activity(user["id"], "DELETE_INVOICE", f"Invoice {inv_id}")
     return {"success": True}
+
+class InvoiceStatusBody(BaseModel):
+    status: str
+
+@router.put("/invoices/{inv_id}/status")
+def update_invoice_status(inv_id: str, body: InvoiceStatusBody, user=Depends(require_admin)):
+    p = os.path.join(INVOICES_DIR, f"{inv_id}.json")
+    if not os.path.exists(p): raise HTTPException(404, "Invoice not found")
+    with open(p) as f: inv = json.load(f)
+    inv["paymentStatus"] = body.status
+    with open(p, "w") as f: json.dump(inv, f, indent=2)
+    with open(os.path.join(INVOICES_DIR, f"{inv_id}.txt"), "w", encoding="utf-8") as f:
+        f.write(format_invoice_txt(inv))
+    log_activity(user["id"], "UPDATE_INVOICE_STATUS", f"Invoice {inv_id} -> {body.status}")
+    return {"success": True, "invoice": inv}
+
+@router.post("/invoices/{inv_id}/notify")
+def notify_invoice_user(inv_id: str, user=Depends(require_admin)):
+    p = os.path.join(INVOICES_DIR, f"{inv_id}.json")
+    if not os.path.exists(p): raise HTTPException(404, "Invoice not found")
+    with open(p) as f: inv = json.load(f)
+    uid = inv.get("userId")
+    if uid:
+        create_notification(uid, "Invoice Update", f"Your invoice {inv.get('invoiceNumber', inv_id)} has an update.", "info")
+        log_activity(user["id"], "NOTIFY_INVOICE", f"Notified user {uid} for Invoice {inv_id}")
+    return {"success": True}
+
+@router.put("/invoices/{inv_id}")
+def edit_invoice(inv_id: str, body: dict, user=Depends(require_admin)):
+    p = os.path.join(INVOICES_DIR, f"{inv_id}.json")
+    if not os.path.exists(p): raise HTTPException(404, "Invoice not found")
+    with open(p) as f: inv = json.load(f)
+    inv.update(body)
+    with open(p, "w") as f: json.dump(inv, f, indent=2)
+    with open(os.path.join(INVOICES_DIR, f"{inv_id}.txt"), "w", encoding="utf-8") as f:
+        f.write(format_invoice_txt(inv))
+    log_activity(user["id"], "EDIT_INVOICE", f"Edited invoice {inv_id}")
+    return {"success": True, "invoice": inv}
 
 @router.get("/invoices/{inv_id}/download")
 def download_invoice(inv_id: str, user=Depends(get_current_user)):
