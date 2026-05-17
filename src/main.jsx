@@ -16,7 +16,7 @@ window.fetch = async function (url, options = {}) {
   ) {
     const headers = {
       ...options.headers,
-      'X-Starlit-Key': import.meta.env.VITE_STARLIT_KEY || 'ssw_super_secret_change_me_in_production'
+      'X-Starlit-Key': import.meta.env.VITE_STARLIT_KEY || 'b3b985dfebb6061ef6c960d20dbf0cfea3e56a2f34675a0755f32204a37491ca7c69faec1605e42bcafc7d90f91bab7160ce3291bbeef94449155427f695457c'
     };
     return originalFetch(url, { ...options, headers });
   }

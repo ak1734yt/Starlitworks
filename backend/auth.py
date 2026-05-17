@@ -17,7 +17,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 from database import get_db
 
-JWT_SECRET = os.getenv("JWT_SECRET", "ssw_dev_secret_change_me")
+JWT_SECRET = os.getenv("JWT_SECRET", "b3b985dfebb6061ef6c960d20dbf0cfea3e56a2f34675a0755f32204a37491ca7c69faec1605e42bcafc7d90f91bab7160ce3291bbeef94449155427f695457c")
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRE_DAYS = 7
 
