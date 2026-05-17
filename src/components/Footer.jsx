@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Shield, Mail, Twitter, Github, Heart } from 'lucide-react';
+import { Shield, Mail, Globe, GitBranch, Heart } from 'lucide-react';
 import ORG from '../constants/orgData';
 
 export default function Footer() {
@@ -21,10 +21,10 @@ export default function Footer() {
             </p>
             <div className="flex gap-4 pt-4">
               <a href="#" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-gray-400 hover:text-white hover:bg-brand-primary transition-all">
-                <Twitter className="w-4 h-4" />
+                <Globe className="w-4 h-4" />
               </a>
               <a href="#" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-gray-400 hover:text-white hover:bg-brand-primary transition-all">
-                <Github className="w-4 h-4" />
+                <GitBranch className="w-4 h-4" />
               </a>
               <a href={`mailto:${ORG.emails[0]}`} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-gray-400 hover:text-white hover:bg-brand-primary transition-all">
                 <Mail className="w-4 h-4" />

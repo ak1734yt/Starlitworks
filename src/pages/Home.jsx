@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Navbar from "../components/Navbar";
 import Hero from "../components/Hero";
 import Features from "../components/Features";
@@ -14,6 +15,7 @@ import { getFeedbacks, submitFeedback, getSiteSettings } from "../services/api";
 import { toast } from "react-hot-toast";
 
 function Home() {
+  const navigate = useNavigate();
   const { openAuthModal, user } = useAuth();
   const [feedbacks, setFeedbacks] = useState([]);
   const [siteSettings, setSiteSettings] = useState({
@@ -219,7 +221,7 @@ function Home() {
                 </div>
               </motion.div>
             </div>
-
+          </div>
         </section>
       </main>
       <Footer />

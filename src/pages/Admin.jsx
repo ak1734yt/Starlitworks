@@ -616,8 +616,9 @@ export default function Admin() {
                     </tbody>
                   </table>
                 </div>
-              </motion.div>
-            )}
+              </div>
+            </motion.div>
+          )}
 
             {/* --- CLIENTS TAB --- */}
             {activeTab === 'clients' && (
