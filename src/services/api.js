@@ -76,6 +76,7 @@ export const negotiateOrder = (id, data) => request(`/orders/${id}/negotiate`, {
 export const acceptOrder = (id) => request(`/orders/${id}/accept`, { method: 'POST' });
 export const getOrder = (id) => request(`/orders/${id}`);
 export const submitPaymentProof = (id, data) => request(`/orders/${id}/payment-proof`, { method: 'POST', body: JSON.stringify(data) });
+export const generateQR = (data) => request(`/payment/qr`, { method: 'POST', body: JSON.stringify(data) });
 
 // Chat
 export const getChatMessages = (orderId) => request(`/chat/${orderId}`);

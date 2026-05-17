@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
+from pydantic import BaseModel
 from database import get_db
 from auth import get_current_user
 import qrcode
@@ -10,6 +11,45 @@ import json
 import time
 
 router = APIRouter()
+
+class QRRequest(BaseModel):
+    amount: float
+    note: str = "SSW Checkout"
+
+@router.post("/payment/qr")
+def generate_generic_qr(body: QRRequest, user=Depends(get_current_user)):
+    upi_id = os.getenv("MERCHANT_UPI_ID", "Akshat2409@ybl")
+    merchant_name = os.getenv("MERCHANT_NAME", "Starlit Siege Works")
+    
+    upi_url = f"upi://pay?pa={upi_id}&pn={merchant_name}&am={body.amount:.2f}&cu=INR&tn={body.note}"
+
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_H,
+        box_size=10,
+        border=4,
+    )
+    qr.add_data(upi_url)
+    qr.make(fit=True)
+
+    img = qr.make_image(fill_color="black", back_color="white")
+    
+    buf = io.BytesIO()
+    img.save(buf, format='PNG')
+    img_bytes = buf.getvalue()
+    
+    qr_base64 = base64.b64encode(img_bytes).decode()
+    
+    secret = os.getenv("JWT_SECRET", "b3b985dfebb6061ef6c960d20dbf0cfea3e56a2f34675a0755f32204a37491ca7c69faec1605e42bcafc7d90f91bab7160ce3291bbeef94449155427f695457c")
+    checksum_input = f"{qr_base64}{secret}{body.amount}".encode()
+    checksum = hashlib.sha256(checksum_input).hexdigest()
+
+    return {
+        "qr_base64": qr_base64,
+        "checksum": checksum,
+        "amount": body.amount,
+        "note": body.note
+    }
 
 @router.get("/orders/{order_id}/qr")
 def generate_secure_qr(order_id: int, user=Depends(get_current_user)):

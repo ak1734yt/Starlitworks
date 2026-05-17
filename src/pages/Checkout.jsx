@@ -8,7 +8,7 @@ import {
   Sparkles, X
 } from 'lucide-react';
 import Navbar from '../components/Navbar';
-import { validateCoupon, getPublicPrices, getOrder, submitPaymentProof, createOrder, request } from '../services/api';
+import { validateCoupon, getPublicPrices, getOrder, submitPaymentProof, createOrder, generateQR } from '../services/api';
 import { toast } from 'react-hot-toast';
 import ORG from '../constants/orgData';
 
@@ -69,9 +69,21 @@ export default function Checkout() {
     }
   };
 
+  const subtotal = Number(data?.price || 0);
+  const discount = Number(coupon 
+    ? (coupon.discount_type === 'percentage' ? (subtotal * coupon.discount_value / 100) : coupon.discount_value)
+    : 0);
+  const totalBeforeTax = Math.max(0, subtotal - discount);
+  const taxAmount = totalBeforeTax * 0.18;
+  const finalTotal = totalBeforeTax + taxAmount;
+
+  let amountToPay = finalTotal;
+  if (paymentPlan === 'advance') amountToPay = finalTotal / 2;
+  if (paymentPlan === 'emi') amountToPay = finalTotal / 3;
+
   const loadSecureQR = async () => {
     try {
-      const res = await request(`/orders/${id}/qr`);
+      const res = await generateQR({ amount: amountToPay, note: `SSW Checkout ${id}` });
       setQrData(res);
     } catch (err) {
       toast.error('Failed to load secure payment data');
@@ -162,19 +174,8 @@ export default function Checkout() {
     );
   }
 
-  const subtotal = Number(data?.price || 0);
-  const discount = Number(coupon 
-    ? (coupon.discount_type === 'percentage' ? (subtotal * coupon.discount_value / 100) : coupon.discount_value)
-    : 0);
-  const totalBeforeTax = Math.max(0, subtotal - discount);
-  const taxAmount = totalBeforeTax * 0.18;
   const cgst = taxAmount / 2;
   const sgst = taxAmount / 2;
-  const finalTotal = totalBeforeTax + taxAmount;
-
-  let amountToPay = finalTotal;
-  if (paymentPlan === 'advance') amountToPay = finalTotal / 2;
-  if (paymentPlan === 'emi') amountToPay = finalTotal / 3;
 
 
 
