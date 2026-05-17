@@ -1,21 +1,26 @@
 {
-  "version": 2,
   "rewrites": [
     {
-      "source": "/api/(.*)",
-      "destination": "http://152.53.55.180:5504/api/$1"
+      "source": "/api/:path*",
+      "destination": "http://152.53.55.180:5504/api/:path*"
     },
     {
-      "source": "/uploads/(.*)",
-      "destination": "http://152.53.55.180:5504/uploads/$1"
+      "source": "/uploads/:path*",
+      "destination": "http://152.53.55.180:5504/uploads/:path*"
     },
     {
       "source": "/(.*)",
       "destination": "/index.html"
     }
   ],
-  "env": {
-    "NODE_ENV": "production",
-    "JWT_SECRET": "ssw_production_secret_change_me"
-  }
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "https://starlitworks.vercel.app" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET,POST,PUT,PATCH,DELETE,OPTIONS" },
+        { "key": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization, X-Starlit-Key" }
+      ]
+    }
+  ]
 }
