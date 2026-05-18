@@ -81,4 +81,54 @@ async def send_chat(order_id: int, body: ChatBody, user=Depends(get_current_user
     else:
         await send_discord_webhook(os.getenv("DISCORD_WEBHOOK_CHAT"), {"embeds": [{"title": f"Admin Reply (Order #{order_id})", "description": f"**From:** {user['name']} ({user['role'].upper()})\n**Message:** {content}", "color": 16776960}]})
 
+    # ── Keyword Auto-Responder (client messages only) ──────────────────────────
+    if user["role"] == "client" and body.message_type == "text":
+        msg_lower = content.lower().strip()
+
+        AUTO_REPLIES = [
+            # Greetings
+            (["hi", "hello", "hey", "good morning", "good evening", "good afternoon", "howdy", "sup"],
+             "👋 Hey there! Thanks for reaching out to **Starlit Siege Works**. Our team will be with you shortly. In the meantime, feel free to share more details about your project!"),
+            # Pricing questions
+            (["price", "cost", "how much", "rate", "pricing", "budget", "charge", "fee", "quote"],
+             "💰 Pricing varies based on your project scope. You can view our standard packages on the Shop page, or our team will provide a custom quote once we review your requirements. Typically we respond within a few hours!"),
+            # Timeline questions
+            (["timeline", "how long", "deadline", "delivery", "eta", "when", "time frame", "duration"],
+             "📅 Project timelines depend on the scope of work. Most projects are completed within 3–14 days. Your admin will specify an estimated timeline after reviewing your request."),
+            # Status questions
+            (["status", "update", "progress", "what's happening", "any news", "started", "when will"],
+             "🔄 You can track your project status in real-time using the progress bar on your **My Services** tab. Our team will also post updates here as work progresses!"),
+            # Payment questions
+            (["payment", "pay", "upi", "transaction", "invoice", "receipt", "paid", "billing"],
+             "💳 Once your quote is ready, click **'Proceed to Payment'** on your order to complete payment via UPI. After submitting proof, our team will verify it within 24 hours."),
+            # Support / contact
+            (["support", "help", "contact", "stuck", "issue", "problem", "not working", "error"],
+             "🛠️ Our team is here to help! Please describe your issue in detail and we'll resolve it as quickly as possible. For urgent matters, you can also reach us on our Discord server."),
+            # Thank you
+            (["thank", "thanks", "ty", "appreciated", "great work", "good job", "awesome"],
+             "🙏 Thank you so much! It's a pleasure working with you. Don't hesitate to reach out for any future projects or upgrades!"),
+            # Cancellation
+            (["cancel", "refund", "stop", "end", "terminate", "withdraw"],
+             "⚠️ We're sorry to hear that! If you'd like to cancel or request a refund, please describe your concern and our team will review it according to our refund policy."),
+        ]
+
+        bot_reply = None
+        for keywords, reply in AUTO_REPLIES:
+            if any(kw in msg_lower for kw in keywords):
+                bot_reply = reply
+                break
+
+        if bot_reply:
+            import time as _time
+            bot_db = get_db()
+            # Use admin user ID if available, otherwise use a system fallback
+            admin_row = bot_db.execute("SELECT id FROM users WHERE role='admin' LIMIT 1").fetchone()
+            bot_user_id = admin_row["id"] if admin_row else user["id"]
+            bot_db.execute(
+                "INSERT INTO chat_messages (order_id, user_id, message_type, content) VALUES (?,?,?,?)",
+                (order_id, bot_user_id, "system", bot_reply)
+            )
+            bot_db.commit()
+            bot_db.close()
+
     return new_msg
