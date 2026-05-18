@@ -250,7 +250,7 @@ export default function Profile() {
 
     setSubmittingProof(true);
     try {
-      await submitPaymentProof(qrOrder.id, {
+      await submitPaymentProof(qrOrder.order_id, {
         transaction_id: proof.transaction_id,
         base64Screenshot: proof.base64,
         payment_method: 'UPI',

@@ -82,6 +82,7 @@ class OrderBody(BaseModel):
     sgst: float = 0
     total_amount: float = 0
     payment_plan: str = "full"
+    credits_applied: float = 0
 
 class AdminOrderUpdate(BaseModel):
     status: str
@@ -97,6 +98,7 @@ class PaymentProofBody(BaseModel):
     base64Screenshot: str = ""
     payment_method: str = "manual"
     payment_plan: Optional[str] = None
+    credits_applied: float = 0
 
 class VaultBody(BaseModel):
     vault_data: dict = {}
@@ -162,33 +164,144 @@ def accept_order(order_id: int, user=Depends(get_current_user)):
     return {"success": True}
 
 @router.post("/orders/{order_id}/payment-proof")
-async def submit_payment_proof(order_id: int, body: PaymentProofBody, user=Depends(get_current_user)):
+async def submit_payment_proof(order_id: str, body: PaymentProofBody, user=Depends(get_current_user)):
     import re
-    if not re.match(r"^[a-zA-Z0-9_-]{8,30}$", body.transaction_id):
-        raise HTTPException(400, "Transaction ID must be 8-30 alphanumeric characters.")
+    import time
+    import json
+    import base64
+    
+    applied = float(body.credits_applied or 0.0)
+    if body.payment_method == "credits":
+        body.transaction_id = "CREDIT_PAYMENT"
+    else:
+        if not re.match(r"^[a-zA-Z0-9_-]{8,30}$", body.transaction_id):
+            raise HTTPException(400, "Transaction ID must be 8-30 alphanumeric characters.")
+
+    is_numeric_order = False
+    try:
+        numeric_order_id = int(order_id)
+        is_numeric_order = True
+    except ValueError:
+        pass
 
     db = get_db()
-    row = db.execute("SELECT * FROM orders WHERE id = ? AND user_id = ?", (order_id, user["id"])).fetchone()
-    if not row: db.close(); raise HTTPException(404, "Order not found")
-    screenshot_url = ""
-    if body.base64Screenshot:
-        import re
-        m = re.match(r"^data:([A-Za-z-+/]+);base64,(.+)$", body.base64Screenshot)
-        if m:
-            ext = m.group(1).split("/")[-1] or "png"
-            fname = f"payment_{order_id}_{int(time.time())}.{ext}"
-            fpath = os.path.join(UPLOADS_DIR, fname)
-            with open(fpath, "wb") as f:
-                f.write(base64.b64decode(m.group(2)))
-            screenshot_url = f"/uploads/{fname}"
-    db.execute("""UPDATE orders SET status='payment_pending', payment_status='pending',
-        payment_method=?, transaction_id=?, payment_screenshot=?,
-        payment_plan=COALESCE(?,payment_plan), payment_proof_submitted_at=?, updated_at=? WHERE id=?""",
-        (body.payment_method, body.transaction_id, screenshot_url,
-         body.payment_plan, int(time.time()), int(time.time()), order_id))
-    db.commit(); db.close()
-    await send_discord_webhook(os.getenv("DISCORD_WEBHOOK_PAYMENT"), {"embeds": [{"title": f"Payment Proof for Order #{order_id}", "description": f"**Method:** {body.payment_method}\n**TxID:** {body.transaction_id or 'N/A'}", "color": 65280}]})
-    return {"success": True}
+    
+    # 1. Fetch user details and validate credits
+    user_row = db.execute("SELECT details FROM users WHERE id=?", (user["id"],)).fetchone()
+    if not user_row:
+        db.close()
+        raise HTTPException(404, "User not found")
+        
+    user_details = json.loads(user_row["details"] or "{}")
+    user_credits = float(user_details.get("credits", 0.0))
+    
+    if applied > user_credits:
+        db.close()
+        raise HTTPException(400, f"Insufficient credits. You have ₹{user_credits}, but tried to apply ₹{applied}.")
+
+    # Deduct credits from user profile immediately
+    if applied > 0:
+        user_details["credits"] = max(0.0, user_credits - applied)
+        db.execute("UPDATE users SET details=? WHERE id=?", (json.dumps(user_details), user["id"]))
+        db.commit()
+        log_activity(user["id"], "USE_CREDITS", f"Applied ₹{applied} credits to order/invoice {order_id}")
+
+    if is_numeric_order:
+        row = db.execute("SELECT * FROM orders WHERE id = ? AND user_id = ?", (numeric_order_id, user["id"])).fetchone()
+        if not row: db.close(); raise HTTPException(404, "Order not found")
+        
+        screenshot_url = ""
+        if body.base64Screenshot:
+            m = re.match(r"^data:([A-Za-z-+/]+);base64,(.+)$", body.base64Screenshot)
+            if m:
+                ext = m.group(1).split("/")[-1] or "png"
+                fname = f"payment_{numeric_order_id}_{int(time.time())}.{ext}"
+                fpath = os.path.join(UPLOADS_DIR, fname)
+                with open(fpath, "wb") as f:
+                    f.write(base64.b64decode(m.group(2)))
+                screenshot_url = f"/uploads/{fname}"
+                
+        if body.payment_method == "credits":
+            # Auto-approve since credit covers it
+            db.execute("""UPDATE orders SET status='accepted', payment_status='completed',
+                payment_method=?, transaction_id=?, payment_screenshot=?,
+                payment_plan=COALESCE(?,payment_plan), payment_proof_submitted_at=?, updated_at=?,
+                credits_applied=? WHERE id=?""",
+                (body.payment_method, body.transaction_id, screenshot_url,
+                 body.payment_plan, int(time.time()), int(time.time()), applied, numeric_order_id))
+            db.commit()
+            
+            # System confirmation chat log
+            sys_msg = f"✅ Payment confirmed! Your project is now officially accepted via Starlit Credits (₹{applied} applied). We'll begin work shortly."
+            db.execute("INSERT INTO chat_messages (order_id, user_id, message_type, content) VALUES (?,?,?,?)",
+                       (numeric_order_id, user["id"], "system", sys_msg))
+            db.commit()
+            create_notification(user["id"], "Order Paid", sys_msg[:100], "success")
+            
+            try:
+                auto_generate_invoice(numeric_order_id)
+            except Exception as e:
+                print("Error generating invoice for credit purchase:", e)
+        else:
+            # Partial or cash payment
+            db.execute("""UPDATE orders SET status='payment_pending', payment_status='pending',
+                payment_method=?, transaction_id=?, payment_screenshot=?,
+                payment_plan=COALESCE(?,payment_plan), payment_proof_submitted_at=?, updated_at=?,
+                credits_applied=? WHERE id=?""",
+                (body.payment_method, body.transaction_id, screenshot_url,
+                 body.payment_plan, int(time.time()), int(time.time()), applied, numeric_order_id))
+            db.commit()
+            
+        db.close()
+        await send_discord_webhook(os.getenv("DISCORD_WEBHOOK_PAYMENT"), {"embeds": [{"title": f"Payment Proof Submitted: Order #{numeric_order_id}", "description": f"**Method:** {body.payment_method}\n**Credits Applied:** ₹{applied}\n**TxID:** {body.transaction_id or 'N/A'}", "color": 65280}]})
+        return {"success": True}
+    else:
+        p = os.path.join(INVOICES_DIR, f"{order_id}.json")
+        if not os.path.exists(p):
+            db.close()
+            raise HTTPException(404, "Invoice not found")
+        with open(p) as f:
+            inv = json.load(f)
+        if str(inv.get("userId")) != str(user["id"]):
+            db.close()
+            raise HTTPException(403, "Forbidden")
+            
+        screenshot_url = ""
+        if body.base64Screenshot:
+            m = re.match(r"^data:([A-Za-z-+/]+);base64,(.+)$", body.base64Screenshot)
+            if m:
+                ext = m.group(1).split("/")[-1] or "png"
+                fname = f"invoice_payment_{order_id}_{int(time.time())}.{ext}"
+                fpath = os.path.join(UPLOADS_DIR, fname)
+                with open(fpath, "wb") as f:
+                    f.write(base64.b64decode(m.group(2)))
+                screenshot_url = f"/uploads/{fname}"
+        
+        if body.payment_method == "credits":
+            inv["paymentStatus"] = "paid"
+        else:
+            inv["paymentStatus"] = "payment_pending"
+            
+        inv["payment_method"] = body.payment_method
+        inv["transaction_id"] = body.transaction_id
+        inv["payment_screenshot"] = screenshot_url
+        inv["payment_proof_submitted_at"] = int(time.time())
+        inv["credits_applied"] = applied
+        
+        with open(p, "w") as f:
+            json.dump(inv, f, indent=2)
+            
+        try:
+            from routers.invoice_routes import format_invoice_txt
+            txt_path = os.path.join(INVOICES_DIR, f"{order_id}.txt")
+            with open(txt_path, "w", encoding="utf-8") as f:
+                f.write(format_invoice_txt(inv))
+        except Exception as e:
+            print("Error re-formatting txt invoice:", e)
+            
+        db.close()
+        await send_discord_webhook(os.getenv("DISCORD_WEBHOOK_PAYMENT"), {"embeds": [{"title": f"Payment Proof Submitted: Invoice {order_id}", "description": f"**Method:** {body.payment_method}\n**Credits Applied:** ₹{applied}\n**TxID:** {body.transaction_id or 'N/A'}", "color": 65280}]})
+        return {"success": True}
 
 # ── Admin Order Routes ────────────────────────────────────────────────────────
 @router.get("/admin/orders")

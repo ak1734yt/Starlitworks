@@ -79,7 +79,8 @@ CREATE TABLE IF NOT EXISTS orders (
     sgst                       REAL    DEFAULT 0,
     total_amount               REAL    DEFAULT 0,
     payment_plan               TEXT    DEFAULT 'full',
-    vault_data                 TEXT    DEFAULT '{}'
+    vault_data                 TEXT    DEFAULT '{}',
+    credits_applied            REAL    DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS activity_logs (
@@ -215,6 +216,11 @@ def init_db():
         conn.execute("ALTER TABLE users ADD COLUMN backup_codes TEXT DEFAULT '[]'")
     except sqlite3.OperationalError:
         pass # Columns already exist
+
+    try:
+        conn.execute("ALTER TABLE orders ADD COLUMN credits_applied REAL DEFAULT 0")
+    except sqlite3.OperationalError:
+        pass # Column already exists
 
     conn.commit()
     conn.close()

@@ -5,18 +5,20 @@ import {
   ShoppingBag, Tag, CreditCard, ShieldCheck, 
   ArrowRight, Loader2, Star, QrCode, 
   Upload, CheckCircle, Info, ShieldAlert,
-  Sparkles, X
+  Sparkles, X, IndianRupee
 } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import { validateCoupon, getPublicPrices, getOrder, submitPaymentProof, createOrder, generateQR } from '../services/api';
 import { toast } from 'react-hot-toast';
 import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
 import ORG from '../constants/orgData';
 
 export default function Checkout() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { convertPrice } = useTheme();
+  const { user } = useAuth();
   const [data, setData] = useState(null);
   const [type, setType] = useState('product'); // 'product' or 'order'
   const [loading, setLoading] = useState(true);
@@ -29,6 +31,7 @@ export default function Checkout() {
   const [showQRModal, setShowQRModal] = useState(false);
   const [qrData, setQrData] = useState(null);
   const [paymentPlan, setPaymentPlan] = useState('full'); // 'full', 'advance', 'emi'
+  const [useCredits, setUseCredits] = useState(false);
 
   // Form for manual payment
   const [proof, setProof] = useState({ transaction_id: '', screenshot: null, base64: '' });
@@ -83,9 +86,24 @@ export default function Checkout() {
   if (paymentPlan === 'advance') amountToPay = finalTotal / 2;
   if (paymentPlan === 'emi') amountToPay = finalTotal / 3;
 
+  // Live parsed credits calculation
+  let availableCredits = 0;
+  try {
+    const details = JSON.parse(user?.details || '{}');
+    availableCredits = Number(details.credits || 0);
+  } catch (e) {}
+
+  const creditsToApply = useCredits ? Math.min(availableCredits, amountToPay) : 0;
+  const remainingPayable = Math.max(0, amountToPay - creditsToApply);
+  const isFullyPaidWithCredits = useCredits && (creditsToApply >= amountToPay);
+
   const loadSecureQR = async () => {
     try {
-      const res = await generateQR({ amount: amountToPay, note: `SSW Checkout ${id}` });
+      if (remainingPayable <= 0) {
+        setQrData(null);
+        return;
+      }
+      const res = await generateQR({ amount: remainingPayable, note: `SSW Checkout ${id}` });
       setQrData(res);
     } catch (err) {
       toast.error('Failed to load secure payment data');
@@ -94,7 +112,7 @@ export default function Checkout() {
 
   useEffect(() => {
     if (id && !loading) loadSecureQR();
-  }, [id, loading, paymentPlan]);
+  }, [id, loading, paymentPlan, useCredits, remainingPayable]);
 
   const handleApplyCoupon = async () => {
     if (!couponCode) return;
@@ -122,15 +140,18 @@ export default function Checkout() {
   };
 
   const handleSubmitProof = async (e) => {
-    e.preventDefault();
-    if (!proof.transaction_id || !proof.base64) {
-      toast.error('Transaction ID and Screenshot are required');
-      return;
-    }
+    if (e) e.preventDefault();
+    
+    if (!isFullyPaidWithCredits) {
+      if (!proof.transaction_id || !proof.base64) {
+        toast.error('Transaction ID and Screenshot are required');
+        return;
+      }
 
-    if (!/^[a-zA-Z0-9_-]{8,30}$/.test(proof.transaction_id)) {
-      toast.error('Transaction ID must be 8-30 alphanumeric characters');
-      return;
+      if (!/^[a-zA-Z0-9_-]{8,30}$/.test(proof.transaction_id)) {
+        toast.error('Transaction ID must be 8-30 alphanumeric characters');
+        return;
+      }
     }
 
     setSubmitting(true);
@@ -147,19 +168,31 @@ export default function Checkout() {
           cgst: cgst,
           sgst: sgst,
           tax_rate: 18,
-          total_amount: finalTotal
+          total_amount: finalTotal,
+          credits_applied: creditsToApply
         });
         orderId = orderData.order_id;
       }
 
+      const txId = isFullyPaidWithCredits ? "CREDIT_PAYMENT" : proof.transaction_id;
+      const b64 = isFullyPaidWithCredits 
+        ? "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==" 
+        : proof.base64;
+      const method = isFullyPaidWithCredits ? "credits" : "manual";
+
       await submitPaymentProof(orderId, {
-        transaction_id: proof.transaction_id,
-        base64Screenshot: proof.base64,
-        payment_method: 'manual',
-        payment_plan: paymentPlan
+        transaction_id: txId,
+        base64Screenshot: b64,
+        payment_method: method,
+        payment_plan: paymentPlan,
+        credits_applied: creditsToApply
       });
 
-      toast.success('Payment proof submitted! Waiting for approval.');
+      if (isFullyPaidWithCredits) {
+        toast.success('Successfully purchased using Starlit Credits!');
+      } else {
+        toast.success('Payment proof submitted! Waiting for approval.');
+      }
       navigate('/history');
     } catch (err) {
       toast.error(err.message);
@@ -336,108 +369,167 @@ export default function Checkout() {
                       </div>
                     </section>
                   )}
-                  {/* Payment Trigger CTA */}
-                  <section className="glass-card p-10 relative overflow-hidden border border-brand-primary/20 bg-brand-primary/5">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-brand-primary/10 blur-3xl -mr-16 -mt-16 animate-pulse" />
-                    <div className="flex flex-col md:flex-row items-center justify-between gap-6 relative z-10">
-                      <div>
-                        <h4 className="font-bold text-xl flex items-center gap-2">
-                          <Sparkles className="w-5 h-5 text-brand-primary animate-pulse" />
-                          Ready to Invest
+                  {isFullyPaidWithCredits ? (
+                    <section className="glass-card p-10 relative overflow-hidden border border-green-500/20 bg-green-500/5 text-center space-y-8 rounded-[2rem]">
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-green-500/10 blur-3xl -mr-16 -mt-16 animate-pulse" />
+                      <div className="w-20 h-20 bg-green-500/10 border border-green-500/20 rounded-full flex items-center justify-center mx-auto shadow-[0_0_30px_rgba(34,197,94,0.2)]">
+                        <ShieldCheck className="w-10 h-10 text-green-400 animate-pulse" />
+                      </div>
+                      <div className="max-w-md mx-auto space-y-2">
+                        <h4 className="text-2xl font-bold tracking-tight text-white flex items-center justify-center gap-2">
+                          <Sparkles className="w-5 h-5 text-green-400 animate-bounce" />
+                          100% Credit Covered!
                         </h4>
-                        <p className="text-xs text-gray-500 mt-1">Scan our secure, encrypted merchant QR code to transfer your funds.</p>
+                        <p className="text-xs text-gray-400 leading-relaxed">
+                          Your available Starlit Credits balance completely covers this purchase. No external manual payment or receipt screenshot is required!
+                        </p>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => setShowQRModal(true)}
-                        className="w-full md:w-auto py-4 px-8 bg-brand-primary hover:bg-brand-primary/90 text-white rounded-2xl font-bold text-sm shadow-[0_0_20px_rgba(124,58,237,0.4)] hover:shadow-[0_0_30px_rgba(124,58,237,0.6)] hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2"
-                      >
-                        <QrCode className="w-4 h-4" />
-                        Pay Now with UPI / QR
-                      </button>
-                    </div>
-                  </section>
-
-                  {/* Submission Core */}
-                  <section className="glass-card p-10">
-                    <div className="flex items-center gap-3 mb-10">
-                      <div className="w-10 h-10 rounded-xl bg-brand-secondary/10 flex items-center justify-center">
-                        <Upload className="w-5 h-5 text-brand-secondary" />
-                      </div>
-                      <div>
-                        <h4 className="font-bold text-xl">Verification Proof</h4>
-                        <p className="text-xs text-gray-500 mt-0.5">Upload your transaction details to proceed</p>
-                      </div>
-                    </div>
-                    
-                    <form onSubmit={handleSubmitProof} className="space-y-8">
-                      <div className="space-y-3">
-                        <label className="block text-[10px] text-gray-500 uppercase font-bold tracking-widest ml-1">Transaction / UTR ID</label>
-                        <input 
-                          type="text" 
-                          placeholder="12-digit UPI Transaction ID"
-                          required
-                          maxLength={12}
-                          pattern="[A-Za-z0-9]{12}"
-                          value={proof.transaction_id}
-                          onChange={e => setProof({...proof, transaction_id: e.target.value.toUpperCase()})}
-                          className="w-full bg-white/[0.03] border border-white/10 rounded-2xl px-6 py-4 text-sm focus:border-brand-primary focus:bg-white/[0.05] outline-none transition-all font-mono placeholder:text-gray-700"
-                        />
-                        <p className="text-[9px] text-gray-600 mt-2 ml-1 italic">* Enter exactly 12 alphanumeric characters as shown in your UPI app.</p>
-                      </div>
-
-                      <div className="space-y-3">
-                        <label className="block text-[10px] text-gray-500 uppercase font-bold tracking-widest ml-1">Payment Receipt</label>
-                        <div 
-                          onClick={() => document.getElementById('screenshot').click()}
-                          className={`group relative border-2 border-dashed rounded-3xl p-12 transition-all duration-500 cursor-pointer text-center overflow-hidden ${
-                            proof.screenshot 
-                              ? 'border-brand-primary bg-brand-primary/5' 
-                              : 'border-white/10 hover:border-brand-primary/50 bg-white/[0.02] hover:bg-white/[0.04]'
-                          }`}
-                        >
-                          {proof.base64 ? (
-                            <div className="flex flex-col items-center gap-4 relative z-10">
-                              <div className="relative">
-                                <img src={proof.base64} alt="Preview" className="w-40 h-40 object-cover rounded-2xl border-2 border-brand-primary/30 shadow-2xl" />
-                                <div className="absolute -top-3 -right-3 w-8 h-8 bg-brand-primary rounded-full flex items-center justify-center shadow-lg">
-                                  <CheckCircle className="w-5 h-5 text-white" />
-                                </div>
-                              </div>
-                              <p className="text-sm text-brand-primary font-bold tracking-widest uppercase">Receipt Confirmed</p>
-                            </div>
-                          ) : (
-                            <div className="relative z-10">
-                              <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center mx-auto mb-6 group-hover:scale-110 group-hover:bg-brand-primary/10 transition-all duration-500">
-                                <Upload className="w-8 h-8 text-gray-500 group-hover:text-brand-primary transition-colors" />
-                              </div>
-                              <p className="text-lg font-bold">Select Screenshot</p>
-                              <p className="text-xs text-gray-500 mt-2 max-w-[200px] mx-auto">Click or drag your payment proof here. Max file size: 5MB.</p>
-                            </div>
-                          )}
-                          <input id="screenshot" type="file" hidden accept="image/*" onChange={handleScreenshotChange} />
+                      
+                      <div className="p-6 bg-white/[0.02] border border-white/5 rounded-2xl max-w-sm mx-auto space-y-3 text-sm text-left">
+                        <div className="flex justify-between items-center text-gray-400">
+                          <span>Amount Due Today</span>
+                          <span className="font-mono font-bold text-white">{convertPrice(amountToPay)}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-gray-400">
+                          <span>Credits Applied</span>
+                          <span className="font-mono text-green-400 font-bold">-{convertPrice(creditsToApply)}</span>
+                        </div>
+                        <div className="flex justify-between items-center pt-3 border-t border-white/5 text-base font-bold text-white">
+                          <span>Payable Remaining</span>
+                          <span className="font-mono text-green-400">₹0.00</span>
                         </div>
                       </div>
 
-                      <button 
-                        type="submit" 
+                      <button
+                        type="button"
+                        onClick={() => handleSubmitProof()}
                         disabled={submitting}
-                        className="w-full py-5 bg-gradient-to-r from-brand-primary to-brand-secondary rounded-2xl font-bold text-lg shadow-[0_10px_40px_rgba(124,58,237,0.3)] hover:shadow-[0_15px_50px_rgba(124,58,237,0.5)] hover:-translate-y-1 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:translate-y-0"
+                        className="w-full max-w-sm py-5 bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl font-bold text-lg shadow-[0_10px_40px_rgba(34,197,94,0.3)] hover:shadow-[0_15px_50px_rgba(34,197,94,0.5)] hover:-translate-y-1 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:translate-y-0 mx-auto text-white"
                       >
                         {submitting ? (
                           <>
                             <Loader2 className="w-6 h-6 animate-spin" />
-                            Processing Submission...
+                            Activating Order...
                           </>
                         ) : (
                           <>
-                            <ShieldCheck className="w-6 h-6" />
-                            Submit to Engineers
+                            <Sparkles className="w-5 h-5 text-white animate-pulse" />
+                            Pay Instantly with Credits
                           </>
                         )}
                       </button>
-                    </form>
-                  </section>
+                    </section>
+                  ) : (
+                    <>
+                      {/* Payment Trigger CTA */}
+                      <section className="glass-card p-10 relative overflow-hidden border border-brand-primary/20 bg-brand-primary/5 rounded-[2rem]">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-brand-primary/10 blur-3xl -mr-16 -mt-16 animate-pulse" />
+                        <div className="flex flex-col md:flex-row items-center justify-between gap-6 relative z-10">
+                          <div>
+                            <h4 className="font-bold text-xl flex items-center gap-2">
+                              <Sparkles className="w-5 h-5 text-brand-primary animate-pulse" />
+                              Ready to Invest
+                            </h4>
+                            <p className="text-xs text-gray-500 mt-1">
+                              {useCredits 
+                                ? `Scan our secure merchant QR code to transfer the remaining ${convertPrice(remainingPayable)}.`
+                                : "Scan our secure, encrypted merchant QR code to transfer your funds."
+                              }
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setShowQRModal(true)}
+                            className="w-full md:w-auto py-4 px-8 bg-brand-primary hover:bg-brand-primary/90 text-white rounded-2xl font-bold text-sm shadow-[0_0_20px_rgba(124,58,237,0.4)] hover:shadow-[0_0_30px_rgba(124,58,237,0.6)] hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2"
+                          >
+                            <QrCode className="w-4 h-4" />
+                            Pay Now ({convertPrice(remainingPayable)})
+                          </button>
+                        </div>
+                      </section>
+
+                      {/* Submission Core */}
+                      <section className="glass-card p-10 rounded-[2rem]">
+                        <div className="flex items-center gap-3 mb-10">
+                          <div className="w-10 h-10 rounded-xl bg-brand-secondary/10 flex items-center justify-center">
+                            <Upload className="w-5 h-5 text-brand-secondary" />
+                          </div>
+                          <div>
+                            <h4 className="font-bold text-xl">Verification Proof</h4>
+                            <p className="text-xs text-gray-500 mt-0.5">Upload your transaction details to proceed</p>
+                          </div>
+                        </div>
+                        
+                        <form onSubmit={handleSubmitProof} className="space-y-8">
+                          <div className="space-y-3">
+                            <label className="block text-[10px] text-gray-500 uppercase font-bold tracking-widest ml-1">Transaction / UTR ID</label>
+                            <input 
+                              type="text" 
+                              placeholder="12-digit UPI Transaction ID"
+                              required
+                              maxLength={12}
+                              pattern="[A-Za-z0-9]{12}"
+                              value={proof.transaction_id}
+                              onChange={e => setProof({...proof, transaction_id: e.target.value.toUpperCase()})}
+                              className="w-full bg-white/[0.03] border border-white/10 rounded-2xl px-6 py-4 text-sm focus:border-brand-primary focus:bg-white/[0.05] outline-none transition-all font-mono placeholder:text-gray-700 text-white"
+                            />
+                            <p className="text-[9px] text-gray-600 mt-2 ml-1 italic">* Enter exactly 12 alphanumeric characters as shown in your UPI app.</p>
+                          </div>
+
+                          <div className="space-y-3">
+                            <label className="block text-[10px] text-gray-500 uppercase font-bold tracking-widest ml-1">Payment Receipt</label>
+                            <div 
+                              onClick={() => document.getElementById('screenshot').click()}
+                              className={`group relative border-2 border-dashed rounded-3xl p-12 transition-all duration-500 cursor-pointer text-center overflow-hidden ${
+                                proof.screenshot 
+                                  ? 'border-brand-primary bg-brand-primary/5' 
+                                  : 'border-white/10 hover:border-brand-primary/50 bg-white/[0.02] hover:bg-white/[0.04]'
+                              }`}
+                            >
+                              {proof.base64 ? (
+                                <div className="flex flex-col items-center gap-4 relative z-10">
+                                  <div className="relative">
+                                    <img src={proof.base64} alt="Preview" className="w-40 h-40 object-cover rounded-2xl border-2 border-brand-primary/30 shadow-2xl" />
+                                    <div className="absolute -top-3 -right-3 w-8 h-8 bg-brand-primary rounded-full flex items-center justify-center shadow-lg">
+                                      <CheckCircle className="w-5 h-5 text-white" />
+                                    </div>
+                                  </div>
+                                  <p className="text-sm text-brand-primary font-bold tracking-widest uppercase">Receipt Confirmed</p>
+                                </div>
+                              ) : (
+                                <div className="relative z-10">
+                                  <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center mx-auto mb-6 group-hover:scale-110 group-hover:bg-brand-primary/10 transition-all duration-500">
+                                    <Upload className="w-8 h-8 text-gray-500 group-hover:text-brand-primary transition-colors" />
+                                  </div>
+                                  <p className="text-lg font-bold text-white">Select Screenshot</p>
+                                  <p className="text-xs text-gray-500 mt-2 max-w-[200px] mx-auto">Click or drag your payment proof here. Max file size: 5MB.</p>
+                                </div>
+                              )}
+                              <input id="screenshot" type="file" hidden accept="image/*" onChange={handleScreenshotChange} />
+                            </div>
+                          </div>
+
+                          <button 
+                            type="submit" 
+                            disabled={submitting}
+                            className="w-full py-5 bg-gradient-to-r from-brand-primary to-brand-secondary rounded-2xl font-bold text-lg shadow-[0_10px_40px_rgba(124,58,237,0.3)] hover:shadow-[0_15px_50px_rgba(124,58,237,0.5)] hover:-translate-y-1 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:translate-y-0 text-white"
+                          >
+                            {submitting ? (
+                              <>
+                                <Loader2 className="w-6 h-6 animate-spin" />
+                                Processing Submission...
+                              </>
+                            ) : (
+                              <>
+                                <ShieldCheck className="w-6 h-6" />
+                                Submit to Engineers
+                              </>
+                            )}
+                          </button>
+                        </form>
+                      </section>
+                    </>
+                  )}
                 </motion.div>
               )}
             </AnimatePresence>
@@ -495,7 +587,49 @@ export default function Checkout() {
                       {convertPrice(finalTotal)}
                     </span>
                   </div>
-                  <p className="text-[10px] text-gray-600 text-right uppercase tracking-widest font-bold">Inclusive of all taxes</p>
+                  <p className="text-[10px] text-gray-600 text-right uppercase tracking-widest font-bold mb-4">Inclusive of all taxes</p>
+
+                  {availableCredits > 0 && (
+                    <div className="mt-4 p-5 bg-green-500/5 border border-green-500/10 rounded-2xl space-y-3 shadow-[inset_0_1px_1px_rgba(255,255,255,0.02)]">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center">
+                            <IndianRupee className="w-4 h-4 text-green-400" />
+                          </div>
+                          <div>
+                            <span className="text-xs font-bold text-gray-300">Apply Starlit Credits</span>
+                            <p className="text-[10px] text-gray-500 font-mono">Balance: {convertPrice(availableCredits)}</p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setUseCredits(!useCredits)}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 focus:outline-none ${
+                            useCredits ? 'bg-green-500' : 'bg-white/10'
+                          }`}
+                        >
+                          <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-300 ${
+                              useCredits ? 'translate-x-6' : 'translate-x-1'
+                            }`}
+                          />
+                        </button>
+                      </div>
+
+                      {useCredits && (
+                        <div className="pt-3 border-t border-white/5 space-y-2">
+                          <div className="flex justify-between text-xs items-center">
+                            <span className="text-gray-400">Credits Deducted</span>
+                            <span className="font-mono text-green-400 font-bold">-{convertPrice(creditsToApply)}</span>
+                          </div>
+                          <div className="flex justify-between text-sm pt-2 border-t border-white/5 items-center font-bold">
+                            <span className="text-white">Remaining Payable</span>
+                            <span className="font-mono text-white font-extrabold">{convertPrice(remainingPayable)}</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 

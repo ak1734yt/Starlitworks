@@ -59,21 +59,21 @@ class FeedbackStatusBody(BaseModel):
 
 # ── Admin ────────────────────────────────────────────────────────────────────
 @router.get("/admin/clients")
-def get_clients(user=Depends(require_admin)):
+def get_clients(user=Depends(require_manager)):
     db = get_db()
     rows = db.execute("SELECT * FROM users ORDER BY created_at DESC").fetchall()
     db.close()
     return [dict(r) for r in rows]
 
 @router.get("/admin/analytics")
-def get_analytics(user=Depends(require_admin)):
+def get_analytics(user=Depends(require_manager)):
     db = get_db()
     rows = db.execute("SELECT a.*, u.name as user_name FROM analytics_logs a LEFT JOIN users u ON a.user_id = u.id ORDER BY a.created_at DESC LIMIT 500").fetchall()
     db.close()
     return [dict(r) for r in rows]
 
 @router.get("/admin/stats/activity")
-def admin_stats(user=Depends(require_admin)):
+def admin_stats(user=Depends(require_manager)):
     db = get_db()
     rows = db.execute("SELECT * FROM activity_logs ORDER BY created_at DESC LIMIT 50").fetchall()
     db.close()
@@ -97,7 +97,7 @@ class CreditBody(BaseModel):
     amount: float
 
 @router.post("/admin/users/{uid}/credits")
-def add_user_credits(uid: int, body: CreditBody, user=Depends(require_admin)):
+def add_user_credits(uid: int, body: CreditBody, user=Depends(require_manager)):
     db = get_db()
     row = db.execute("SELECT details FROM users WHERE id = ?", (uid,)).fetchone()
     if not row:

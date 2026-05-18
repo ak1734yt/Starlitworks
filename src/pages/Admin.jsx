@@ -43,6 +43,13 @@ export default function Admin() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('orders');
   
+  const allowedTabs = TABS.filter(tab => {
+    if (['clients', 'coupons', 'pulse'].includes(tab.id)) {
+      return user?.role === 'manager';
+    }
+    return true;
+  });
+  
   const [data, setData] = useState({ orders: [], invoices: [], prices: [], clients: [], feedbacks: [], pulse: [], coupons: [] });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -123,16 +130,32 @@ export default function Admin() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('ssw_token');
-      const [orders, invoices, feedbacks, clients, prices, pulse, coupons] = await Promise.all([
+      const isManager = user?.role === 'manager';
+      const [orders, invoices, feedbacks, prices] = await Promise.all([
         getAdminOrders(),
         getInvoices(),
         getAdminFeedbacks(),
-        request('/admin/clients'),
-        getPublicPrices(),
-        getAnalyticsLogs(),
-        getCoupons()
+        getPublicPrices()
       ]);
+      
+      let clients = [];
+      let pulse = [];
+      let coupons = [];
+      
+      if (isManager) {
+        try {
+          const [clientsData, pulseData, couponsData] = await Promise.all([
+            request('/admin/clients'),
+            getAnalyticsLogs(),
+            getCoupons()
+          ]);
+          clients = clientsData;
+          pulse = pulseData;
+          coupons = couponsData;
+        } catch (err) {
+          console.error("Error fetching manager-level datasets:", err);
+        }
+      }
       
       setData({ orders, invoices, feedbacks, clients, prices, pulse, coupons });
     } catch (err) {
@@ -266,7 +289,7 @@ export default function Admin() {
           <div className="p-6">
             <h2 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-6">Admin Panel</h2>
             <nav className="space-y-2">
-              {TABS.map(tab => {
+              {allowedTabs.map(tab => {
                 const isActive = activeTab === tab.id;
                 return (
                   <button
@@ -303,7 +326,7 @@ export default function Admin() {
 
         {/* Mobile Horizontal Tabs */}
         <div className="lg:hidden bg-brand-bg/50 backdrop-blur-md border-b border-white/5 px-6 py-4 overflow-x-auto whitespace-nowrap scrollbar-none flex gap-3 z-40 sticky top-20">
-          {TABS.map(tab => {
+          {allowedTabs.map(tab => {
             const isActive = activeTab === tab.id;
             return (
               <button
@@ -340,7 +363,7 @@ export default function Admin() {
         {/* Main Content */}
         <main className="flex-1 overflow-y-auto p-4 md:p-8">
           <header className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-8">
-            <h1 className="text-2xl font-bold font-display">{TABS.find(t => t.id === activeTab)?.label}</h1>
+            <h1 className="text-2xl font-bold font-display">{allowedTabs.find(t => t.id === activeTab)?.label}</h1>
             
             <div className="flex items-center gap-4">
               {activeTab === 'orders' && (
