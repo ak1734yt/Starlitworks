@@ -24,8 +24,8 @@ app.add_middleware(
         "http://127.0.0.1:5173",
     ],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-Starlit-Key"],
 )
 
 # ── Static file serving (uploads) ─────────────────────────────────────────────
@@ -53,6 +53,23 @@ async def security_header_check(request: Request, call_next):
                 return JSONResponse(status_code=403, content={"error": "Security Check Failed: Unauthorized API Access"})
             
     response = await call_next(request)
+    
+    # Inject HTTP Hardening Security Headers
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://apis.google.com; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+        "font-src 'self' data: https://fonts.gstatic.com; "
+        "img-src 'self' data: https:; "
+        "connect-src 'self' https:; "
+        "frame-ancestors 'none';"
+    )
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains; preload"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    
     return response
 
 # ── Route Injection ───────────────────────────────────────────────────────────
