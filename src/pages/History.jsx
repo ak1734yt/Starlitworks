@@ -572,6 +572,44 @@ export default function History() {
                             </div>
                             <h4 className="font-bold text-white text-base leading-tight">{getFriendlyServiceName(order.service_name)}</h4>
                             <p className="text-xs text-gray-500 line-clamp-1">{order.description}</p>
+
+                            {/* Interactive Progress Tracker */}
+                            {(() => {
+                              const STEPS = [
+                                { key: 'pending',         label: 'Submitted',   pct: 5   },
+                                { key: 'quoted',          label: 'Quoted',      pct: 25  },
+                                { key: 'payment_pending', label: 'Payment',     pct: 50  },
+                                { key: 'accepted',        label: 'Accepted',    pct: 60  },
+                                { key: 'in_progress',     label: 'In Progress', pct: 80  },
+                                { key: 'completed',       label: 'Done',        pct: 100 },
+                              ];
+                              const isRejected = order.status === 'rejected';
+                              const currentStep = STEPS.find(s => s.key === order.status) || STEPS[0];
+                              const pct = isRejected ? 100 : currentStep.pct;
+                              const barColor = isRejected ? 'bg-red-500' : pct === 100 ? 'bg-green-500' : 'bg-brand-primary';
+                              return (
+                                <div className="mt-3 space-y-1.5">
+                                  <div className="relative h-1.5 bg-white/5 rounded-full overflow-hidden">
+                                    <div
+                                      className={`absolute left-0 top-0 h-full rounded-full transition-all duration-700 ${barColor} ${!isRejected && pct < 100 ? 'animate-pulse' : ''}`}
+                                      style={{ width: `${pct}%` }}
+                                    />
+                                  </div>
+                                  <div className="flex justify-between">
+                                    {STEPS.map((step, i) => {
+                                      const stepIdx = STEPS.findIndex(s => s.key === order.status);
+                                      const done = i <= stepIdx;
+                                      return (
+                                        <div key={step.key} className="flex flex-col items-center gap-0.5" style={{ width: `${100/STEPS.length}%` }}>
+                                          <div className={`w-1.5 h-1.5 rounded-full ${done && !isRejected ? 'bg-brand-primary' : 'bg-white/10'}`} />
+                                          <span className={`text-[8px] font-bold uppercase hidden md:block ${done && !isRejected ? 'text-gray-400' : 'text-gray-700'}`}>{step.label}</span>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              );
+                            })()}
                           </div>
 
                           {/* Meta grid details */}

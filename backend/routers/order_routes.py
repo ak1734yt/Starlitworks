@@ -210,16 +210,28 @@ async def admin_update_order(order_id: int, body: AdminOrderUpdate, user=Depends
     
     db.execute("UPDATE orders SET status=?, quoted_price=?, admin_notes=?, accepted_by=COALESCE(?,accepted_by), updated_at=? WHERE id=?",
                (body.status, body.quoted_price, body.admin_notes, accepted_by, int(time.time()), order_id))
-    db.commit(); db.close()
-    
+    db.commit()
+    db.close()
+    db_chat = get_db()
     if body.status == "accepted" and row["status"] != "accepted":
         auto_generate_invoice(order_id)
         
     if body.status != row["status"]:
-        sys_msg = f"Order status updated to {body.status.upper().replace('_', ' ')}."
-        db.execute("INSERT INTO chat_messages (order_id, user_id, message_type, content) VALUES (?,?,?,?)",
-                   (order_id, user["id"], "text", sys_msg))
-        db.commit()
+        auto_responses = {
+            "quoted":          "📋 Your service request has been reviewed and a quote has been prepared. Please check the quoted price and click 'Proceed to Payment' when ready.",
+            "accepted":        "✅ Payment confirmed! Your project is now officially accepted. We'll begin work shortly and keep you updated via this chat.",
+            "in_progress":     "🚀 Great news — work on your project has begun! We'll send updates here as we hit key milestones. Feel free to ask questions anytime.",
+            "payment_pending": "⏳ Payment proof received. Our team is reviewing your transaction and will update you within 24 hours.",
+            "completed":       "🎉 Your project has been marked as complete! You can access your deliverables in the Vault section. Thank you for choosing Starlit Siege Works!",
+            "rejected":        "⚠️ Your order request could not be fulfilled at this time. Please reach out via chat if you have questions or would like to discuss alternatives.",
+            "pending":         "🔔 Your order is back in the queue. Our team will review it shortly.",
+        }
+        sys_msg = auto_responses.get(body.status, f"📌 Order status updated to {body.status.upper().replace('_', ' ')}.")
+        db_chat.execute("INSERT INTO chat_messages (order_id, user_id, message_type, content) VALUES (?,?,?,?)",
+                   (order_id, user["id"], "system", sys_msg))
+        db_chat.commit()
+        create_notification(row["user_id"], "Order Update", sys_msg[:100], "info")
+    db_chat.close()
 
     log_activity(user["id"], "UPDATE_ORDER", f"Order {order_id} -> {body.status}")
     await send_discord_webhook(os.getenv("DISCORD_WEBHOOK_ORDERS"), {"embeds": [{"title": f"Order Updated #{order_id}", "description": f"Status: **{body.status}**", "color": 16776960}]})

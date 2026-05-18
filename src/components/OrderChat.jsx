@@ -191,6 +191,21 @@ export default function OrderChat({ orderId, onClose }) {
           </div>
         ) : messages.map((msg, idx) => {
           const isMe = msg.user_id === user.id;
+
+          // System auto-responder messages — centered banner style
+          if (msg.message_type === 'system') {
+            return (
+              <div key={msg.id} className="flex justify-center my-1">
+                <div className="max-w-[85%] bg-brand-primary/5 border border-brand-primary/20 rounded-2xl px-4 py-2.5 text-center">
+                  <p className="text-xs text-gray-300 leading-relaxed">{msg.content}</p>
+                  <span className="text-[9px] text-gray-600 mt-1 block">
+                    {new Date(msg.created_at * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
+              </div>
+            );
+          }
+
           return (
             <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
               <div className={`max-w-[80%] flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
