@@ -116,7 +116,7 @@ function AppInner() {
         <Route path="/product/:id"    element={<ProtectedRoute><ProductDetails /></ProtectedRoute>} />
         <Route path="/checkout/:id"   element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
         <Route path="/invoice/:id"    element={<ProtectedRoute><InvoiceDetail /></ProtectedRoute>} />
-        <Route path="/checkout/invoice/:id" element={<ProtectedRoute><InvoiceDetail /></ProtectedRoute>} />
+        <Route path="/checkout/invoice/:id" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
         <Route path="/profile"        element={<ProtectedRoute><Profile /></ProtectedRoute>} />
 
         {/* Protected — admin/manager */}

@@ -213,6 +213,45 @@ def delete_product(pid: int, user=Depends(require_manager)):
     log_activity(user["id"], "DELETE_PRODUCT", f"Deleted product {pid}")
     return {"success": True}
 
+@router.post("/manager/seed-catalog", status_code=201)
+def seed_catalog(user=Depends(require_manager)):
+    db = get_db()
+    
+    products = [
+        {"category": "decorations_gift", "product_key": "deco_gift_1", "name": "Decoration via Gift ($4.99)", "price": 150, "min_price": 150, "tag": "$1.79 | ₹150", "description": "Discord profile decoration delivered via gift link. [Admin hint: Recommended $1.79 or ₹150]", "features": ["Instant delivery", "Secure link", "47h expiration"], "is_manual_price": 1, "show_price_to_admin": 1},
+        {"category": "decorations_gift", "product_key": "deco_gift_2", "name": "Decoration via Gift ($5.99)", "price": 175, "min_price": 175, "tag": "$2.08 | ₹175", "description": "Discord profile decoration delivered via gift link. [Admin hint: Recommended $2.08 or ₹175]", "features": ["Instant delivery", "Secure link", "47h expiration"], "is_manual_price": 1, "show_price_to_admin": 1},
+        {"category": "decorations_gift", "product_key": "deco_gift_3", "name": "Decoration via Gift ($7.99)", "price": 200, "min_price": 200, "tag": "$2.38 | ₹200", "description": "Discord profile decoration delivered via gift link. [Admin hint: Recommended $2.38 or ₹200]", "features": ["Instant delivery", "Secure link", "47h expiration"], "is_manual_price": 1, "show_price_to_admin": 1},
+        {"category": "decorations_gift", "product_key": "deco_gift_4", "name": "Decoration via Gift ($9.99)", "price": 230, "min_price": 230, "tag": "$2.74 | ₹230", "description": "Discord profile decoration delivered via gift link. [Admin hint: Recommended $2.74 or ₹230]", "features": ["Instant delivery", "Secure link", "47h expiration"], "is_manual_price": 1, "show_price_to_admin": 1},
+        {"category": "decorations_gift", "product_key": "deco_gift_5", "name": "Decoration via Gift ($11.99)", "price": 270, "min_price": 270, "tag": "$3.21 | ₹270", "description": "Discord profile decoration delivered via gift link. [Admin hint: Recommended $3.21 or ₹270]", "features": ["Instant delivery", "Secure link", "47h expiration"], "is_manual_price": 1, "show_price_to_admin": 1},
+        
+        {"category": "decorations_login", "product_key": "deco_login_1", "name": "Decoration via Login ($4.99)", "price": 85, "min_price": 85, "tag": "$1.01 | ₹85", "description": "Decoration purchased directly on your account via login. [Admin hint: Recommended $1.01 or ₹85]", "features": ["Requires login", "Fast processing", "100% secure"], "is_manual_price": 1, "show_price_to_admin": 1},
+        {"category": "decorations_login", "product_key": "deco_login_2", "name": "Decoration via Login ($5.99)", "price": 95, "min_price": 95, "tag": "$1.13 | ₹95", "description": "Decoration purchased directly on your account via login. [Admin hint: Recommended $1.13 or ₹95]", "features": ["Requires login", "Fast processing", "100% secure"], "is_manual_price": 1, "show_price_to_admin": 1},
+        {"category": "decorations_login", "product_key": "deco_login_3", "name": "Decoration via Login ($7.99)", "price": 115, "min_price": 115, "tag": "$1.37 | ₹115", "description": "Decoration purchased directly on your account via login. [Admin hint: Recommended $1.37 or ₹115]", "features": ["Requires login", "Fast processing", "100% secure"], "is_manual_price": 1, "show_price_to_admin": 1},
+        {"category": "decorations_login", "product_key": "deco_login_4", "name": "Decoration via Login ($9.99)", "price": 135, "min_price": 135, "tag": "$1.61 | ₹135", "description": "Decoration purchased directly on your account via login. [Admin hint: Recommended $1.61 or ₹135]", "features": ["Requires login", "Fast processing", "100% secure"], "is_manual_price": 1, "show_price_to_admin": 1},
+        {"category": "decorations_login", "product_key": "deco_login_5", "name": "Decoration via Login ($11.99)", "price": 150, "min_price": 150, "tag": "$1.79 | ₹150", "description": "Decoration purchased directly on your account via login. [Admin hint: Recommended $1.79 or ₹150]", "features": ["Requires login", "Fast processing", "100% secure"], "is_manual_price": 1, "show_price_to_admin": 1},
+        
+        {"category": "nitro_accounts", "product_key": "nitro_acc_1", "name": "1 Month Nitro Account", "price": 100, "min_price": 100, "tag": "$1.19 | ₹100", "description": "Full access to a fresh Discord account with 1 month Nitro. [Admin hint: Recommended $1.19 or ₹100]", "features": ["Full email access", "Clean account", "Ready to use"], "is_manual_price": 1, "show_price_to_admin": 1},
+        {"category": "nitro_accounts", "product_key": "nitro_acc_2", "name": "3 Months Nitro Account", "price": 200, "min_price": 200, "tag": "$2.38 | ₹200", "description": "Full access to a fresh Discord account with 3 months Nitro. [Admin hint: Recommended $2.38 or ₹200]", "features": ["Full email access", "Clean account", "Ready to use"], "is_manual_price": 1, "show_price_to_admin": 1},
+        {"category": "nitro_accounts", "product_key": "nitro_acc_3", "name": "1 Month Nitro Account + 2 Boosts", "price": 130, "min_price": 130, "tag": "$1.55 | ₹130", "description": "Full access Discord account with 1 month Nitro and 2 Server Boosts. [Admin hint: Recommended $1.55 or ₹130]", "features": ["Full email access", "Includes 2 Boosts", "Clean account"], "is_manual_price": 1, "show_price_to_admin": 1},
+        {"category": "nitro_accounts", "product_key": "nitro_acc_4", "name": "3 Months Nitro Account + 2 Boosts", "price": 250, "min_price": 250, "tag": "$2.98 | ₹250", "description": "Full access Discord account with 3 months Nitro and 2 Server Boosts. [Admin hint: Recommended $2.98 or ₹250]", "features": ["Full email access", "Includes 2 Boosts", "Clean account"], "is_manual_price": 1, "show_price_to_admin": 1},
+        
+        {"category": "booster", "product_key": "boost_login_1", "name": "14x Server Boosts (1 Month) via Login", "price": 100, "min_price": 100, "tag": "$1.19 | ₹100", "description": "14 Server Boosts for 1 month applied directly via login. [Admin hint: Recommended $1.19 or ₹100]", "features": ["Revoke warranty", "Requires login", "Fast processing"], "is_manual_price": 1, "show_price_to_admin": 1},
+        {"category": "booster", "product_key": "boost_vcc_1", "name": "14x Server Boosts (1 Month) via VCC", "price": 130, "min_price": 130, "tag": "$1.55 | ₹130", "description": "14 Server Boosts for 1 month applied safely using a virtual card. [Admin hint: Recommended $1.55 or ₹130]", "features": ["No login required", "Revoke warranty", "Secure payment method"], "is_manual_price": 1, "show_price_to_admin": 1},
+        {"category": "booster", "product_key": "boost_vcc_3", "name": "14x Server Boosts (3 Months) via VCC", "price": 320, "min_price": 320, "tag": "$3.81 | ₹320", "description": "14 Server Boosts for 3 months applied safely using a virtual card. [Admin hint: Recommended $3.81 or ₹320]", "features": ["No login required", "Long term boosts", "Revoke warranty"], "is_manual_price": 1, "show_price_to_admin": 1}
+    ]
+    
+    for p in products:
+        db.execute(
+            """INSERT OR IGNORE INTO products 
+               (category, product_key, name, price, min_price, tag, description, features, is_manual_price, show_price_to_admin) 
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (p["category"], p["product_key"], p["name"], p["price"], p["min_price"], p["tag"], p["description"], json.dumps(p["features"]), p["is_manual_price"], p["show_price_to_admin"])
+        )
+    
+    db.commit()
+    db.close()
+    return {"success": True}
+
 @router.post("/manager/coupons", status_code=201)
 def create_coupon(body: CouponBody, user=Depends(require_manager)):
     code = body.code or ""

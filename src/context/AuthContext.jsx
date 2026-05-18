@@ -133,13 +133,22 @@ export function AuthProvider({ children }) {
     return json;
   }, []);
 
+  const refreshMe = useCallback(async () => {
+    const token = localStorage.getItem('ssw_token');
+    if (!token) return;
+    try {
+      const { user } = await apiGetMe();
+      setUser(user);
+    } catch (e) {}
+  }, []);
+
   return (
     <AuthContext.Provider value={{
       user, loading, showTransition,
       modalOpen, modalTab, intendedRoute,
       oauthStatus,
       login, signup, logout, forgotPassword, loginWithOAuth, setUserFromToken,
-      openAuthModal, closeAuthModal, updateProfile,
+      openAuthModal, closeAuthModal, updateProfile, refreshMe,
       verify2FA, setup2FA: apiSetup2FA, confirm2FA: apiVerify2FA, disable2FA: apiDisable2FA
     }}>
       {children}

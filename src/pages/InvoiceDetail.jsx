@@ -18,56 +18,7 @@ export default function InvoiceDetail() {
   const { user } = useAuth();
   const { convertPrice } = useTheme();
   const [invoice, setInvoice] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState('manual_upi'); // manual_upi, crypto, paypal
-  const [showQRModal, setShowQRModal] = useState(false);
-  const [qrData, setQrData] = useState(null);
-  const [useCredits, setUseCredits] = useState(false);
-  
-  // Verification Proof State
-  const [proof, setProof] = useState({ transaction_id: '', screenshot: null, base64: '' });
-
-  // Live parsed credits calculation
-  let availableCredits = 0;
-  try {
-    if (user?.details) {
-      const details = typeof user.details === 'string' ? JSON.parse(user.details) : user.details;
-      availableCredits = Number(details?.credits || 0);
-    }
-  } catch (e) {}
-
   const grandTotal = Number(invoice?.grandTotal || 0);
-  const creditsToApply = useCredits ? Math.min(availableCredits, grandTotal) : 0;
-  const remainingPayable = Math.max(0, grandTotal - creditsToApply);
-  const isFullyPaidWithCredits = useCredits && (creditsToApply >= grandTotal);
-
-  const handlePayWithCredits = async () => {
-    if (availableCredits < creditsToApply) {
-      toast.error('Insufficient credits balance');
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      const targetId = invoice.orderId || invoice.id;
-      const b64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
-      await submitPaymentProof(targetId, {
-        transaction_id: 'CREDIT_PAYMENT',
-        base64Screenshot: b64,
-        payment_method: 'credits',
-        payment_plan: invoice.paymentType || 'full',
-        credits_applied: creditsToApply
-      });
-
-      toast.success('Successfully paid using Starlit Credits!');
-      navigate('/history');
-    } catch (err) {
-      toast.error(err.message);
-    } finally {
-      setSubmitting(false);
-    }
-  };
 
   const loadInvoice = async () => {
     if (!user) return;
@@ -88,55 +39,9 @@ export default function InvoiceDetail() {
     }
   };
 
-  const loadSecureQR = async (amount = null) => {
-    if (!invoice) return;
-    
-    // Skip loading QR code if the invoice is already paid
-    if (invoice.paymentStatus === 'paid') {
-      setQrData(null);
-      return;
-    }
-
-    const totalAmount = amount !== null ? amount : Number(invoice.grandTotal || 0);
-    if (totalAmount <= 0) {
-      setQrData(null);
-      return;
-    }
-
-    try {
-      // Try the secure order-linked QR endpoint if a numeric order ID exists and no credits are applied
-      const isNumericOrder = invoice.orderId && /^\d+$/.test(String(invoice.orderId));
-      if (isNumericOrder && creditsToApply === 0) {
-        try {
-          const res = await request(`/orders/${invoice.orderId}/qr`);
-          setQrData(res);
-          return;
-        } catch (orderQrErr) {
-          console.warn('Failed to load secure order QR, falling back to generic QR:', orderQrErr);
-        }
-      }
-
-      // Fallback: Generate secure generic QR code using total amount
-      const res = await generateQR({
-        amount: totalAmount,
-        note: `SSW Invoice ${invoice.id || invoice.invoiceNumber}`
-      });
-      setQrData(res);
-    } catch (err) {
-      console.error('Failed to load secure QR code:', err);
-      toast.error('Failed to load secure QR code');
-    }
-  };
-
   useEffect(() => {
     loadInvoice();
   }, [id, user]);
-
-  useEffect(() => {
-    if (invoice) {
-      loadSecureQR(remainingPayable);
-    }
-  }, [invoice, useCredits, remainingPayable]);
 
   const handleDownloadInvoice = async () => {
     if (!invoice) return;
@@ -161,47 +66,7 @@ export default function InvoiceDetail() {
     }
   };
 
-  const handleScreenshotChange = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setProof({ ...proof, screenshot: file, base64: reader.result });
-    };
-    reader.readAsDataURL(file);
-  };
 
-  const handleSubmitProof = async (e) => {
-    e.preventDefault();
-    if (!proof.transaction_id || !proof.base64) {
-      toast.error('Transaction ID and Screenshot are required');
-      return;
-    }
-
-    if (!/^[a-zA-Z0-9_-]{8,30}$/.test(proof.transaction_id)) {
-      toast.error('Transaction ID must be 8-30 alphanumeric characters');
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      const targetId = invoice.orderId || invoice.id;
-      await submitPaymentProof(targetId, {
-        transaction_id: proof.transaction_id,
-        base64Screenshot: proof.base64,
-        payment_method: 'manual',
-        payment_plan: invoice.paymentType || 'full',
-        credits_applied: creditsToApply
-      });
-
-      toast.success('Payment proof submitted! Verification in progress.');
-      navigate('/history');
-    } catch (err) {
-      toast.error(err.message);
-    } finally {
-      setSubmitting(false);
-    }
-  };
 
   if (loading || !invoice) {
     return (
@@ -382,294 +247,33 @@ export default function InvoiceDetail() {
                       <p className="text-xs text-gray-500 mt-1">This invoice has been completely verified and settled.</p>
                     </div>
                   </div>
+                ) : invoice.paymentStatus === 'payment_pending' ? (
+                  <div className="p-6 bg-amber-500/5 border border-amber-500/20 rounded-2xl flex flex-col items-center justify-center text-center gap-3">
+                    <Clock className="w-12 h-12 text-amber-400 animate-pulse" />
+                    <div>
+                      <p className="font-bold text-white text-lg">Verification Pending</p>
+                      <p className="text-xs text-gray-500 mt-1">We are currently verifying your payment proof. This typically takes 10-30 minutes.</p>
+                    </div>
+                  </div>
                 ) : (
                   <div className="space-y-6">
-                    {/* Apply Starlit Credits Switch */}
-                    {availableCredits > 0 && (
-                      <div className="p-4 bg-green-500/5 border border-green-500/10 rounded-2xl space-y-3">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center">
-                              <IndianRupee className="w-4.5 h-4.5 text-green-400" />
-                            </div>
-                            <div>
-                              <span className="text-xs font-bold text-gray-300">Apply Starlit Credits</span>
-                              <p className="text-[10px] text-gray-500 font-mono">Balance: {convertPrice(availableCredits)}</p>
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => setUseCredits(!useCredits)}
-                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 focus:outline-none ${
-                              useCredits ? 'bg-green-500' : 'bg-white/10'
-                            }`}
-                          >
-                            <span
-                              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-300 ${
-                                useCredits ? 'translate-x-6' : 'translate-x-1'
-                              }`}
-                            />
-                          </button>
-                        </div>
-
-                        {useCredits && (
-                          <div className="pt-3 border-t border-white/5 space-y-2">
-                            <div className="flex justify-between text-xs items-center">
-                              <span className="text-gray-400">Credits Deducted</span>
-                              <span className="font-mono text-green-400 font-bold">-{convertPrice(creditsToApply)}</span>
-                            </div>
-                            <div className="flex justify-between text-xs pt-2 border-t border-white/5 items-center font-bold">
-                              <span className="text-white">Remaining Payable</span>
-                              <span className="font-mono text-white font-extrabold">{convertPrice(remainingPayable)}</span>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Pay button */}
-                    {isFullyPaidWithCredits ? (
-                      <button
-                        onClick={handlePayWithCredits}
-                        disabled={submitting}
-                        className="w-full py-4.5 bg-gradient-to-r from-brand-primary to-brand-secondary hover:brightness-110 text-white font-bold text-sm rounded-2xl shadow-[0_5px_25px_rgba(124,58,237,0.3)] transition-all flex items-center justify-center gap-2"
-                      >
-                        {submitting ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <Sparkles className="w-4 h-4 animate-pulse" />
-                        )}
-                        Pay Now with Credits
-                      </button>
-                    ) : (
-                      <div className="space-y-6">
-                        {/* Pay with selection */}
-                        <div className="space-y-3">
-                          <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest">Pay with</p>
-                          
-                          {/* Method 1: UPI */}
-                          <button
-                            onClick={() => setPaymentMethod('manual_upi')}
-                            className={`w-full p-4 rounded-xl border text-left transition-all flex items-center justify-between ${
-                              paymentMethod === 'manual_upi' 
-                                ? 'border-brand-primary bg-brand-primary/5' 
-                                : 'border-white/5 bg-white/[0.01] hover:border-white/10'
-                            }`}
-                          >
-                            <div>
-                              <p className="font-bold text-xs">UPI / CARDS / NETBANKING</p>
-                              <p className="text-[9px] text-gray-500 mt-0.5">(India only) • Direct QR Settlement</p>
-                            </div>
-                            <ShieldCheck className={`w-4 h-4 ${paymentMethod === 'manual_upi' ? 'text-brand-primary' : 'text-gray-600'}`} />
-                          </button>
-
-                          {/* Method 2: Crypto */}
-                          <button
-                            onClick={() => setPaymentMethod('crypto')}
-                            className={`w-full p-4 rounded-xl border text-left transition-all flex items-center justify-between opacity-50 cursor-not-allowed ${
-                              paymentMethod === 'crypto' 
-                                ? 'border-brand-primary bg-brand-primary/5' 
-                                : 'border-white/5 bg-white/[0.01]'
-                            }`}
-                            disabled
-                          >
-                            <div>
-                              <p className="font-bold text-xs">Crypto Currency</p>
-                              <p className="text-[9px] text-gray-500 mt-0.5">Minimum ₹100 / $1.14 (Coming Soon)</p>
-                            </div>
-                            <ShieldCheck className="w-4 h-4 text-gray-600" />
-                          </button>
-
-                          {/* Method 3: PayPal */}
-                          <button
-                            onClick={() => setPaymentMethod('paypal')}
-                            className={`w-full p-4 rounded-xl border text-left transition-all flex items-center justify-between opacity-50 cursor-not-allowed ${
-                              paymentMethod === 'paypal' 
-                                ? 'border-brand-primary bg-brand-primary/5' 
-                                : 'border-white/5 bg-white/[0.01]'
-                            }`}
-                            disabled
-                          >
-                            <div>
-                              <p className="font-bold text-xs">PayPal / Credit Card</p>
-                              <p className="text-[9px] text-gray-500 mt-0.5">(Outside India) • (Coming Soon)</p>
-                            </div>
-                            <ShieldCheck className="w-4 h-4 text-gray-600" />
-                          </button>
-                        </div>
-
-                        <button
-                          onClick={() => setShowQRModal(true)}
-                          className="w-full py-4.5 bg-brand-primary hover:bg-brand-primary/95 text-white font-bold text-sm rounded-2xl shadow-[0_5px_25px_rgba(124,58,237,0.3)] transition-all flex items-center justify-center gap-2"
-                        >
-                          <CreditCard className="w-4 h-4" />
-                          Pay Now ({convertPrice(remainingPayable)})
-                        </button>
-                      </div>
-                    )}
-                    {/* Verification Proof form after scanning */}
-                    {paymentMethod !== 'credits' && (
-                      <div className="pt-6 border-t border-white/5 space-y-4">
-                        <div className="flex items-center gap-2">
-                          <Upload className="w-4 h-4 text-brand-secondary" />
-                          <h4 className="font-bold text-sm">Upload Payment Proof</h4>
-                        </div>
-                        
-                        <form onSubmit={handleSubmitProof} className="space-y-4">
-                          <div className="space-y-2">
-                            <label className="block text-[8px] text-gray-500 uppercase font-black tracking-widest">Transaction / UTR ID</label>
-                            <input 
-                              type="text" 
-                              placeholder="12-digit UPI Transaction ID"
-                              required
-                              maxLength={12}
-                              pattern="[A-Za-z0-9]{12}"
-                              value={proof.transaction_id}
-                              onChange={e => setProof({...proof, transaction_id: e.target.value.toUpperCase()})}
-                              className="w-full bg-white/[0.02] border border-white/10 rounded-xl px-4 py-3 text-xs focus:border-brand-primary outline-none transition-all font-mono"
-                            />
-                          </div>
-
-                          <div className="space-y-2">
-                            <label className="block text-[8px] text-gray-500 uppercase font-black tracking-widest">Payment Screenshot</label>
-                            <div 
-                              onClick={() => document.getElementById('screenshot-upload').click()}
-                              className={`border border-dashed rounded-xl p-6 text-center cursor-pointer hover:bg-white/[0.01] transition-all ${
-                                proof.screenshot ? 'border-brand-primary bg-brand-primary/5' : 'border-white/10'
-                              }`}
-                            >
-                              {proof.base64 ? (
-                                <div className="flex flex-col items-center gap-2">
-                                  <img src={proof.base64} alt="Preview" className="w-16 h-16 object-cover rounded-lg border border-brand-primary/30" />
-                                  <span className="text-[10px] text-brand-primary font-bold">Screenshot Attached</span>
-                                </div>
-                              ) : (
-                                <div className="space-y-1">
-                                  <p className="text-xs font-bold text-gray-400">Select Screenshot</p>
-                                  <p className="text-[9px] text-gray-600">Click to upload proof. Max 5MB.</p>
-                                </div>
-                            )}
-                            <input id="screenshot-upload" type="file" hidden accept="image/*" onChange={handleScreenshotChange} />
-                          </div>
-                        </div>
-
-                        <button 
-                          type="submit" 
-                          disabled={submitting}
-                          className="w-full py-3 bg-white/5 border border-white/10 rounded-xl font-bold text-xs text-gray-300 hover:bg-white/10 transition-all flex items-center justify-center gap-2"
-                        >
-                          {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4 text-green-400" />}
-                          Submit Verification Proof
-                        </button>
-                      </form>
-                    </div>
-                  )}
-                </div>
-              )}
+                    <p className="text-xs text-gray-400">
+                      This invoice is currently pending. Please proceed to the payment portal to securely complete this transaction using UPI, Cards, or Starlit Credits.
+                    </p>
+                    <button
+                      onClick={() => navigate(`/checkout/invoice/${invoice.id}`)}
+                      className="w-full py-4.5 bg-brand-primary hover:bg-brand-primary/95 text-white font-bold text-sm rounded-2xl shadow-[0_5px_25px_rgba(124,58,237,0.3)] transition-all flex items-center justify-center gap-2"
+                    >
+                      <CreditCard className="w-4 h-4" />
+                      Proceed to Payment
+                    </button>
+                  </div>
+                )}
             </div>
           </div>
         </div>
       </motion.div>
     </main>
-
-      {/* --- SECURE QR POPUP MODAL --- */}
-      <AnimatePresence>
-        {showQRModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowQRModal(false)}
-              className="absolute inset-0 bg-black/80 backdrop-blur-md"
-            />
-            
-            <motion.div 
-              initial={{ scale: 0.95, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 20 }}
-              className="relative w-full max-w-md bg-[#070707] border border-white/10 rounded-[2.5rem] overflow-hidden shadow-[0_0_80px_rgba(124,58,237,0.25)] z-10"
-            >
-              {/* Header Banner */}
-              <div className="relative h-40 overflow-hidden border-b border-white/10">
-                <img src="/banner.png" alt="" className="w-full h-full object-cover opacity-35 scale-105" />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#070707] via-[#070707]/70 to-transparent" />
-                
-                <button 
-                  onClick={() => setShowQRModal(false)}
-                  className="absolute top-6 right-6 p-2 rounded-full bg-black/40 border border-white/10 text-gray-400 hover:text-white transition-all hover:scale-105"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-                
-                <div className="absolute inset-0 flex flex-col items-center justify-end pb-4">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Sparkles className="w-4 h-4 text-brand-primary animate-pulse" />
-                    <span className="text-[10px] font-bold tracking-[0.3em] uppercase text-brand-primary">Secure Payout Portal</span>
-                  </div>
-                  <h4 className="font-bold text-2xl tracking-tight">Scan & Transfer</h4>
-                </div>
-              </div>
-
-              {/* QR and Amount Details */}
-              <div className="p-8 text-center space-y-6">
-                {/* QR Code Container */}
-                <div className="relative inline-block group">
-                  <div className="absolute -inset-1 bg-gradient-to-tr from-brand-primary via-brand-secondary to-brand-accent rounded-[2rem] blur opacity-30 group-hover:opacity-55 transition duration-1000 animate-tilt"></div>
-                  <div className="relative bg-white p-6 rounded-[2rem] shadow-2xl border border-gray-100">
-                    {qrData ? (
-                      <img src={`data:image/png;base64,${qrData.qr_base64}`} alt="Secure UPI QR" className="w-52 h-52 mx-auto" />
-                    ) : (
-                      <div className="w-52 h-52 mx-auto flex items-center justify-center bg-gray-100 rounded-xl">
-                        <Loader2 className="w-8 h-8 animate-spin text-brand-primary" />
-                      </div>
-                    )}
-                    
-                    {/* Brand overlay on QR */}
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 bg-white rounded-2xl shadow-xl flex items-center justify-center border border-gray-100">
-                      <Sparkles className="w-5 h-5 text-brand-primary animate-pulse" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Net Payable Amount */}
-                <div className="max-w-xs mx-auto relative group">
-                  <div className="absolute -inset-0.5 bg-gradient-to-r from-brand-primary to-brand-secondary rounded-2xl blur opacity-20" />
-                  <div className="relative bg-white/[0.02] border border-white/15 rounded-2xl p-4 backdrop-blur-xl">
-                    <p className="text-[9px] text-brand-primary/80 uppercase font-bold tracking-[0.2em] mb-1">Net Payable Amount</p>
-                    <p className="text-2xl font-display font-bold text-white tracking-tight">
-                      ₹{grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Supported Apps */}
-                <div className="flex gap-4 items-center justify-center opacity-40">
-                  <span className="text-[8px] font-bold tracking-[0.2em] uppercase">PhonePe</span>
-                  <div className="w-1 h-1 rounded-full bg-brand-primary" />
-                  <span className="text-[8px] font-bold tracking-[0.2em] uppercase">Google Pay</span>
-                  <div className="w-1 h-1 rounded-full bg-brand-primary" />
-                  <span className="text-[8px] font-bold tracking-[0.2em] uppercase">Paytm</span>
-                </div>
-
-                <p className="text-[10px] text-gray-500 max-w-sm mx-auto leading-relaxed">
-                  Scan this QR code with any UPI app to complete your transfer. Once transfer is successful, click the button below to submit receipt details.
-                </p>
-
-                {/* Confirm Action */}
-                <button
-                  type="button"
-                  onClick={() => setShowQRModal(false)}
-                  className="w-full py-4 bg-brand-primary hover:bg-brand-primary/95 text-white rounded-2xl font-bold text-sm shadow-[0_5px_25px_rgba(124,58,237,0.35)] transition-all flex items-center justify-center gap-2"
-                >
-                  I've Completed the Payment
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }

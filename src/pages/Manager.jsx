@@ -16,7 +16,7 @@ import {
   getPortfolio, createPortfolio, deletePortfolio,
   getSiteSettings, updateSiteSettings, deleteOrder,
   getAnalyticsLogs, getInvoices, adminUpdateInvoiceStatus,
-  adminNotifyUserInvoice, adminAddUserCredits
+  adminNotifyUserInvoice, adminAddUserCredits, seedCatalog
 } from '../services/api';
 import OrderChat from '../components/OrderChat';
 
@@ -55,6 +55,7 @@ export default function Manager() {
   const [selectedUser, setSelectedUser] = useState(null);
   const [showProductModal, setShowProductModal] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [pulse, setPulse] = useState([]);
 
@@ -124,6 +125,19 @@ export default function Manager() {
       fetchData();
     } catch (err) {
       toast.error(err.message);
+    }
+  };
+
+  const handleSyncCatalog = async () => {
+    setSyncing(true);
+    try {
+      await seedCatalog();
+      toast.success('Discord Catalog successfully synchronized!');
+      fetchData();
+    } catch (err) {
+      toast.error(err.message || 'Failed to sync catalog');
+    } finally {
+      setSyncing(false);
     }
   };
 
@@ -632,7 +646,19 @@ export default function Manager() {
 
         {activeTab === 'pricing' && (
           <motion.div key="pricing" initial={{opacity:0, y:10}} animate={{opacity:1, y:0}} exit={{opacity:0, y:-10}} className="space-y-6">
-            <div className="flex justify-end">
+            <div className="flex justify-end gap-3">
+              <button 
+                onClick={handleSyncCatalog}
+                disabled={syncing}
+                className="px-6 py-2 bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500 hover:text-white border border-indigo-500/20 rounded-xl transition-all font-bold text-sm flex items-center gap-2"
+              >
+                {syncing ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Activity className="w-4 h-4" />
+                )}
+                Sync Discord Catalog
+              </button>
               <button 
                 onClick={() => setShowProductModal(true)}
                 className="btn-primary py-2 px-6 flex items-center gap-2 text-sm"
@@ -694,8 +720,8 @@ export default function Manager() {
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-amber-500">₹</span>
                         <input 
                           type="number"
-                          defaultValue={item.min_price || 0}
-                          onBlur={(e) => handlePriceUpdate(item.id, { ...item, min_price: parseFloat(e.target.value) || 0 })}
+                          defaultValue={item.min_price !== undefined && item.min_price !== null && item.min_price !== 0 ? item.min_price : item.price}
+                          onBlur={(e) => handlePriceUpdate(item.id, { ...item, min_price: parseFloat(e.target.value) || item.price || 0 })}
                           className="w-full bg-amber-500/5 border border-amber-500/20 rounded-lg pl-8 pr-4 py-2 text-sm text-amber-200 focus:outline-none focus:border-amber-400 transition-all"
                         />
                       </div>

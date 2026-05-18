@@ -223,9 +223,30 @@ export default function InvoicePreview({ invoice, onClose }) {
 
             <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 mb-8 text-[12px] text-gray-700 space-y-1">
               <h4 className="font-bold text-[#1e1b4b] mb-2">Payment Details</h4>
-              <p>Method: UPI / Bank Transfer</p>
-              <p>UPI ID: {org.upiId}</p>
-              <p>UPI Number: {org.upiNumber}</p>
+              {invoice.paymentStatus === 'paid' ? (
+                <>
+                  <p className="text-green-600 font-bold">Status: PAID</p>
+                  {invoice.payment_method === 'credits' ? (
+                    <p className="text-indigo-600 font-semibold">Method: Fully Paid via Starlit Credits (₹{Number(invoice.credits_applied || invoice.grandTotal).toLocaleString()} applied)</p>
+                  ) : (
+                    <p>Method: {invoice.payment_method || 'UPI / Bank Transfer'}</p>
+                  )}
+                  {invoice.transaction_id && <p>Transaction ID: <span className="font-mono font-bold text-indigo-700">{invoice.transaction_id}</span></p>}
+                </>
+              ) : invoice.paymentStatus === 'payment_pending' ? (
+                <>
+                  <p className="text-amber-600 font-bold">Status: Verification Pending</p>
+                  <p>Method: {invoice.payment_method || 'UPI / Bank Transfer'}</p>
+                  {invoice.transaction_id && <p>Transaction ID: <span className="font-mono font-bold text-amber-700">{invoice.transaction_id}</span></p>}
+                </>
+              ) : (
+                <>
+                  <p className="text-red-600 font-bold">Status: UNPAID</p>
+                  <p>Method: UPI / Bank Transfer</p>
+                  <p>UPI ID: {org.upiId}</p>
+                  <p>UPI Number: {org.upiNumber}</p>
+                </>
+              )}
             </div>
 
             <div className="text-[10px] text-gray-500 mb-12">

@@ -8,7 +8,7 @@ import {
   Sparkles, X, IndianRupee
 } from 'lucide-react';
 import Navbar from '../components/Navbar';
-import { validateCoupon, getPublicPrices, getOrder, submitPaymentProof, createOrder, generateQR } from '../services/api';
+import { validateCoupon, getPublicPrices, getOrder, submitPaymentProof, createOrder, generateQR, getUserInvoicesByAdmin } from '../services/api';
 import { toast } from 'react-hot-toast';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
@@ -19,7 +19,7 @@ export default function Checkout() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { convertPrice } = useTheme();
-  const { user } = useAuth();
+  const { user, refreshMe } = useAuth();
   const [data, setData] = useState(null);
   const [type, setType] = useState('product'); // 'product' or 'order'
   const [loading, setLoading] = useState(true);
@@ -43,6 +43,24 @@ export default function Checkout() {
 
   const load = async () => {
     try {
+      if (window.location.pathname.includes('/checkout/invoice/')) {
+        if (!user) return; // Need user to fetch invoices
+        const res = await getUserInvoicesByAdmin(user.id);
+        const inv = res.find(i => i.id === id || i.invoiceNumber === id);
+        if (inv) {
+          setData({
+            ...inv,
+            name: `Invoice #${inv.invoiceNumber || inv.id}`,
+            price: Number(inv.subtotal || 0), // Will be overridden by final calculation
+            description: 'Custom Service Invoice',
+            isInvoice: true
+          });
+          setType('invoice');
+          setLoading(false);
+          return;
+        }
+      }
+
       // Try to find if it's an order first (custom quote)
       try {
         const order = await getOrder(id);
@@ -77,13 +95,17 @@ export default function Checkout() {
 
   const { getQuantity } = useCart();
   const quantity = type === 'product' ? getQuantity(id) : (data?.quantity || 1);
-  const subtotal = Number(data?.price || 0) * quantity;
-  const discount = Number(coupon 
-    ? (coupon.discount_type === 'percentage' ? (subtotal * coupon.discount_value / 100) : coupon.discount_value)
-    : 0);
-  const totalBeforeTax = Math.max(0, subtotal - discount);
-  const taxAmount = totalBeforeTax * 0.18;
-  const finalTotal = totalBeforeTax + taxAmount;
+  
+  const isInvoice = type === 'invoice';
+  const subtotal = isInvoice ? Number(data?.subtotal || 0) : (Number(data?.price || 0) * quantity);
+  const discount = isInvoice 
+    ? Number(data?.discountAmount || 0)
+    : Number(coupon 
+        ? (coupon.discount_type === 'percentage' ? (subtotal * coupon.discount_value / 100) : coupon.discount_value)
+        : 0);
+  const totalBeforeTax = isInvoice ? (subtotal - discount) : Math.max(0, subtotal - discount);
+  const taxAmount = isInvoice ? Number(data?.taxTotal || 0) : (totalBeforeTax * 0.18);
+  const finalTotal = isInvoice ? Number(data?.grandTotal || 0) : (totalBeforeTax + taxAmount);
 
   let amountToPay = finalTotal;
   if (paymentPlan === 'advance') amountToPay = finalTotal / 2;
@@ -161,7 +183,7 @@ export default function Checkout() {
 
     setSubmitting(true);
     try {
-      let orderId = type === 'order' ? id : null;
+      let orderId = type === 'invoice' ? (data.orderId || id) : (type === 'order' ? id : null);
       
       if (type === 'product') {
         const orderData = await createOrder({
@@ -194,6 +216,7 @@ export default function Checkout() {
         credits_applied: creditsToApply
       });
 
+      await refreshMe();
       if (isFullyPaidWithCredits) {
         toast.success('Successfully purchased using Starlit Credits!');
       } else {
@@ -647,7 +670,7 @@ export default function Checkout() {
               </div>
 
               {/* Coupon Section */}
-              {!coupon && (
+              {!coupon && type !== 'invoice' && (
                 <div className="space-y-4 mb-10 relative">
                   <div className="flex items-center gap-2 mb-2">
                     <Tag className="w-3 h-3 text-brand-primary" />

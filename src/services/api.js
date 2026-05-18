@@ -99,3 +99,4 @@ export const adminUpdateInvoiceStatus = (id, status) => request(`/invoices/${id}
 export const adminNotifyUserInvoice = (id) => request(`/invoices/${id}/notify`, { method: 'POST' });
 export const adminEditInvoice = (id, data) => request(`/invoices/${id}`, { method: 'PUT', body: JSON.stringify(data) });
 export const adminAddUserCredits = (userId, amount) => request(`/admin/users/${userId}/credits`, { method: 'POST', body: JSON.stringify({ amount }) });
+export const seedCatalog = () => request('/manager/seed-catalog', { method: 'POST' });
