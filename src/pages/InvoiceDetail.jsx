@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import { useAuth } from '../context/AuthContext';
-import { getUserInvoicesByAdmin, submitPaymentProof, request } from '../services/api';
+import { getUserInvoicesByAdmin, submitPaymentProof, request, generateQR } from '../services/api';
 import { toast } from 'react-hot-toast';
 import { useTheme } from '../context/ThemeContext';
 import ORG from '../constants/orgData';
@@ -48,13 +48,35 @@ export default function InvoiceDetail() {
 
   const loadSecureQR = async () => {
     if (!invoice) return;
+    
+    // Skip loading QR code if the invoice is already paid
+    if (invoice.paymentStatus === 'paid') {
+      setQrData(null);
+      return;
+    }
+
     try {
-      // Use the order secure QR endpoint if linked to an order, otherwise standard invoice QR
-      const reqId = invoice.orderId || invoice.id;
-      const res = await request(`/orders/${reqId}/qr`);
+      // Try the secure order-linked QR endpoint if a numeric order ID exists
+      const isNumericOrder = invoice.orderId && /^\d+$/.test(String(invoice.orderId));
+      if (isNumericOrder) {
+        try {
+          const res = await request(`/orders/${invoice.orderId}/qr`);
+          setQrData(res);
+          return;
+        } catch (orderQrErr) {
+          console.warn('Failed to load secure order QR, falling back to generic QR:', orderQrErr);
+        }
+      }
+
+      // Fallback: Generate secure generic QR code using total amount
+      const totalAmount = Number(invoice.grandTotal || 0);
+      const res = await generateQR({
+        amount: totalAmount,
+        note: `SSW Invoice ${invoice.id || invoice.invoiceNumber}`
+      });
       setQrData(res);
     } catch (err) {
-      // Fallback fallback if order QR is not available
+      console.error('Failed to load secure QR code:', err);
       toast.error('Failed to load secure QR code');
     }
   };

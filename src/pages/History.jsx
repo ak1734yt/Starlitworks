@@ -150,6 +150,16 @@ export default function History() {
   const activeServicesCount = orders.filter(o => o.status === 'in_progress' || o.status === 'completed').length;
   const openTicketsCount = 0; // standard default
 
+  const getUserCredits = () => {
+    if (!user) return 0;
+    try {
+      const details = typeof user.details === 'string' ? JSON.parse(user.details) : user.details;
+      return Number(details?.credits || 0);
+    } catch (e) {
+      return 0;
+    }
+  };
+
   // Services filtering & pagination
   const filteredOrders = orders.filter(o => {
     const q = search.toLowerCase();
@@ -326,7 +336,7 @@ export default function History() {
                     {/* Balance */}
                     <div className="mt-6 p-4 rounded-2xl bg-brand-primary/5 border border-brand-primary/10 relative overflow-hidden">
                       <p className="text-[9px] text-gray-500 uppercase font-black tracking-widest mb-1">Balance (INR)</p>
-                      <p className="text-2xl font-mono font-black text-white">₹0.00</p>
+                      <p className="text-2xl font-mono font-black text-white">₹{getUserCredits().toLocaleString()}</p>
                     </div>
                   </div>
 
