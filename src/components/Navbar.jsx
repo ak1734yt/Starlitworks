@@ -105,8 +105,8 @@ const Navbar = () => {
                 onClick={() => setUserMenuOpen(v => !v)}
                 className="flex items-center gap-2 glass px-3 py-2 rounded-xl hover:border-brand-primary/40 transition-all"
               >
-                {user.avatar ? (
-                  <img src={user.avatar} alt={user.name} className="w-7 h-7 rounded-full object-cover" />
+                {user.avatar_url ? (
+                  <img src={user.avatar_url} alt={user.name} className="w-7 h-7 rounded-full object-cover" />
                 ) : (
                   <div className="w-7 h-7 rounded-full bg-gradient-to-br from-brand-primary to-brand-secondary flex items-center justify-center text-xs font-bold">
                     {user.name?.[0]?.toUpperCase()}
@@ -210,8 +210,8 @@ const Navbar = () => {
             {user ? (
               <div className="mb-8 p-4 glass rounded-2xl">
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-primary to-brand-secondary flex items-center justify-center font-bold">
-                    {user.avatar ? <img src={user.avatar} className="w-full h-full object-cover rounded-xl" /> : user.name[0]}
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-primary to-brand-secondary flex items-center justify-center font-bold overflow-hidden">
+                    {user.avatar_url ? <img src={user.avatar_url} className="w-full h-full object-cover rounded-xl" /> : user.name[0]}
                   </div>
                   <div>
                     <p className="text-sm font-bold text-white truncate">{user.name}</p>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LayoutDashboard, IndianRupee, FileText, Users, ShoppingBag, Loader2, Save, X, Edit, Plus, Trash2, Search, Filter, Star, CreditCard, MessageSquare, Check, ExternalLink, Download, Globe, MapPin, Activity, Zap, Tag, Bell, DollarSign } from 'lucide-react';
+import { LayoutDashboard, IndianRupee, FileText, Users, ShoppingBag, Loader2, Save, X, Edit, Plus, Trash2, Search, Filter, Star, CreditCard, MessageSquare, Check, ExternalLink, Download, Globe, MapPin, Activity, Zap, Tag, Bell, DollarSign, History, TrendingUp } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import Navbar from '../components/Navbar';
 import SystemHealth from '../components/SystemHealth';
@@ -17,14 +17,15 @@ import {
 import OrderChat from '../components/OrderChat';
 
 const TABS = [
-  { id: 'orders',   label: 'Service Requests', icon: ShoppingBag },
-  { id: 'chats',    label: 'Order Chats',      icon: MessageSquare },
-  { id: 'payments', label: 'Payments',         icon: CreditCard },
-  { id: 'invoices', label: 'Invoices',         icon: FileText },
-  { id: 'feedbacks',label: 'Feedbacks',        icon: Star },
-  { id: 'clients',  label: 'Clients',          icon: Users },
-  { id: 'coupons',  label: 'Coupons',          icon: Tag },
-  { id: 'pulse',    label: 'User Pulse',       icon: LayoutDashboard },
+  { id: 'orders',       label: 'Service Requests', icon: ShoppingBag },
+  { id: 'chats',        label: 'Order Chats',      icon: MessageSquare },
+  { id: 'payments',     label: 'Payments',         icon: CreditCard },
+  { id: 'transactions', label: 'Transactions',     icon: History },
+  { id: 'invoices',     label: 'Invoices',         icon: FileText },
+  { id: 'feedbacks',    label: 'Feedbacks',        icon: Star },
+  { id: 'clients',      label: 'Clients',          icon: Users },
+  { id: 'coupons',      label: 'Coupons',          icon: Tag },
+  { id: 'pulse',        label: 'User Pulse',       icon: LayoutDashboard },
 ];
 
 const getScreenshotUrl = (url) => {
@@ -552,7 +553,87 @@ export default function Admin() {
                 </div>
               </motion.div>
             )}
+            {/* --- TRANSACTIONS TAB --- */}
+            {activeTab === 'transactions' && (() => {
+              const allTxns = [...data.orders].sort((a, b) => (b.updated_at || b.created_at) - (a.updated_at || a.created_at));
+              const paid = allTxns.filter(o => o.payment_status === 'completed');
+              const totalRevenue = paid.reduce((s, o) => s + parseFloat(o.total_amount || o.quoted_price || 0), 0);
+              const pending = allTxns.filter(o => o.status === 'payment_pending').length;
+              return (
+                <motion.div key="transactions" initial={{opacity:0,y:10}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-10}} className="space-y-6">
+                  {/* Summary Cards */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {[
+                      { label: 'Total Revenue', value: `₹${totalRevenue.toLocaleString()}`, color: 'text-green-400', bg: 'bg-green-500/10' },
+                      { label: 'Confirmed Payments', value: paid.length, color: 'text-brand-primary', bg: 'bg-brand-primary/10' },
+                      { label: 'Pending Verification', value: pending, color: 'text-yellow-400', bg: 'bg-yellow-500/10' },
+                      { label: 'Total Orders', value: allTxns.length, color: 'text-gray-300', bg: 'bg-white/5' },
+                    ].map(card => (
+                      <div key={card.label} className={`glass-card p-5 rounded-2xl ${card.bg} border border-white/5`}>
+                        <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">{card.label}</p>
+                        <p className={`text-2xl font-black mt-1 ${card.color}`}>{card.value}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Full Ledger Table */}
+                  <div className="bg-brand-card border border-brand-border rounded-2xl overflow-hidden">
+                    <div className="px-6 py-4 border-b border-white/5 flex items-center gap-3">
+                      <TrendingUp className="w-4 h-4 text-brand-primary" />
+                      <h3 className="font-bold text-sm">Full Transaction Ledger</h3>
+                      <span className="ml-auto text-[10px] text-gray-500 bg-white/5 px-2 py-1 rounded-lg">{allTxns.length} records</span>
+                    </div>
+                    <div className="overflow-x-auto scrollbar-thin">
+                      <table className="w-full text-left text-sm min-w-[900px]">
+                        <thead className="bg-white/5 border-b border-white/5">
+                          <tr>
+                            <th className="px-6 py-3 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Order #</th>
+                            <th className="px-6 py-3 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Client</th>
+                            <th className="px-6 py-3 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Service</th>
+                            <th className="px-6 py-3 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Amount</th>
+                            <th className="px-6 py-3 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Method</th>
+                            <th className="px-6 py-3 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Transaction ID</th>
+                            <th className="px-6 py-3 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Order Status</th>
+                            <th className="px-6 py-3 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Payment</th>
+                            <th className="px-6 py-3 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Date</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/5">
+                          {allTxns.length === 0 ? (
+                            <tr><td colSpan="9" className="px-6 py-12 text-center text-gray-500">No transaction records found.</td></tr>
+                          ) : allTxns.map(o => {
+                            const amount = parseFloat(o.quoted_price || o.total_amount || 0);
+                            const payStatus = o.payment_status || 'none';
+                            const orderStatus = o.status || 'pending';
+                            const date = o.updated_at || o.created_at;
+                            const dateStr = date ? new Date(date * 1000).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }) : '—';
+                            const payColor = payStatus === 'completed' ? 'bg-green-500/10 text-green-400' : payStatus === 'pending' ? 'bg-yellow-500/10 text-yellow-400' : payStatus === 'rejected' ? 'bg-red-500/10 text-red-400' : 'bg-white/5 text-gray-500';
+                            const statusColor = orderStatus === 'completed' ? 'text-green-400' : orderStatus === 'payment_pending' ? 'text-yellow-400' : orderStatus === 'rejected' ? 'text-red-400' : 'text-gray-400';
+                            return (
+                              <tr key={o.id} className="hover:bg-white/[0.03] transition-colors">
+                                <td className="px-6 py-3 font-mono text-xs text-brand-primary">#{o.id}</td>
+                                <td className="px-6 py-3 font-medium">{o.client_name || '—'}</td>
+                                <td className="px-6 py-3 text-gray-400 text-xs max-w-[160px] truncate">{o.service_name}</td>
+                                <td className="px-6 py-3 font-bold text-green-400">₹{amount.toLocaleString()}</td>
+                                <td className="px-6 py-3 text-xs text-gray-400 capitalize">{o.payment_method || '—'}</td>
+                                <td className="px-6 py-3 font-mono text-xs text-gray-500 max-w-[140px] truncate">{o.transaction_id || '—'}</td>
+                                <td className={`px-6 py-3 text-xs font-bold uppercase ${statusColor}`}>{orderStatus.replace('_', ' ')}</td>
+                                <td className="px-6 py-3">
+                                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${payColor}`}>{payStatus === 'none' ? 'Not Paid' : payStatus}</span>
+                                </td>
+                                <td className="px-6 py-3 text-xs text-gray-500">{dateStr}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })()}
             {/* --- FEEDBACKS TAB --- */}
+
             {activeTab === 'feedbacks' && (
               <motion.div key="feedbacks" initial={{opacity:0, y:10}} animate={{opacity:1, y:0}} exit={{opacity:0, y:-10}}>
                 <div className="bg-brand-card border border-brand-border rounded-2xl overflow-hidden">
