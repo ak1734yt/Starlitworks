@@ -11,6 +11,7 @@ export default function Shop() {
   const navigate = useNavigate();
   const { user, openAuthModal } = useAuth();
   const { cart, toggleItem, isSelected, getQuantity, setQuantity } = useCart();
+  const { convertPrice } = useTheme();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -51,7 +52,7 @@ export default function Shop() {
     );
   }
 
-  const { convertPrice } = useTheme();
+
 
   const PriceDisplay = ({ product, isSmall = false }) => {
     if (product.is_manual_price) {
