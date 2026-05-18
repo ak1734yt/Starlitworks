@@ -260,10 +260,8 @@ def verify_payment(order_id: int, body: VerifyPaymentBody, user=Depends(require_
             status = "accepted" 
             pay_status = "completed"
     else:
-        status = "quoted" # Back to quoted so they can click "Proceed to Payment" again
-        pay_status = "rejected"
-        # We might want to clear transaction_id to allow clean retry
-        db.execute("UPDATE orders SET transaction_id='', payment_screenshot='', payment_proof_submitted_at=0 WHERE id=?", (order_id,))
+        status = "payment_pending" 
+        pay_status = "pending"
 
     db.execute("UPDATE orders SET status=?, payment_status=?, updated_at=? WHERE id=?", (status, pay_status, int(time.time()), order_id))
     db.commit(); db.close()
