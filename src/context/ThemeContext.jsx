@@ -112,6 +112,14 @@ export function ThemeProvider({ children }) {
    * Payments always remain in INR; this is for display only.
    */
   const convertPrice = (inrAmount) => {
+    const pathname = window.location.pathname.toLowerCase();
+    const isConvertiblePage = pathname.includes('/shop') || pathname.includes('/history') || pathname.includes('/invoice/');
+    
+    if (!isConvertiblePage) {
+      // Force INR formatting for all other pages
+      return `₹${Number(inrAmount || 0).toLocaleString('en-IN')}`;
+    }
+
     const curr = CURRENCIES[currency] || CURRENCIES.INR;
     const converted = inrAmount * curr.rate;
     return `${curr.symbol}${currency === 'INR' ? converted.toLocaleString('en-IN') : converted.toFixed(2)}`;

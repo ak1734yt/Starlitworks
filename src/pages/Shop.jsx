@@ -307,7 +307,7 @@ export default function Shop() {
                         </p>
                         <div className="flex items-center gap-3">
                           <button
-                            onClick={(e) => { e.stopPropagation(); setQuantity(key, Math.max(1, qty - (isMemberType ? 1 : 100))); }}
+                            onClick={(e) => { e.stopPropagation(); setQuantity(key, Math.max(1, Number(qty) - (isMemberType ? 1 : 100))); }}
                             className="w-9 h-9 rounded-xl bg-white/5 hover:bg-pink-500/20 border border-white/10 flex items-center justify-center text-white font-bold text-lg transition-all"
                           >−</button>
                           <input
@@ -319,7 +319,7 @@ export default function Shop() {
                             className="flex-1 text-center bg-white/5 border border-white/10 rounded-xl py-2 text-sm font-bold text-white focus:outline-none focus:border-pink-400 transition-all"
                           />
                           <button
-                            onClick={(e) => { e.stopPropagation(); setQuantity(key, qty + (isMemberType ? 1 : 100)); }}
+                            onClick={(e) => { e.stopPropagation(); setQuantity(key, Number(qty) + (isMemberType ? 1 : 100)); }}
                             className="w-9 h-9 rounded-xl bg-white/5 hover:bg-pink-500/20 border border-white/10 flex items-center justify-center text-white font-bold text-lg transition-all"
                           >+</button>
                         </div>

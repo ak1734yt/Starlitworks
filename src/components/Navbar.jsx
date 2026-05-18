@@ -97,19 +97,26 @@ const Navbar = () => {
         {/* Right side */}
         <div className="flex items-center gap-2">
           {/* Currency Selector */}
-          <div className="hidden lg:flex items-center glass rounded-xl overflow-hidden">
-            {Object.keys(CURRENCIES).map(cur => (
-              <button
-                key={cur}
-                onClick={() => setCurrency(cur)}
-                className={`px-2.5 py-1.5 text-[10px] font-black transition-all ${
-                  currency === cur ? 'bg-brand-primary text-white' : 'text-gray-500 hover:text-white'
-                }`}
-              >
-                {cur}
-              </button>
-            ))}
-          </div>
+          {(() => {
+            const pathname = location.pathname.toLowerCase();
+            const isConvertiblePage = pathname.includes('/shop') || pathname.includes('/history') || pathname.includes('/invoice/');
+            if (!isConvertiblePage) return null;
+            return (
+              <div className="hidden lg:flex items-center glass rounded-xl overflow-hidden">
+                {Object.keys(CURRENCIES).map(cur => (
+                  <button
+                    key={cur}
+                    onClick={() => setCurrency(cur)}
+                    className={`px-2.5 py-1.5 text-[10px] font-black transition-all ${
+                      currency === cur ? 'bg-brand-primary text-white' : 'text-gray-500 hover:text-white'
+                    }`}
+                  >
+                    {cur}
+                  </button>
+                ))}
+              </div>
+            );
+          })()}
 
           {/* Theme Switcher */}
           <div className="relative hidden lg:block" ref={themeRef}>
