@@ -1,8 +1,9 @@
-import { Sparkles, ShoppingBag, History, CreditCard, LogOut, Shield, Settings, Activity, Loader2, X } from "lucide-react";
+import { Sparkles, ShoppingBag, History, CreditCard, LogOut, Shield, Settings, Activity, Loader2, X, Palette, ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../context/AuthContext";
+import { useTheme, THEMES, CURRENCIES } from "../context/ThemeContext";
 
 import NotificationCenter from "./NotificationCenter";
 import { getUserInvoicesByAdmin, getInvoices } from "../services/api";
@@ -10,8 +11,18 @@ const Navbar = () => {
   const location = useLocation();
   const navigate  = useNavigate();
   const { user, logout, openAuthModal, loading } = useAuth();
+  const { theme, setTheme, currency, setCurrency } = useTheme();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [themeOpen, setThemeOpen] = useState(false);
+  const themeRef = useRef(null);
   const [hasInstallments, setHasInstallments] = useState(false);
+
+  // Close theme dropdown on outside click
+  useEffect(() => {
+    const handler = (e) => { if (themeRef.current && !themeRef.current.contains(e.target)) setThemeOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   const isHome = location.pathname === "/";
 
@@ -84,7 +95,59 @@ const Navbar = () => {
         </div>
 
         {/* Right side */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          {/* Currency Selector */}
+          <div className="hidden lg:flex items-center glass rounded-xl overflow-hidden">
+            {Object.keys(CURRENCIES).map(cur => (
+              <button
+                key={cur}
+                onClick={() => setCurrency(cur)}
+                className={`px-2.5 py-1.5 text-[10px] font-black transition-all ${
+                  currency === cur ? 'bg-brand-primary text-white' : 'text-gray-500 hover:text-white'
+                }`}
+              >
+                {cur}
+              </button>
+            ))}
+          </div>
+
+          {/* Theme Switcher */}
+          <div className="relative hidden lg:block" ref={themeRef}>
+            <button
+              onClick={() => setThemeOpen(v => !v)}
+              className="p-2 glass rounded-xl text-gray-400 hover:text-brand-primary transition-all"
+              title="Switch Theme"
+            >
+              <Palette className="w-4 h-4" />
+            </button>
+            <AnimatePresence>
+              {themeOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: 6, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 6, scale: 0.95 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute right-0 top-full mt-2 bg-brand-card border border-brand-border rounded-2xl shadow-2xl p-3 z-50 w-44"
+                >
+                  <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-2 px-1">Starlit Palette</p>
+                  {Object.entries(THEMES).map(([key, t]) => (
+                    <button
+                      key={key}
+                      onClick={() => { setTheme(key); setThemeOpen(false); }}
+                      className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs transition-all ${
+                        theme === key ? 'bg-brand-primary/20 text-white' : 'text-gray-400 hover:text-white hover:bg-white/5'
+                      }`}
+                    >
+                      <span className="text-base">{t.icon}</span>
+                      <span className="font-bold">{t.label}</span>
+                      {theme === key && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-brand-primary" />}
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
           {user && <NotificationCenter />}
           
           {/* Mobile Menu Toggle */}
