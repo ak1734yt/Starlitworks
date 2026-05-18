@@ -10,11 +10,13 @@ import {
 import Navbar from '../components/Navbar';
 import { validateCoupon, getPublicPrices, getOrder, submitPaymentProof, createOrder, generateQR } from '../services/api';
 import { toast } from 'react-hot-toast';
+import { useTheme } from '../context/ThemeContext';
 import ORG from '../constants/orgData';
 
 export default function Checkout() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { convertPrice } = useTheme();
   const [data, setData] = useState(null);
   const [type, setType] = useState('product'); // 'product' or 'order'
   const [loading, setLoading] = useState(true);
@@ -248,7 +250,7 @@ export default function Checkout() {
                 </div>
                 <div className="text-right">
                   <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest mb-1">Estimated Value</p>
-                  <p className="text-3xl font-display font-bold">₹{(totalBeforeTax || 0).toLocaleString()}</p>
+                  <p className="text-3xl font-display font-bold">{convertPrice(totalBeforeTax || 0)}</p>
                 </div>
               </div>
             </div>
@@ -461,7 +463,7 @@ export default function Checkout() {
                 <div className="flex justify-between items-center group">
                   <span className="text-gray-500 text-sm group-hover:text-gray-400 transition-colors">Infrastructure Base</span>
                   <div className="flex-1 border-b border-white/5 border-dotted mx-4" />
-                  <span className="font-bold font-mono">₹{subtotal.toLocaleString()}</span>
+                  <span className="font-bold font-mono">{convertPrice(subtotal)}</span>
                 </div>
                 
                 {coupon && (
@@ -471,26 +473,26 @@ export default function Checkout() {
                       Privilege Code ({coupon.code})
                     </span>
                     <div className="flex-1 border-b border-brand-primary/10 border-dotted mx-4" />
-                    <span className="font-bold font-mono text-brand-primary">-₹{discount.toLocaleString()}</span>
+                    <span className="font-bold font-mono text-brand-primary">-{convertPrice(discount)}</span>
                   </div>
                 )}
 
                 <div className="flex justify-between items-center group">
                   <span className="text-gray-500 text-sm group-hover:text-gray-400 transition-colors">Central GST (9%)</span>
                   <div className="flex-1 border-b border-white/5 border-dotted mx-4" />
-                  <span className="font-bold font-mono">₹{cgst.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                  <span className="font-bold font-mono">{convertPrice(cgst)}</span>
                 </div>
                 <div className="flex justify-between items-center group">
                   <span className="text-gray-500 text-sm group-hover:text-gray-400 transition-colors">State GST (9%)</span>
                   <div className="flex-1 border-b border-white/5 border-dotted mx-4" />
-                  <span className="font-bold font-mono">₹{sgst.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                  <span className="font-bold font-mono">{convertPrice(sgst)}</span>
                 </div>
                 
                 <div className="pt-8 border-t border-white/10 flex flex-col gap-2">
                   <div className="flex justify-between items-center">
                     <span className="font-bold text-gray-400">Total Valuation</span>
                     <span className="text-4xl font-display font-bold text-white tracking-tighter">
-                      ₹{finalTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                      {convertPrice(finalTotal)}
                     </span>
                   </div>
                   <p className="text-[10px] text-gray-600 text-right uppercase tracking-widest font-bold">Inclusive of all taxes</p>

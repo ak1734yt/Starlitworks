@@ -5,6 +5,7 @@ import { Check, ArrowRight, Sparkles, Bot, Server, Database, Loader2, ShoppingBa
 import Navbar from '../components/Navbar';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 
 export default function Shop() {
   const navigate = useNavigate();
@@ -50,13 +51,15 @@ export default function Shop() {
     );
   }
 
+  const { convertPrice } = useTheme();
+
   const PriceDisplay = ({ product, isSmall = false }) => {
     if (product.is_manual_price) {
       return <p className={`font-semibold text-brand-primary ${isSmall ? 'text-xs' : 'text-sm mb-6'}`}>Custom Quote</p>;
     }
     return (
       <div className={`flex items-baseline gap-1 ${isSmall ? '' : 'mb-6'}`}>
-        <span className={`font-bold text-white ${isSmall ? 'text-sm' : 'text-2xl font-display'}`}>₹{Number(product.price || 0).toLocaleString()}</span>
+        <span className={`font-bold text-white ${isSmall ? 'text-sm' : 'text-2xl font-display'}`}>{convertPrice(product.price)}</span>
         {product.unit_label && <span className="text-gray-500 text-xs">{product.unit_label}</span>}
       </div>
     );

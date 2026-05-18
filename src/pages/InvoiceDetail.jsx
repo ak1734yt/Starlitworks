@@ -9,12 +9,14 @@ import Navbar from '../components/Navbar';
 import { useAuth } from '../context/AuthContext';
 import { getUserInvoicesByAdmin, submitPaymentProof, request } from '../services/api';
 import { toast } from 'react-hot-toast';
+import { useTheme } from '../context/ThemeContext';
 import ORG from '../constants/orgData';
 
 export default function InvoiceDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { convertPrice } = useTheme();
   const [invoice, setInvoice] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -242,8 +244,8 @@ export default function InvoiceDetail() {
                         <tr key={idx} className="hover:bg-white/[0.01]">
                           <td className="py-4 font-medium text-white">{item.desc || item.description}</td>
                           <td className="py-4 text-center">{item.qty || 1}</td>
-                          <td className="py-4 text-right font-mono">₹{Number(item.rate || item.amount || 0).toLocaleString()}</td>
-                          <td className="py-4 text-right font-mono font-bold text-white">₹{Number(item.total || (item.qty * (item.rate || 0)) || item.amount || 0).toLocaleString()}</td>
+                          <td className="py-4 text-right font-mono">{convertPrice(Number(item.rate || item.amount || 0))}</td>
+                          <td className="py-4 text-right font-mono font-bold text-white">{convertPrice(Number(item.total || (item.qty * (item.rate || 0)) || item.amount || 0))}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -255,21 +257,21 @@ export default function InvoiceDetail() {
                   <div className="w-72 space-y-3 text-sm">
                     <div className="flex justify-between items-center text-gray-500">
                       <span>Subtotal</span>
-                      <span className="font-mono text-white">₹{subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                      <span className="font-mono text-white">{convertPrice(subtotal)}</span>
                     </div>
                     {discount > 0 && (
                       <div className="flex justify-between items-center text-brand-primary">
                         <span>Discount</span>
-                        <span className="font-mono">-₹{discount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                        <span className="font-mono">-{convertPrice(discount)}</span>
                       </div>
                     )}
                     <div className="flex justify-between items-center text-gray-500">
                       <span>Tax (18%)</span>
-                      <span className="font-mono text-white">₹{tax.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                      <span className="font-mono text-white">{convertPrice(tax)}</span>
                     </div>
                     <div className="pt-3 border-t border-white/10 flex justify-between items-center text-lg font-bold text-white">
                       <span>Total</span>
-                      <span className="font-mono text-2xl text-gradient">₹{grandTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                      <span className="font-mono text-2xl text-gradient">{convertPrice(grandTotal)}</span>
                     </div>
                   </div>
                 </div>
@@ -300,7 +302,7 @@ export default function InvoiceDetail() {
                 
                 <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest mb-1">Amount Due</p>
                 <h3 className="text-4xl font-display font-black text-white tracking-tight mb-8">
-                  ₹{grandTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                  {convertPrice(grandTotal)}
                 </h3>
 
                 {invoice.paymentStatus === 'paid' ? (

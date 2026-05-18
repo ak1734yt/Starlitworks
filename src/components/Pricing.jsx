@@ -4,6 +4,8 @@ import { Check, Star, Bot, Settings, Sparkles, ArrowRight, Loader2, Code2, Calen
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 
+import { useTheme } from "../context/ThemeContext";
+
 const CATEGORIES = [
   { id: 'server',  label: 'Server Setup',       icon: Settings,     color: 'from-violet-500 to-purple-600',  desc: 'Professional Discord server architecture' },
   { id: 'bot',     label: 'Custom Bots',         icon: Bot,          color: 'from-blue-500 to-cyan-500',      desc: 'Tailored automation solutions' },
@@ -16,6 +18,7 @@ const CATEGORIES = [
 
 const Pricing = () => {
   const { user, openAuthModal } = useAuth();
+  const { convertPrice } = useTheme();
   const navigate = useNavigate();
   const [allPlans, setAllPlans] = useState([]);
   const [activeCategory, setActiveCategory] = useState('server');
@@ -166,7 +169,7 @@ const Pricing = () => {
                         <span className="text-2xl font-extrabold font-display text-brand-primary">Custom Quote</span>
                       ) : (
                         <div className="flex items-baseline gap-1">
-                          <span className="text-3xl font-extrabold font-display">₹{plan.price.toLocaleString('en-IN')}</span>
+                          <span className="text-3xl font-extrabold font-display">{convertPrice(plan.price)}</span>
                           <span className="text-gray-500 text-xs">{plan.unit_label || '/setup'}</span>
                         </div>
                       )}
