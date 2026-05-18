@@ -27,6 +27,43 @@ export default function InvoiceDetail() {
   // Verification Proof State
   const [proof, setProof] = useState({ transaction_id: '', screenshot: null, base64: '' });
 
+  // Live parsed credits calculation
+  let availableCredits = 0;
+  try {
+    if (user?.details) {
+      const details = typeof user.details === 'string' ? JSON.parse(user.details) : user.details;
+      availableCredits = Number(details?.credits || 0);
+    }
+  } catch (e) {}
+
+  const handlePayWithCredits = async () => {
+    const grandTotal = Number(invoice?.grandTotal || 0);
+    if (availableCredits < grandTotal) {
+      toast.error('Insufficient credits balance');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const targetId = invoice.orderId || invoice.id;
+      const b64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+      await submitPaymentProof(targetId, {
+        transaction_id: 'CREDIT_PAYMENT',
+        base64Screenshot: b64,
+        payment_method: 'credits',
+        payment_plan: invoice.paymentType || 'full',
+        credits_applied: grandTotal
+      });
+
+      toast.success('Successfully paid using Starlit Credits!');
+      navigate('/history');
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const loadInvoice = async () => {
     if (!user) return;
     setLoading(true);
@@ -341,6 +378,27 @@ export default function InvoiceDetail() {
                     <div className="space-y-3">
                       <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest">Pay with</p>
                       
+                      {/* Method: Starlit Credits */}
+                      <button
+                        onClick={() => setPaymentMethod('credits')}
+                        className={`w-full p-4 rounded-xl border text-left transition-all flex items-center justify-between ${
+                          paymentMethod === 'credits' 
+                            ? 'border-brand-primary bg-brand-primary/5' 
+                            : 'border-white/5 bg-white/[0.01] hover:border-white/10'
+                        }`}
+                      >
+                        <div>
+                          <p className="font-bold text-xs flex items-center gap-1.5 text-white">
+                            <Sparkles className="w-3.5 h-3.5 text-brand-primary animate-pulse" />
+                            STARLIT CREDITS
+                          </p>
+                          <p className="text-[9px] text-gray-400 mt-0.5">
+                            Available Balance: <span className="text-brand-secondary font-mono font-bold">₹{availableCredits.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                          </p>
+                        </div>
+                        <ShieldCheck className={`w-4 h-4 ${paymentMethod === 'credits' ? 'text-brand-primary' : 'text-gray-600'}`} />
+                      </button>
+
                       {/* Method 1: UPI */}
                       <button
                         onClick={() => setPaymentMethod('manual_upi')}
@@ -393,54 +451,74 @@ export default function InvoiceDetail() {
                     </div>
 
                     {/* Pay button */}
-                    <button
-                      onClick={() => setShowQRModal(true)}
-                      className="w-full py-4.5 bg-brand-primary hover:bg-brand-primary/95 text-white font-bold text-sm rounded-2xl shadow-[0_5px_25px_rgba(124,58,237,0.3)] transition-all flex items-center justify-center gap-2"
-                    >
-                      <CreditCard className="w-4 h-4" />
-                      Pay Now
-                    </button>
+                    {paymentMethod === 'credits' ? (
+                      <button
+                        onClick={handlePayWithCredits}
+                        disabled={submitting || availableCredits < grandTotal}
+                        className={`w-full py-4.5 text-white font-bold text-sm rounded-2xl transition-all flex items-center justify-center gap-2 ${
+                          availableCredits < grandTotal
+                            ? 'bg-gray-800 text-gray-500 cursor-not-allowed border border-white/5'
+                            : 'bg-gradient-to-r from-brand-primary to-brand-secondary hover:brightness-110 shadow-[0_5px_25px_rgba(124,58,237,0.3)]'
+                        }`}
+                      >
+                        {submitting ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Sparkles className="w-4 h-4 animate-pulse" />
+                        )}
+                        {availableCredits < grandTotal ? 'Insufficient Credits' : 'Pay with Starlit Credits'}
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => setShowQRModal(true)}
+                        className="w-full py-4.5 bg-brand-primary hover:bg-brand-primary/95 text-white font-bold text-sm rounded-2xl shadow-[0_5px_25px_rgba(124,58,237,0.3)] transition-all flex items-center justify-center gap-2"
+                      >
+                        <CreditCard className="w-4 h-4" />
+                        Pay Now
+                      </button>
+                    )}
 
                     {/* Verification Proof form after scanning */}
-                    <div className="pt-6 border-t border-white/5 space-y-4">
-                      <div className="flex items-center gap-2">
-                        <Upload className="w-4 h-4 text-brand-secondary" />
-                        <h4 className="font-bold text-sm">Upload Payment Proof</h4>
-                      </div>
-                      
-                      <form onSubmit={handleSubmitProof} className="space-y-4">
-                        <div className="space-y-2">
-                          <label className="block text-[8px] text-gray-500 uppercase font-black tracking-widest">Transaction / UTR ID</label>
-                          <input 
-                            type="text" 
-                            placeholder="12-digit UPI Transaction ID"
-                            required
-                            maxLength={12}
-                            pattern="[A-Za-z0-9]{12}"
-                            value={proof.transaction_id}
-                            onChange={e => setProof({...proof, transaction_id: e.target.value.toUpperCase()})}
-                            className="w-full bg-white/[0.02] border border-white/10 rounded-xl px-4 py-3 text-xs focus:border-brand-primary outline-none transition-all font-mono"
-                          />
+                    {paymentMethod !== 'credits' && (
+                      <div className="pt-6 border-t border-white/5 space-y-4">
+                        <div className="flex items-center gap-2">
+                          <Upload className="w-4 h-4 text-brand-secondary" />
+                          <h4 className="font-bold text-sm">Upload Payment Proof</h4>
                         </div>
+                        
+                        <form onSubmit={handleSubmitProof} className="space-y-4">
+                          <div className="space-y-2">
+                            <label className="block text-[8px] text-gray-500 uppercase font-black tracking-widest">Transaction / UTR ID</label>
+                            <input 
+                              type="text" 
+                              placeholder="12-digit UPI Transaction ID"
+                              required
+                              maxLength={12}
+                              pattern="[A-Za-z0-9]{12}"
+                              value={proof.transaction_id}
+                              onChange={e => setProof({...proof, transaction_id: e.target.value.toUpperCase()})}
+                              className="w-full bg-white/[0.02] border border-white/10 rounded-xl px-4 py-3 text-xs focus:border-brand-primary outline-none transition-all font-mono"
+                            />
+                          </div>
 
-                        <div className="space-y-2">
-                          <label className="block text-[8px] text-gray-500 uppercase font-black tracking-widest">Payment Screenshot</label>
-                          <div 
-                            onClick={() => document.getElementById('screenshot-upload').click()}
-                            className={`border border-dashed rounded-xl p-6 text-center cursor-pointer hover:bg-white/[0.01] transition-all ${
-                              proof.screenshot ? 'border-brand-primary bg-brand-primary/5' : 'border-white/10'
-                            }`}
-                          >
-                            {proof.base64 ? (
-                              <div className="flex flex-col items-center gap-2">
-                                <img src={proof.base64} alt="Preview" className="w-16 h-16 object-cover rounded-lg border border-brand-primary/30" />
-                                <span className="text-[10px] text-brand-primary font-bold">Screenshot Attached</span>
-                              </div>
-                            ) : (
-                              <div className="space-y-1">
-                                <p className="text-xs font-bold text-gray-400">Select Screenshot</p>
-                                <p className="text-[9px] text-gray-600">Click to upload proof. Max 5MB.</p>
-                              </div>
+                          <div className="space-y-2">
+                            <label className="block text-[8px] text-gray-500 uppercase font-black tracking-widest">Payment Screenshot</label>
+                            <div 
+                              onClick={() => document.getElementById('screenshot-upload').click()}
+                              className={`border border-dashed rounded-xl p-6 text-center cursor-pointer hover:bg-white/[0.01] transition-all ${
+                                proof.screenshot ? 'border-brand-primary bg-brand-primary/5' : 'border-white/10'
+                              }`}
+                            >
+                              {proof.base64 ? (
+                                <div className="flex flex-col items-center gap-2">
+                                  <img src={proof.base64} alt="Preview" className="w-16 h-16 object-cover rounded-lg border border-brand-primary/30" />
+                                  <span className="text-[10px] text-brand-primary font-bold">Screenshot Attached</span>
+                                </div>
+                              ) : (
+                                <div className="space-y-1">
+                                  <p className="text-xs font-bold text-gray-400">Select Screenshot</p>
+                                  <p className="text-[9px] text-gray-600">Click to upload proof. Max 5MB.</p>
+                                </div>
                             )}
                             <input id="screenshot-upload" type="file" hidden accept="image/*" onChange={handleScreenshotChange} />
                           </div>
