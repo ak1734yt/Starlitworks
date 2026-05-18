@@ -36,19 +36,21 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 CREATE TABLE IF NOT EXISTS products (
-    id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    category        TEXT    NOT NULL,
-    product_key     TEXT    UNIQUE NOT NULL,
-    name            TEXT    NOT NULL,
-    price           REAL    DEFAULT 0,
-    tag             TEXT    DEFAULT '',
-    description     TEXT    DEFAULT '',
-    features        TEXT    DEFAULT '[]',
-    is_manual_price INTEGER DEFAULT 0,
-    is_recurring    INTEGER DEFAULT 0,
-    sort_order      INTEGER DEFAULT 0,
-    unit_label      TEXT    DEFAULT '',
-    updated_at      INTEGER DEFAULT (strftime('%s','now'))
+    id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+    category             TEXT    NOT NULL,
+    product_key          TEXT    UNIQUE NOT NULL,
+    name                 TEXT    NOT NULL,
+    price                REAL    DEFAULT 0,
+    min_price            REAL    DEFAULT 0,
+    tag                  TEXT    DEFAULT '',
+    description          TEXT    DEFAULT '',
+    features             TEXT    DEFAULT '[]',
+    is_manual_price      INTEGER DEFAULT 0,
+    show_price_to_admin  INTEGER DEFAULT 1,
+    is_recurring         INTEGER DEFAULT 0,
+    sort_order           INTEGER DEFAULT 0,
+    unit_label           TEXT    DEFAULT '',
+    updated_at           INTEGER DEFAULT (strftime('%s','now'))
 );
 
 CREATE TABLE IF NOT EXISTS orders (
@@ -80,7 +82,8 @@ CREATE TABLE IF NOT EXISTS orders (
     total_amount               REAL    DEFAULT 0,
     payment_plan               TEXT    DEFAULT 'full',
     vault_data                 TEXT    DEFAULT '{}',
-    credits_applied            REAL    DEFAULT 0
+    credits_applied            REAL    DEFAULT 0,
+    quantity                   INTEGER DEFAULT 1
 );
 
 CREATE TABLE IF NOT EXISTS activity_logs (
@@ -219,6 +222,21 @@ def init_db():
 
     try:
         conn.execute("ALTER TABLE orders ADD COLUMN credits_applied REAL DEFAULT 0")
+    except sqlite3.OperationalError:
+        pass # Column already exists
+
+    try:
+        conn.execute("ALTER TABLE orders ADD COLUMN quantity INTEGER DEFAULT 1")
+    except sqlite3.OperationalError:
+        pass # Column already exists
+
+    try:
+        conn.execute("ALTER TABLE products ADD COLUMN min_price REAL DEFAULT 0")
+    except sqlite3.OperationalError:
+        pass # Column already exists
+
+    try:
+        conn.execute("ALTER TABLE products ADD COLUMN show_price_to_admin INTEGER DEFAULT 1")
     except sqlite3.OperationalError:
         pass # Column already exists
 

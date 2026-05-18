@@ -12,6 +12,7 @@ import { validateCoupon, getPublicPrices, getOrder, submitPaymentProof, createOr
 import { toast } from 'react-hot-toast';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
+import { useCart } from '../context/CartContext';
 import ORG from '../constants/orgData';
 
 export default function Checkout() {
@@ -74,7 +75,9 @@ export default function Checkout() {
     }
   };
 
-  const subtotal = Number(data?.price || 0);
+  const { getQuantity } = useCart();
+  const quantity = type === 'product' ? getQuantity(id) : (data?.quantity || 1);
+  const subtotal = Number(data?.price || 0) * quantity;
   const discount = Number(coupon 
     ? (coupon.discount_type === 'percentage' ? (subtotal * coupon.discount_value / 100) : coupon.discount_value)
     : 0);
@@ -171,7 +174,8 @@ export default function Checkout() {
           sgst: sgst,
           tax_rate: 18,
           total_amount: finalTotal,
-          credits_applied: creditsToApply
+          credits_applied: creditsToApply,
+          quantity: quantity
         });
         orderId = orderData.order_id;
       }
@@ -273,7 +277,14 @@ export default function Checkout() {
                   </div>
                   <div>
                     <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand-primary/80 mb-2 block">{data?.category || 'Custom Solution'}</span>
-                    <h3 className="text-2xl font-bold mb-2 group-hover:text-brand-primary transition-colors">{data?.name || 'Project Service'}</h3>
+                    <h3 className="text-2xl font-bold mb-2 group-hover:text-brand-primary transition-colors">
+                      {data?.name || 'Project Service'}
+                      {quantity > 1 && (
+                        <span className="text-sm font-semibold text-brand-secondary ml-2 bg-brand-secondary/15 px-2 py-0.5 rounded-md">
+                          (Qty: {quantity})
+                        </span>
+                      )}
+                    </h3>
                     <p className="text-sm text-gray-500 max-w-md leading-relaxed">{data?.description || 'Premium service architecture and deployment.'}</p>
                     {type === 'order' && (
                       <div className="mt-4 inline-flex items-center gap-2 px-3 py-1 bg-brand-primary/10 rounded-lg border border-brand-primary/20">

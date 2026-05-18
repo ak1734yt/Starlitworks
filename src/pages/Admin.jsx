@@ -407,6 +407,7 @@ export default function Admin() {
                           <th className="px-6 py-4 font-medium text-gray-400">Date</th>
                           <th className="px-6 py-4 font-medium text-gray-400">Client</th>
                           <th className="px-6 py-4 font-medium text-gray-400">Service</th>
+                          <th className="px-6 py-4 font-medium text-gray-400">Qty</th>
                           <th className="px-6 py-4 font-medium text-gray-400">Status</th>
                           <th className="px-6 py-4 font-medium text-gray-400">Timeline</th>
                           <th className="px-6 py-4 text-right">Action</th>
@@ -414,7 +415,7 @@ export default function Admin() {
                       </thead>
                       <tbody className="divide-y divide-white/5">
                         {filteredOrders.length === 0 ? (
-                          <tr><td colSpan="6" className="px-6 py-8 text-center text-gray-500">No requests found.</td></tr>
+                          <tr><td colSpan="7" className="px-6 py-8 text-center text-gray-500">No requests found.</td></tr>
                         ) : filteredOrders.map(order => (
                           <tr key={order.id} className="hover:bg-white/5 transition-colors">
                             <td className="px-6 py-4 text-gray-400">{new Date(order.created_at * 1000).toLocaleDateString()}</td>
@@ -423,6 +424,7 @@ export default function Admin() {
                               <p className="text-xs text-gray-500">{order.client_email}</p>
                             </td>
                             <td className="px-6 py-4 font-medium">{order.service_name}</td>
+                            <td className="px-6 py-4 font-mono font-bold text-brand-secondary">{order.quantity || 1}</td>
                             <td className="px-6 py-4">
                               <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                                 order.status === 'pending' ? 'bg-yellow-500/10 text-yellow-500' :
@@ -570,7 +572,27 @@ export default function Admin() {
                         )}
                       </div>
 
-
+                      <div className="p-5 bg-white/5 rounded-xl border border-white/5 space-y-3 h-fit">
+                        <h4 className="font-bold text-xs uppercase tracking-widest text-gray-400">Order Financials</h4>
+                        <div className="space-y-2 text-xs">
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">Service Base Price</span>
+                            <span className="font-mono">₹{parseFloat(order.quoted_price || 0).toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">Quantity Purchased</span>
+                            <span className="font-mono font-bold text-brand-secondary">{order.quantity || 1}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">Credits Applied</span>
+                            <span className="font-mono text-green-400 font-bold">-{order.credits_applied ? `₹${parseFloat(order.credits_applied).toLocaleString()}` : '₹0'}</span>
+                          </div>
+                          <div className="flex justify-between pt-2 border-t border-white/5 text-sm font-bold">
+                            <span className="text-white">Total Billable Amount</span>
+                            <span className="font-mono text-white">₹{parseFloat(order.total_amount || 0).toLocaleString()}</span>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -615,6 +637,7 @@ export default function Admin() {
                             <th className="px-6 py-3 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Service</th>
                             <th className="px-6 py-3 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Amount</th>
                             <th className="px-6 py-3 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Method</th>
+                            <th className="px-6 py-3 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Credits Used</th>
                             <th className="px-6 py-3 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Transaction ID</th>
                             <th className="px-6 py-3 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Order Status</th>
                             <th className="px-6 py-3 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Payment</th>
@@ -623,7 +646,7 @@ export default function Admin() {
                         </thead>
                         <tbody className="divide-y divide-white/5">
                           {allTxns.length === 0 ? (
-                            <tr><td colSpan="9" className="px-6 py-12 text-center text-gray-500">No transaction records found.</td></tr>
+                            <tr><td colSpan="10" className="px-6 py-12 text-center text-gray-500">No transaction records found.</td></tr>
                           ) : allTxns.map(o => {
                             const amount = parseFloat(o.quoted_price || o.total_amount || 0);
                             const payStatus = o.payment_status || 'none';
@@ -639,6 +662,7 @@ export default function Admin() {
                                 <td className="px-6 py-3 text-gray-400 text-xs max-w-[160px] truncate">{o.service_name}</td>
                                 <td className="px-6 py-3 font-bold text-green-400">₹{amount.toLocaleString()}</td>
                                 <td className="px-6 py-3 text-xs text-gray-400 capitalize">{o.payment_method || '—'}</td>
+                                <td className="px-6 py-3 font-mono text-xs text-brand-secondary font-bold">{o.credits_applied ? `₹${parseFloat(o.credits_applied).toLocaleString()}` : '—'}</td>
                                 <td className="px-6 py-3 font-mono text-xs text-gray-500 max-w-[140px] truncate">{o.transaction_id || '—'}</td>
                                 <td className={`px-6 py-3 text-xs font-bold uppercase ${statusColor}`}>{orderStatus.replace('_', ' ')}</td>
                                 <td className="px-6 py-3">
@@ -1034,7 +1058,8 @@ export default function Admin() {
                 <div className="bg-white/5 p-4 rounded-xl border border-white/5">
                   <p className="text-gray-500 text-xs mb-1">Service Requested</p>
                   <p className="font-bold text-brand-primary">{editingOrder.service_name}</p>
-                  <p className="text-gray-400 capitalize">Timeline: {editingOrder.timeline || 'Flexible'}</p>
+                  <p className="text-gray-400 capitalize mb-1">Timeline: {editingOrder.timeline || 'Flexible'}</p>
+                  <p className="text-xs text-gray-400">Quantity: <span className="font-mono font-bold text-brand-secondary">{editingOrder.quantity || 1}</span></p>
                 </div>
               </div>
 
@@ -1118,7 +1143,21 @@ export default function Admin() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-400 mb-1">Custom Quote Price (₹)</label>
+                    <div className="flex justify-between items-end mb-1">
+                      <label className="block text-xs text-gray-400">Custom Quote Price (₹)</label>
+                      {(() => {
+                        const prod = data.prices.find(p => p.name === editingOrder.service_name || p.product_key === editingOrder.service_id);
+                        if (!prod) return null;
+                        const floor = parseFloat(prod.min_price || 0);
+                        const hint = prod.show_price_to_admin !== 0 ? parseFloat(prod.price || 0) : 0;
+                        return (
+                          <div className="text-[10px] text-right">
+                            {hint > 0 && <span className="text-brand-primary mr-2">Suggested: ₹{hint}</span>}
+                            {floor > 0 && <span className="text-amber-500 font-bold">Floor: ₹{floor}</span>}
+                          </div>
+                        );
+                      })()}
+                    </div>
                     <input type="number" value={editingOrder.quoted_price || ''} onChange={e => setEditingOrder({...editingOrder, quoted_price: Number(e.target.value)})} placeholder="e.g. 1500" className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-primary" />
                   </div>
                 </div>

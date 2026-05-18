@@ -8,7 +8,7 @@ import Navbar from '../components/Navbar';
 
 export default function ServiceRequest() {
   const { user } = useAuth();
-  const { cart, cartIds, clearCart } = useCart();
+  const { cart, cartIds, clearCart, getQuantity } = useCart();
   const navigate = useNavigate();
 
   const [products, setProducts]       = useState([]);
@@ -43,7 +43,10 @@ export default function ServiceRequest() {
     setError(''); setLoading(true);
     
     const combinedIds = cartIds.join(', ');
-    const combinedNames = selectedProducts.map(p => p.name).join(', ');
+    const combinedNames = selectedProducts.map(p => {
+      const qty = getQuantity(p.product_key || String(p.id));
+      return qty > 1 ? `${p.name} (x${qty})` : p.name;
+    }).join(', ');
 
     try {
       const token = localStorage.getItem('ssw_token');
@@ -121,16 +124,23 @@ export default function ServiceRequest() {
                   <ShoppingBag className="w-4 h-4" /> Selected Services
                 </h3>
                 <div className="bg-black/20 border border-white/5 rounded-xl divide-y divide-white/5">
-                  {selectedProducts.length > 0 ? selectedProducts.map(p => (
-                    <div key={p.id} className="p-3 px-4 flex justify-between items-center text-sm">
-                      <span className="font-medium text-gray-300">{p.name}</span>
-                      {p.is_manual_price ? (
-                        <span className="text-brand-primary text-xs font-semibold">Custom Quote</span>
-                      ) : (
-                        <span className="text-gray-400">₹{p.price.toLocaleString()}</span>
-                      )}
-                    </div>
-                  )) : (
+                  {selectedProducts.length > 0 ? selectedProducts.map(p => {
+                    const qty = getQuantity(p.product_key || String(p.id));
+                    const itemTotal = p.price * qty;
+                    return (
+                      <div key={p.id} className="p-3 px-4 flex justify-between items-center text-sm">
+                        <span className="font-medium text-gray-300">
+                          {p.name}
+                          {qty > 1 && <span className="text-xs font-semibold text-brand-secondary ml-2 bg-brand-secondary/15 px-2 py-0.5 rounded-md">(Qty: {qty})</span>}
+                        </span>
+                        {p.is_manual_price ? (
+                          <span className="text-brand-primary text-xs font-semibold">Custom Quote</span>
+                        ) : (
+                          <span className="text-gray-400">₹{itemTotal.toLocaleString()}</span>
+                        )}
+                      </div>
+                    );
+                  }) : (
                     <div className="p-4 text-sm text-gray-500">Loading selected items...</div>
                   )}
                 </div>

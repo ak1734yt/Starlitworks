@@ -44,7 +44,13 @@ def auto_generate_invoice(order_id: int):
         "savedAt": datetime.datetime.utcnow().isoformat(),
         "client": { "name": client_name, "serverName": order["service_name"] },
         "org": {"name": "Starlit Siege Works", "emails": ["support@starlitsiegeworks.com"], "phone": "+91 9876543210"},
-        "items": [{ "id": secrets.token_hex(4), "desc": order["service_name"], "qty": 1, "rate": amount, "total": amount }],
+        "items": [{
+            "id": secrets.token_hex(4),
+            "desc": order["service_name"],
+            "qty": int(order["quantity"] or 1),
+            "rate": amount / float(order["quantity"] or 1),
+            "total": amount
+        }],
         "subtotal": amount - cgst - sgst,
         "taxTotal": cgst + sgst,
         "grandTotal": amount,
@@ -83,6 +89,7 @@ class OrderBody(BaseModel):
     total_amount: float = 0
     payment_plan: str = "full"
     credits_applied: float = 0
+    quantity: int = 1
 
 class AdminOrderUpdate(BaseModel):
     status: str
@@ -115,11 +122,11 @@ async def create_order(body: OrderBody, user=Depends(get_current_user)):
     db = get_db()
     result = db.execute("""
         INSERT INTO orders (user_id, service_id, service_name, server_link, description, timeline,
-            discord_username, quoted_price, tax_rate, cgst, sgst, total_amount, payment_plan)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+            discord_username, quoted_price, tax_rate, cgst, sgst, total_amount, payment_plan, quantity)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     """, (user["id"], body.service_id, body.service_name, body.server_link, body.description,
           body.timeline, body.discord_username, body.quoted_price, body.tax_rate,
-          body.cgst, body.sgst, body.total_amount, body.payment_plan))
+          body.cgst, body.sgst, body.total_amount, body.payment_plan, body.quantity))
     db.commit()
     order_id = result.lastrowid
     db.close()
@@ -320,6 +327,18 @@ async def admin_update_order(order_id: int, body: AdminOrderUpdate, user=Depends
     
     row = db.execute("SELECT * FROM orders WHERE id = ?", (order_id,)).fetchone()
     if not row: db.close(); raise HTTPException(404, "Order not found")
+
+    # ── Enforce min_price floor ──────────────────────────────────────────────
+    if body.quoted_price is not None and body.quoted_price > 0:
+        product_row = db.execute(
+            "SELECT min_price FROM products WHERE product_key = ? OR name = ?",
+            (row["service_id"], row["service_name"])
+        ).fetchone()
+        if product_row:
+            floor = float(product_row["min_price"] or 0)
+            if floor > 0 and body.quoted_price < floor:
+                db.close()
+                raise HTTPException(400, f"Quoted price ₹{body.quoted_price} is below the minimum allowed price of ₹{floor} set by the Manager.")
     
     db.execute("UPDATE orders SET status=?, quoted_price=?, admin_notes=?, accepted_by=COALESCE(?,accepted_by), updated_at=? WHERE id=?",
                (body.status, body.quoted_price, body.admin_notes, accepted_by, int(time.time()), order_id))
@@ -387,6 +406,19 @@ def verify_payment(order_id: int, body: VerifyPaymentBody, user=Depends(require_
     else:
         status = "payment_pending" 
         pay_status = "pending"
+        
+        # Refund credits back to the user since proof was rejected
+        credits_applied = float(row["credits_applied"] or 0.0)
+        if credits_applied > 0:
+            user_id = row["user_id"]
+            user_row = db.execute("SELECT details FROM users WHERE id=?", (user_id,)).fetchone()
+            if user_row:
+                user_details = json.loads(user_row["details"] or "{}")
+                current_credits = float(user_details.get("credits", 0.0))
+                user_details["credits"] = current_credits + credits_applied
+                db.execute("UPDATE users SET details=? WHERE id=?", (json.dumps(user_details), user_id))
+            # Reset credits_applied on the order to 0 since they've been refunded
+            db.execute("UPDATE orders SET credits_applied=0 WHERE id=?", (order_id,))
 
     db.execute("UPDATE orders SET status=?, payment_status=?, updated_at=? WHERE id=?", (status, pay_status, int(time.time()), order_id))
     db.commit(); db.close()

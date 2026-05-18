@@ -36,13 +36,18 @@ export default function Shop() {
     navigate('/service-request');
   };
 
-  const servers = products.filter(p => p.category === 'server');
-  const addons  = products.filter(p => p.category === 'addon');
-  const bots    = products.filter(p => p.category === 'bot');
-  const infra   = products.filter(p => p.category === 'infra');
-  const scripts = products.filter(p => p.category === 'scripts');
-  const events  = products.filter(p => p.category === 'events');
-  const joins   = products.filter(p => p.category === 'joins');
+  const servers       = products.filter(p => p.category === 'server');
+  const addons        = products.filter(p => p.category === 'addon');
+  const bots          = products.filter(p => p.category === 'bot');
+  const infra         = products.filter(p => p.category === 'infra');
+  const scripts       = products.filter(p => p.category === 'scripts');
+  const events        = products.filter(p => p.category === 'events');
+  const joins         = products.filter(p => p.category === 'joins');
+  const decoGift      = products.filter(p => p.category === 'decorations_gift');
+  const decoLogin     = products.filter(p => p.category === 'decorations_login');
+  const nitroAccounts = products.filter(p => p.category === 'nitro_accounts');
+  const boosters      = products.filter(p => p.category === 'booster');
+  const promo         = products.filter(p => p.category === 'promo');
 
   if (loading) {
     return (
@@ -362,6 +367,233 @@ export default function Shop() {
                     ) : (
                       <div className="w-6 h-6 rounded-full border border-white/20" />
                     )}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {/* --- DECORATIONS VIA GIFT LINK --- */}
+        {decoGift.length > 0 && (
+          <section className="mb-20">
+            <h2 className="text-2xl font-bold mb-2 flex items-center gap-3">
+              <span className="text-2xl">🎁</span>
+              Decorations via Gift Link
+            </h2>
+            <p className="text-gray-500 text-sm mb-8">Discord profile decorations delivered via secure gift link. 47h fresh links, instant delivery.</p>
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {decoGift.map(item => {
+                const key = item.product_key || String(item.id);
+                return (
+                  <div
+                    key={item.id}
+                    onClick={() => toggleItem(key)}
+                    className={`glass-card border-2 cursor-pointer transition-all flex flex-col p-5 rounded-2xl relative ${isSelected(key) ? 'border-purple-400 bg-purple-400/5' : 'border-white/5 hover:border-purple-400/30'}`}
+                  >
+                    {item.tag && (
+                      <div className="text-[9px] font-bold text-purple-300 bg-purple-500/10 border border-purple-500/20 px-2 py-1 rounded-full mb-3 inline-block w-fit">
+                        {item.tag.split('|')[0].trim()}
+                      </div>
+                    )}
+                    <h3 className="font-bold text-sm mb-1 leading-tight">{item.name}</h3>
+                    <p className="text-[10px] text-gray-500 mb-3 flex-grow leading-relaxed">{item.description.split('[Admin')[0].trim()}</p>
+                    <p className="text-xs font-semibold text-purple-400 mb-3">Custom Quote</p>
+                    <ul className="space-y-1 mb-4">
+                      {(Array.isArray(item.features) ? item.features : []).map((f, i) => (
+                        <li key={i} className="flex items-center gap-1.5 text-[10px] text-gray-400">
+                          <Check className="w-3 h-3 text-purple-400 shrink-0" />{f}
+                        </li>
+                      ))}
+                    </ul>
+                    <button className={`w-full py-2 rounded-xl text-xs font-bold transition-all ${isSelected(key) ? 'bg-purple-500 text-white' : 'bg-white/5 hover:bg-white/10'}`}>
+                      {isSelected(key) ? 'Selected ✓' : 'Select'}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {/* --- DECORATIONS VIA LOGIN --- */}
+        {decoLogin.length > 0 && (
+          <section className="mb-20">
+            <h2 className="text-2xl font-bold mb-2 flex items-center gap-3">
+              <span className="text-2xl">🔐</span>
+              Decorations via Login
+            </h2>
+            <p className="text-gray-500 text-sm mb-8">Applied directly to your account. You provide email + password. All transactions legally paid.</p>
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {decoLogin.map(item => {
+                const key = item.product_key || String(item.id);
+                return (
+                  <div
+                    key={item.id}
+                    onClick={() => toggleItem(key)}
+                    className={`glass-card border-2 cursor-pointer transition-all flex flex-col p-5 rounded-2xl relative ${isSelected(key) ? 'border-indigo-400 bg-indigo-400/5' : 'border-white/5 hover:border-indigo-400/30'}`}
+                  >
+                    {item.tag && (
+                      <div className="text-[9px] font-bold text-indigo-300 bg-indigo-500/10 border border-indigo-500/20 px-2 py-1 rounded-full mb-3 inline-block w-fit">
+                        {item.tag.split('|')[0].trim()}
+                      </div>
+                    )}
+                    <h3 className="font-bold text-sm mb-1 leading-tight">{item.name}</h3>
+                    <p className="text-[10px] text-gray-500 mb-3 flex-grow leading-relaxed">{item.description.split('[Admin')[0].trim()}</p>
+                    <p className="text-xs font-semibold text-indigo-400 mb-3">Custom Quote</p>
+                    <ul className="space-y-1 mb-4">
+                      {(Array.isArray(item.features) ? item.features : []).map((f, i) => (
+                        <li key={i} className="flex items-center gap-1.5 text-[10px] text-gray-400">
+                          <Check className="w-3 h-3 text-indigo-400 shrink-0" />{f}
+                        </li>
+                      ))}
+                    </ul>
+                    <button className={`w-full py-2 rounded-xl text-xs font-bold transition-all ${isSelected(key) ? 'bg-indigo-500 text-white' : 'bg-white/5 hover:bg-white/10'}`}>
+                      {isSelected(key) ? 'Selected ✓' : 'Select'}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {/* --- NITRO ACCOUNTS --- */}
+        {nitroAccounts.length > 0 && (
+          <section className="mb-20">
+            <h2 className="text-2xl font-bold mb-2 flex items-center gap-3">
+              <span className="text-2xl">✨</span>
+              Nitro Accounts
+            </h2>
+            <p className="text-gray-500 text-sm mb-8">Freshly claimed Discord Nitro accounts with full access. Boosts included where specified.</p>
+            <div className="grid md:grid-cols-2 gap-6">
+              {nitroAccounts.map(item => {
+                const key = item.product_key || String(item.id);
+                return (
+                  <motion.div
+                    key={item.id}
+                    whileHover={{ y: -3 }}
+                    onClick={() => toggleItem(key)}
+                    className={`glass-card border-2 cursor-pointer transition-all flex flex-col p-6 rounded-2xl relative ${isSelected(key) ? 'border-cyan-400 bg-cyan-400/5' : 'border-white/5 hover:border-cyan-400/30'}`}
+                  >
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        {item.tag && (
+                          <div className="text-[9px] font-bold text-cyan-300 bg-cyan-500/10 border border-cyan-500/20 px-2 py-1 rounded-full mb-2 inline-block">
+                            {item.tag.split('|')[0].trim()}
+                          </div>
+                        )}
+                        <h3 className="font-bold text-lg leading-tight">{item.name}</h3>
+                      </div>
+                      {isSelected(key) && <Check className="w-5 h-5 text-cyan-400 shrink-0" />}
+                    </div>
+                    <p className="text-xs text-gray-500 mb-3 leading-relaxed">{item.description.split('[Admin')[0].trim()}</p>
+                    <p className="text-sm font-semibold text-cyan-400 mb-4">Custom Quote</p>
+                    <ul className="space-y-2 mb-5">
+                      {(Array.isArray(item.features) ? item.features : []).map((f, i) => (
+                        <li key={i} className="flex items-center gap-2 text-xs text-gray-400">
+                          <Check className="w-3.5 h-3.5 text-cyan-400 shrink-0" />{f}
+                        </li>
+                      ))}
+                    </ul>
+                    <button className={`w-full py-3 rounded-xl text-sm font-bold transition-all mt-auto ${isSelected(key) ? 'bg-cyan-500 text-white shadow-lg' : 'bg-white/5 hover:bg-white/10'}`}>
+                      {isSelected(key) ? 'Selected ✓' : 'Request Quote'}
+                    </button>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {/* --- SERVER BOOSTERS --- */}
+        {boosters.length > 0 && (
+          <section className="mb-20">
+            <h2 className="text-2xl font-bold mb-2 flex items-center gap-3">
+              <span className="text-2xl">🚀</span>
+              Server Boosters
+            </h2>
+            <p className="text-gray-500 text-sm mb-8">14x high-quality server boosts. Choose between login-based or VCC. Full revoke warranty included.</p>
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-5">
+              {boosters.map(item => {
+                const key = item.product_key || String(item.id);
+                return (
+                  <div
+                    key={item.id}
+                    onClick={() => toggleItem(key)}
+                    className={`glass-card border-2 cursor-pointer transition-all flex flex-col p-5 rounded-2xl ${isSelected(key) ? 'border-yellow-400 bg-yellow-400/5' : 'border-white/5 hover:border-yellow-400/30'}`}
+                  >
+                    {item.tag && (
+                      <div className="text-[9px] font-bold text-yellow-300 bg-yellow-500/10 border border-yellow-500/20 px-2 py-1 rounded-full mb-3 inline-block w-fit">
+                        {item.tag.split('|')[0].trim()}
+                      </div>
+                    )}
+                    <h3 className="font-bold text-sm mb-1 leading-snug">{item.name}</h3>
+                    <p className="text-[10px] text-gray-500 mb-3 flex-grow leading-relaxed">{item.description.split('[Admin')[0].trim()}</p>
+                    <p className="text-xs font-semibold text-yellow-400 mb-3">Custom Quote</p>
+                    <ul className="space-y-1 mb-4">
+                      {(Array.isArray(item.features) ? item.features : []).map((f, i) => (
+                        <li key={i} className="flex items-center gap-1.5 text-[10px] text-gray-400">
+                          <Check className="w-3 h-3 text-yellow-400 shrink-0" />{f}
+                        </li>
+                      ))}
+                    </ul>
+                    <button className={`w-full py-2 rounded-xl text-xs font-bold transition-all ${isSelected(key) ? 'bg-yellow-500 text-black' : 'bg-white/5 hover:bg-white/10'}`}>
+                      {isSelected(key) ? 'Selected ✓' : 'Select'}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {/* --- SERVER PROMOTIONS --- */}
+        {promo.length > 0 && (
+          <section className="mb-20">
+            <h2 className="text-2xl font-bold mb-2 flex items-center gap-3">
+              <span className="text-2xl">📢</span>
+              Server Promotion Services
+            </h2>
+            <p className="text-gray-500 text-sm mb-2">Grow your Discord server across multiple communities. Pricing depends on delivery speed and promotion members.</p>
+            <div className="mb-6 p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-300 text-xs font-medium">
+              📦 Requirements: Server Logo/Icon · Server Name · Promotion Description
+            </div>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {promo.map(item => {
+                const key = item.product_key || String(item.id);
+                const isExpress = item.name.toLowerCase().includes('express');
+                const accent = isExpress ? 'orange' : 'blue';
+                const accentClasses = isExpress
+                  ? { border: 'border-orange-400', bg: 'bg-orange-400/5', hover: 'hover:border-orange-400/30', check: 'text-orange-400', badge: 'text-orange-300 bg-orange-500/10 border-orange-500/20', btn: 'bg-orange-500 text-white' }
+                  : { border: 'border-blue-400', bg: 'bg-blue-400/5', hover: 'hover:border-blue-400/30', check: 'text-blue-400', badge: 'text-blue-300 bg-blue-500/10 border-blue-500/20', btn: 'bg-blue-500 text-white' };
+                return (
+                  <div
+                    key={item.id}
+                    onClick={() => toggleItem(key)}
+                    className={`glass-card border-2 cursor-pointer transition-all flex flex-col p-5 rounded-2xl ${isSelected(key) ? `${accentClasses.border} ${accentClasses.bg}` : `border-white/5 ${accentClasses.hover}`}`}
+                  >
+                    {item.tag && (
+                      <div className={`text-[9px] font-bold px-2 py-1 rounded-full mb-3 inline-block w-fit border ${accentClasses.badge}`}>
+                        {item.tag.split('|')[0].trim()}
+                      </div>
+                    )}
+                    <div className="flex justify-between items-start">
+                      <h3 className="font-bold text-sm mb-1 leading-snug flex-1">{item.name}</h3>
+                      {isSelected(key) && <Check className={`w-4 h-4 shrink-0 ${accentClasses.check}`} />}
+                    </div>
+                    <p className="text-[10px] text-gray-500 mb-3 flex-grow leading-relaxed">{item.description.split('[Admin')[0].trim()}</p>
+                    <p className={`text-xs font-semibold mb-3 ${accentClasses.check}`}>Custom Quote</p>
+                    <ul className="space-y-1 mb-4">
+                      {(Array.isArray(item.features) ? item.features : []).map((f, i) => (
+                        <li key={i} className="flex items-center gap-1.5 text-[10px] text-gray-400">
+                          <Check className={`w-3 h-3 shrink-0 ${accentClasses.check}`} />{f}
+                        </li>
+                      ))}
+                    </ul>
+                    <button className={`w-full py-2 rounded-xl text-xs font-bold transition-all ${isSelected(key) ? accentClasses.btn : 'bg-white/5 hover:bg-white/10'}`}>
+                      {isSelected(key) ? 'Selected ✓' : 'Select'}
+                    </button>
                   </div>
                 );
               })}

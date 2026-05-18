@@ -640,7 +640,7 @@ export default function Manager() {
                 <Plus className="w-4 h-4" /> Add Product
               </button>
             </div>
-            {['server', 'bot', 'scripts', 'events', 'joins', 'addon', 'infra'].map(cat => {
+            {['server', 'bot', 'scripts', 'events', 'joins', 'addon', 'infra', 'decorations_gift', 'decorations_login', 'nitro_accounts', 'booster', 'promo'].map(cat => {
               const categoryPrices = prices.filter(p => p.category === cat);
               if (categoryPrices.length === 0) return null;
               return (
@@ -670,8 +670,9 @@ export default function Manager() {
                   </div>
                   
                   <div className="space-y-4 mt-6">
+                    {/* Price (actual quoted price — admin hint) */}
                     <div>
-                      <label className="text-xs text-gray-500 uppercase tracking-widest font-semibold block mb-1">Price (₹)</label>
+                      <label className="text-xs text-gray-500 uppercase tracking-widest font-semibold block mb-1">Suggested Price (₹)</label>
                       <div className="relative">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₹</span>
                         <input 
@@ -681,6 +682,24 @@ export default function Manager() {
                           className="w-full bg-white/5 border border-white/10 rounded-lg pl-8 pr-4 py-2 text-sm focus:outline-none focus:border-brand-primary transition-all"
                         />
                       </div>
+                      <p className="text-[10px] text-gray-600 mt-1">Suggested quote shown to admin when pricing this product.</p>
+                    </div>
+
+                    {/* Min Price floor */}
+                    <div>
+                      <label className="text-xs text-amber-400/80 uppercase tracking-widest font-semibold block mb-1">
+                        🔒 Min Price Floor (₹)
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-amber-500">₹</span>
+                        <input 
+                          type="number"
+                          defaultValue={item.min_price || 0}
+                          onBlur={(e) => handlePriceUpdate(item.id, { ...item, min_price: parseFloat(e.target.value) || 0 })}
+                          className="w-full bg-amber-500/5 border border-amber-500/20 rounded-lg pl-8 pr-4 py-2 text-sm text-amber-200 focus:outline-none focus:border-amber-400 transition-all"
+                        />
+                      </div>
+                      <p className="text-[10px] text-amber-500/60 mt-1">Admin cannot quote below this price. Set 0 to disable floor.</p>
                     </div>
                     
                     <div className="grid grid-cols-2 gap-4">
@@ -705,15 +724,28 @@ export default function Manager() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 pt-2">
-                      <input 
-                        type="checkbox" 
-                        id={`manual-${item.id}`}
-                        defaultChecked={item.is_manual_price}
-                        onChange={(e) => handlePriceUpdate(item.id, { ...item, is_manual_price: e.target.checked ? 1 : 0 })}
-                        className="w-4 h-4 rounded border-white/10 bg-white/5 text-brand-primary focus:ring-brand-primary"
-                      />
-                      <label htmlFor={`manual-${item.id}`} className="text-xs text-gray-400">Manual Pricing (Inquiry only)</label>
+                    {/* Toggles */}
+                    <div className="space-y-2 pt-1">
+                      <div className="flex items-center gap-2">
+                        <input 
+                          type="checkbox" 
+                          id={`manual-${item.id}`}
+                          defaultChecked={item.is_manual_price}
+                          onChange={(e) => handlePriceUpdate(item.id, { ...item, is_manual_price: e.target.checked ? 1 : 0 })}
+                          className="w-4 h-4 rounded border-white/10 bg-white/5 text-brand-primary focus:ring-brand-primary"
+                        />
+                        <label htmlFor={`manual-${item.id}`} className="text-xs text-gray-400">Custom Quote for Clients (hide price from shop)</label>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input 
+                          type="checkbox" 
+                          id={`admin-${item.id}`}
+                          defaultChecked={item.show_price_to_admin !== 0}
+                          onChange={(e) => handlePriceUpdate(item.id, { ...item, show_price_to_admin: e.target.checked ? 1 : 0 })}
+                          className="w-4 h-4 rounded border-white/10 bg-white/5 text-amber-400 focus:ring-amber-400"
+                        />
+                        <label htmlFor={`admin-${item.id}`} className="text-xs text-amber-400/70">Show suggested price to Admin when quoting</label>
+                      </div>
                     </div>
                   </div>
                 </div>

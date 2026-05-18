@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ShieldCheck, Tag, Download, CreditCard, Loader2, Sparkles, X, 
-  ArrowRight, Printer, QrCode, Info, CheckCircle, Upload
+  ArrowRight, Printer, QrCode, Info, CheckCircle, Upload, IndianRupee
 } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import { useAuth } from '../context/AuthContext';
@@ -23,6 +23,7 @@ export default function InvoiceDetail() {
   const [paymentMethod, setPaymentMethod] = useState('manual_upi'); // manual_upi, crypto, paypal
   const [showQRModal, setShowQRModal] = useState(false);
   const [qrData, setQrData] = useState(null);
+  const [useCredits, setUseCredits] = useState(false);
   
   // Verification Proof State
   const [proof, setProof] = useState({ transaction_id: '', screenshot: null, base64: '' });
@@ -36,9 +37,13 @@ export default function InvoiceDetail() {
     }
   } catch (e) {}
 
+  const grandTotal = Number(invoice?.grandTotal || 0);
+  const creditsToApply = useCredits ? Math.min(availableCredits, grandTotal) : 0;
+  const remainingPayable = Math.max(0, grandTotal - creditsToApply);
+  const isFullyPaidWithCredits = useCredits && (creditsToApply >= grandTotal);
+
   const handlePayWithCredits = async () => {
-    const grandTotal = Number(invoice?.grandTotal || 0);
-    if (availableCredits < grandTotal) {
+    if (availableCredits < creditsToApply) {
       toast.error('Insufficient credits balance');
       return;
     }
@@ -52,7 +57,7 @@ export default function InvoiceDetail() {
         base64Screenshot: b64,
         payment_method: 'credits',
         payment_plan: invoice.paymentType || 'full',
-        credits_applied: grandTotal
+        credits_applied: creditsToApply
       });
 
       toast.success('Successfully paid using Starlit Credits!');
@@ -83,7 +88,7 @@ export default function InvoiceDetail() {
     }
   };
 
-  const loadSecureQR = async () => {
+  const loadSecureQR = async (amount = null) => {
     if (!invoice) return;
     
     // Skip loading QR code if the invoice is already paid
@@ -92,10 +97,16 @@ export default function InvoiceDetail() {
       return;
     }
 
+    const totalAmount = amount !== null ? amount : Number(invoice.grandTotal || 0);
+    if (totalAmount <= 0) {
+      setQrData(null);
+      return;
+    }
+
     try {
-      // Try the secure order-linked QR endpoint if a numeric order ID exists
+      // Try the secure order-linked QR endpoint if a numeric order ID exists and no credits are applied
       const isNumericOrder = invoice.orderId && /^\d+$/.test(String(invoice.orderId));
-      if (isNumericOrder) {
+      if (isNumericOrder && creditsToApply === 0) {
         try {
           const res = await request(`/orders/${invoice.orderId}/qr`);
           setQrData(res);
@@ -106,7 +117,6 @@ export default function InvoiceDetail() {
       }
 
       // Fallback: Generate secure generic QR code using total amount
-      const totalAmount = Number(invoice.grandTotal || 0);
       const res = await generateQR({
         amount: totalAmount,
         note: `SSW Invoice ${invoice.id || invoice.invoiceNumber}`
@@ -124,9 +134,9 @@ export default function InvoiceDetail() {
 
   useEffect(() => {
     if (invoice) {
-      loadSecureQR();
+      loadSecureQR(remainingPayable);
     }
-  }, [invoice]);
+  }, [invoice, useCredits, remainingPayable]);
 
   const handleDownloadInvoice = async () => {
     if (!invoice) return;
@@ -180,7 +190,8 @@ export default function InvoiceDetail() {
         transaction_id: proof.transaction_id,
         base64Screenshot: proof.base64,
         payment_method: 'manual',
-        payment_plan: invoice.paymentType || 'full'
+        payment_plan: invoice.paymentType || 'full',
+        credits_applied: creditsToApply
       });
 
       toast.success('Payment proof submitted! Verification in progress.');
@@ -203,7 +214,6 @@ export default function InvoiceDetail() {
   // Calculate pricing values
   const subtotal = Number(invoice.subtotal || 0);
   const tax = Number(invoice.taxTotal || 0);
-  const grandTotal = Number(invoice.grandTotal || 0);
   const discount = Number(invoice.discountAmount || 0);
 
   return (
@@ -374,110 +384,129 @@ export default function InvoiceDetail() {
                   </div>
                 ) : (
                   <div className="space-y-6">
-                    {/* Pay with selection */}
-                    <div className="space-y-3">
-                      <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest">Pay with</p>
-                      
-                      {/* Method: Starlit Credits */}
-                      <button
-                        onClick={() => setPaymentMethod('credits')}
-                        className={`w-full p-4 rounded-xl border text-left transition-all flex items-center justify-between ${
-                          paymentMethod === 'credits' 
-                            ? 'border-brand-primary bg-brand-primary/5' 
-                            : 'border-white/5 bg-white/[0.01] hover:border-white/10'
-                        }`}
-                      >
-                        <div>
-                          <p className="font-bold text-xs flex items-center gap-1.5 text-white">
-                            <Sparkles className="w-3.5 h-3.5 text-brand-primary animate-pulse" />
-                            STARLIT CREDITS
-                          </p>
-                          <p className="text-[9px] text-gray-400 mt-0.5">
-                            Available Balance: <span className="text-brand-secondary font-mono font-bold">₹{availableCredits.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                          </p>
+                    {/* Apply Starlit Credits Switch */}
+                    {availableCredits > 0 && (
+                      <div className="p-4 bg-green-500/5 border border-green-500/10 rounded-2xl space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center">
+                              <IndianRupee className="w-4.5 h-4.5 text-green-400" />
+                            </div>
+                            <div>
+                              <span className="text-xs font-bold text-gray-300">Apply Starlit Credits</span>
+                              <p className="text-[10px] text-gray-500 font-mono">Balance: {convertPrice(availableCredits)}</p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setUseCredits(!useCredits)}
+                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 focus:outline-none ${
+                              useCredits ? 'bg-green-500' : 'bg-white/10'
+                            }`}
+                          >
+                            <span
+                              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-300 ${
+                                useCredits ? 'translate-x-6' : 'translate-x-1'
+                              }`}
+                            />
+                          </button>
                         </div>
-                        <ShieldCheck className={`w-4 h-4 ${paymentMethod === 'credits' ? 'text-brand-primary' : 'text-gray-600'}`} />
-                      </button>
 
-                      {/* Method 1: UPI */}
-                      <button
-                        onClick={() => setPaymentMethod('manual_upi')}
-                        className={`w-full p-4 rounded-xl border text-left transition-all flex items-center justify-between ${
-                          paymentMethod === 'manual_upi' 
-                            ? 'border-brand-primary bg-brand-primary/5' 
-                            : 'border-white/5 bg-white/[0.01] hover:border-white/10'
-                        }`}
-                      >
-                        <div>
-                          <p className="font-bold text-xs">UPI / CARDS / NETBANKING</p>
-                          <p className="text-[9px] text-gray-500 mt-0.5">(India only) • Direct QR Settlement</p>
-                        </div>
-                        <ShieldCheck className={`w-4 h-4 ${paymentMethod === 'manual_upi' ? 'text-brand-primary' : 'text-gray-600'}`} />
-                      </button>
-
-                      {/* Method 2: Crypto */}
-                      <button
-                        onClick={() => setPaymentMethod('crypto')}
-                        className={`w-full p-4 rounded-xl border text-left transition-all flex items-center justify-between opacity-50 cursor-not-allowed ${
-                          paymentMethod === 'crypto' 
-                            ? 'border-brand-primary bg-brand-primary/5' 
-                            : 'border-white/5 bg-white/[0.01]'
-                        }`}
-                        disabled
-                      >
-                        <div>
-                          <p className="font-bold text-xs">Crypto Currency</p>
-                          <p className="text-[9px] text-gray-500 mt-0.5">Minimum ₹100 / $1.14 (Coming Soon)</p>
-                        </div>
-                        <ShieldCheck className="w-4 h-4 text-gray-600" />
-                      </button>
-
-                      {/* Method 3: PayPal */}
-                      <button
-                        onClick={() => setPaymentMethod('paypal')}
-                        className={`w-full p-4 rounded-xl border text-left transition-all flex items-center justify-between opacity-50 cursor-not-allowed ${
-                          paymentMethod === 'paypal' 
-                            ? 'border-brand-primary bg-brand-primary/5' 
-                            : 'border-white/5 bg-white/[0.01]'
-                        }`}
-                        disabled
-                      >
-                        <div>
-                          <p className="font-bold text-xs">PayPal / Credit Card</p>
-                          <p className="text-[9px] text-gray-500 mt-0.5">(Outside India) • (Coming Soon)</p>
-                        </div>
-                        <ShieldCheck className="w-4 h-4 text-gray-600" />
-                      </button>
-                    </div>
+                        {useCredits && (
+                          <div className="pt-3 border-t border-white/5 space-y-2">
+                            <div className="flex justify-between text-xs items-center">
+                              <span className="text-gray-400">Credits Deducted</span>
+                              <span className="font-mono text-green-400 font-bold">-{convertPrice(creditsToApply)}</span>
+                            </div>
+                            <div className="flex justify-between text-xs pt-2 border-t border-white/5 items-center font-bold">
+                              <span className="text-white">Remaining Payable</span>
+                              <span className="font-mono text-white font-extrabold">{convertPrice(remainingPayable)}</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     {/* Pay button */}
-                    {paymentMethod === 'credits' ? (
+                    {isFullyPaidWithCredits ? (
                       <button
                         onClick={handlePayWithCredits}
-                        disabled={submitting || availableCredits < grandTotal}
-                        className={`w-full py-4.5 text-white font-bold text-sm rounded-2xl transition-all flex items-center justify-center gap-2 ${
-                          availableCredits < grandTotal
-                            ? 'bg-gray-800 text-gray-500 cursor-not-allowed border border-white/5'
-                            : 'bg-gradient-to-r from-brand-primary to-brand-secondary hover:brightness-110 shadow-[0_5px_25px_rgba(124,58,237,0.3)]'
-                        }`}
+                        disabled={submitting}
+                        className="w-full py-4.5 bg-gradient-to-r from-brand-primary to-brand-secondary hover:brightness-110 text-white font-bold text-sm rounded-2xl shadow-[0_5px_25px_rgba(124,58,237,0.3)] transition-all flex items-center justify-center gap-2"
                       >
                         {submitting ? (
                           <Loader2 className="w-4 h-4 animate-spin" />
                         ) : (
                           <Sparkles className="w-4 h-4 animate-pulse" />
                         )}
-                        {availableCredits < grandTotal ? 'Insufficient Credits' : 'Pay with Starlit Credits'}
+                        Pay Now with Credits
                       </button>
                     ) : (
-                      <button
-                        onClick={() => setShowQRModal(true)}
-                        className="w-full py-4.5 bg-brand-primary hover:bg-brand-primary/95 text-white font-bold text-sm rounded-2xl shadow-[0_5px_25px_rgba(124,58,237,0.3)] transition-all flex items-center justify-center gap-2"
-                      >
-                        <CreditCard className="w-4 h-4" />
-                        Pay Now
-                      </button>
-                    )}
+                      <div className="space-y-6">
+                        {/* Pay with selection */}
+                        <div className="space-y-3">
+                          <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest">Pay with</p>
+                          
+                          {/* Method 1: UPI */}
+                          <button
+                            onClick={() => setPaymentMethod('manual_upi')}
+                            className={`w-full p-4 rounded-xl border text-left transition-all flex items-center justify-between ${
+                              paymentMethod === 'manual_upi' 
+                                ? 'border-brand-primary bg-brand-primary/5' 
+                                : 'border-white/5 bg-white/[0.01] hover:border-white/10'
+                            }`}
+                          >
+                            <div>
+                              <p className="font-bold text-xs">UPI / CARDS / NETBANKING</p>
+                              <p className="text-[9px] text-gray-500 mt-0.5">(India only) • Direct QR Settlement</p>
+                            </div>
+                            <ShieldCheck className={`w-4 h-4 ${paymentMethod === 'manual_upi' ? 'text-brand-primary' : 'text-gray-600'}`} />
+                          </button>
 
+                          {/* Method 2: Crypto */}
+                          <button
+                            onClick={() => setPaymentMethod('crypto')}
+                            className={`w-full p-4 rounded-xl border text-left transition-all flex items-center justify-between opacity-50 cursor-not-allowed ${
+                              paymentMethod === 'crypto' 
+                                ? 'border-brand-primary bg-brand-primary/5' 
+                                : 'border-white/5 bg-white/[0.01]'
+                            }`}
+                            disabled
+                          >
+                            <div>
+                              <p className="font-bold text-xs">Crypto Currency</p>
+                              <p className="text-[9px] text-gray-500 mt-0.5">Minimum ₹100 / $1.14 (Coming Soon)</p>
+                            </div>
+                            <ShieldCheck className="w-4 h-4 text-gray-600" />
+                          </button>
+
+                          {/* Method 3: PayPal */}
+                          <button
+                            onClick={() => setPaymentMethod('paypal')}
+                            className={`w-full p-4 rounded-xl border text-left transition-all flex items-center justify-between opacity-50 cursor-not-allowed ${
+                              paymentMethod === 'paypal' 
+                                ? 'border-brand-primary bg-brand-primary/5' 
+                                : 'border-white/5 bg-white/[0.01]'
+                            }`}
+                            disabled
+                          >
+                            <div>
+                              <p className="font-bold text-xs">PayPal / Credit Card</p>
+                              <p className="text-[9px] text-gray-500 mt-0.5">(Outside India) • (Coming Soon)</p>
+                            </div>
+                            <ShieldCheck className="w-4 h-4 text-gray-600" />
+                          </button>
+                        </div>
+
+                        <button
+                          onClick={() => setShowQRModal(true)}
+                          className="w-full py-4.5 bg-brand-primary hover:bg-brand-primary/95 text-white font-bold text-sm rounded-2xl shadow-[0_5px_25px_rgba(124,58,237,0.3)] transition-all flex items-center justify-center gap-2"
+                        >
+                          <CreditCard className="w-4 h-4" />
+                          Pay Now ({convertPrice(remainingPayable)})
+                        </button>
+                      </div>
+                    )}
                     {/* Verification Proof form after scanning */}
                     {paymentMethod !== 'credits' && (
                       <div className="pt-6 border-t border-white/5 space-y-4">

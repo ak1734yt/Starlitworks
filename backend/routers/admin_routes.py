@@ -14,18 +14,22 @@ class ProductBody(BaseModel):
     name: str
     category: str
     price: float
+    min_price: float = 0
     tag: str = ""
     description: str = ""
     features: list = []
     is_manual_price: bool = False
+    show_price_to_admin: bool = True
     is_recurring: bool = False
     unit_label: str = ""
 
 class PriceUpdateBody(BaseModel):
     price: float
+    min_price: float = 0
     tag: str = ""
     description: str = ""
     is_manual_price: bool = False
+    show_price_to_admin: bool = True
     unit_label: str = ""
 
 class CouponBody(BaseModel):
@@ -169,9 +173,17 @@ def manager_prices(user=Depends(require_manager)):
 def create_product(body: ProductBody, user=Depends(require_manager)):
     product_key = body.name.lower().replace(" ", "_") + "_" + str(int(time.time()))
     db = get_db()
-    db.execute("INSERT INTO products (category, product_key, name, price, tag, description, features, is_manual_price, is_recurring, unit_label) VALUES (?,?,?,?,?,?,?,?,?,?)",
-               (body.category, product_key, body.name, body.price, body.tag, body.description,
-                json.dumps(body.features), 1 if body.is_manual_price else 0, 1 if body.is_recurring else 0, body.unit_label))
+    db.execute(
+        """INSERT INTO products
+           (category, product_key, name, price, min_price, tag, description, features,
+            is_manual_price, show_price_to_admin, is_recurring, unit_label)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
+        (body.category, product_key, body.name, body.price, body.min_price, body.tag,
+         body.description, json.dumps(body.features),
+         1 if body.is_manual_price else 0,
+         1 if body.show_price_to_admin else 0,
+         1 if body.is_recurring else 0, body.unit_label)
+    )
     db.commit(); db.close()
     log_activity(user["id"], "CREATE_PRODUCT", f"Created product {body.name}")
     return {"success": True}
@@ -179,8 +191,16 @@ def create_product(body: ProductBody, user=Depends(require_manager)):
 @router.put("/manager/prices/{pid}")
 def update_price(pid: int, body: PriceUpdateBody, user=Depends(require_manager)):
     db = get_db()
-    db.execute("UPDATE products SET price=?, tag=?, description=?, is_manual_price=?, unit_label=?, updated_at=? WHERE id=?",
-               (body.price, body.tag, body.description, 1 if body.is_manual_price else 0, body.unit_label, int(time.time()), pid))
+    db.execute(
+        """UPDATE products
+           SET price=?, min_price=?, tag=?, description=?, is_manual_price=?,
+               show_price_to_admin=?, unit_label=?, updated_at=?
+           WHERE id=?""",
+        (body.price, body.min_price, body.tag, body.description,
+         1 if body.is_manual_price else 0,
+         1 if body.show_price_to_admin else 0,
+         body.unit_label, int(time.time()), pid)
+    )
     db.commit(); db.close()
     log_activity(user["id"], "UPDATE_PRICE", f"Updated product {pid}")
     return {"success": True}
