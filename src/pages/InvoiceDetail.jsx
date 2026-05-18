@@ -534,13 +534,14 @@ export default function InvoiceDetail() {
                         </button>
                       </form>
                     </div>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
-        </motion.div>
-      </main>
+        </div>
+      </motion.div>
+    </main>
 
       {/* --- SECURE QR POPUP MODAL --- */}
       <AnimatePresence>
