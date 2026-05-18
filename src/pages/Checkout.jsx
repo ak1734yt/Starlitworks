@@ -89,8 +89,10 @@ export default function Checkout() {
   // Live parsed credits calculation
   let availableCredits = 0;
   try {
-    const details = JSON.parse(user?.details || '{}');
-    availableCredits = Number(details.credits || 0);
+    if (user?.details) {
+      const details = typeof user.details === 'string' ? JSON.parse(user.details) : user.details;
+      availableCredits = Number(details?.credits || 0);
+    }
   } catch (e) {}
 
   const creditsToApply = useCredits ? Math.min(availableCredits, amountToPay) : 0;
