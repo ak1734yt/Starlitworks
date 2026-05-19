@@ -4,8 +4,14 @@ import { STATS_DATA } from "../constants/statsData";
 import { getPublicStats } from "../services/api";
 
 const parseValue = (valStr) => {
-  if (!valStr) return { number: 0, prefix: '', suffix: '', formatComma: false };
+  if (!valStr) return { number: 0, prefix: '', suffix: '', formatComma: false, isStatic: true };
   const str = String(valStr);
+  
+  // Don't animate things like 24/7 or 24x7
+  if (str.includes('/') || str.toLowerCase().includes('x')) {
+    return { number: 0, prefix: '', suffix: str, formatComma: false, isStatic: true };
+  }
+
   const match = str.match(/^([^\d]*)([\d,.]+)([^\d]*)$/);
   if (match) {
     const prefix = match[1];
@@ -13,9 +19,9 @@ const parseValue = (valStr) => {
     const suffix = match[3];
     const formatComma = numStr.includes(',');
     const number = parseFloat(numStr.replace(/,/g, '')) || 0;
-    return { number, prefix, suffix, formatComma };
+    return { number, prefix, suffix, formatComma, isStatic: false };
   }
-  return { number: 0, prefix: '', suffix: str, formatComma: false };
+  return { number: 0, prefix: '', suffix: str, formatComma: false, isStatic: true };
 };
 
 const AnimatedNumber = ({ value }) => {
@@ -51,6 +57,11 @@ const AnimatedNumber = ({ value }) => {
   }, [number]);
 
   const formattedNum = formatComma ? currentValue.toLocaleString() : currentValue;
+  
+  if (parseValue(value).isStatic) {
+    return <span>{value.replace('/', 'x')}</span>;
+  }
+
   return (
     <span>
       {prefix}{formattedNum}{suffix}
@@ -80,8 +91,8 @@ const Stats = () => {
       {/* Subtle radial glow in the center to highlight the glowing text */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-4xl h-64 bg-white/[0.02] rounded-full blur-[100px] pointer-events-none" />
       
-      <div className="max-w-7xl mx-auto px-4 relative z-10">
-        <div className="flex flex-wrap justify-center gap-x-8 gap-y-16 md:gap-x-10 lg:gap-x-12">
+      <div className="max-w-[1400px] mx-auto px-4 relative z-10 w-full">
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-x-4 gap-y-12 justify-items-center w-full">
           {STATS_DATA.map((stat, index) => (
             <motion.div
               key={index}
@@ -89,12 +100,11 @@ const Stats = () => {
               whileInView={{ opacity: 1, scale: 1 }}
               transition={{ delay: index * 0.05, duration: 0.5 }}
               viewport={{ once: true }}
-              className="flex flex-col items-center justify-center gap-3 min-w-[120px] md:min-w-[130px] group"
+              className="flex flex-col items-center justify-center gap-3 w-full group"
             >
               <stat.icon className="w-5 h-5 text-gray-500 transition-colors group-hover:text-gray-300" />
-              
               <h3 
-                className="text-4xl md:text-[2.75rem] font-black font-display text-white leading-none transition-all duration-300 group-hover:scale-105"
+                className="text-3xl md:text-4xl lg:text-[2.5rem] xl:text-[2.75rem] font-black font-display text-white leading-none transition-all duration-300 group-hover:scale-105 whitespace-nowrap"
                 style={{ textShadow: '0 0 25px rgba(255,255,255,0.4), 0 0 10px rgba(255,255,255,0.2)' }}
               >
                 <AnimatedNumber value={getVal(stat)} />
