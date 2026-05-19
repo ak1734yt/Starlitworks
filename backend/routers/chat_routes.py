@@ -23,12 +23,12 @@ def get_chat(client_id: int, user=Depends(get_current_user)):
         db.close(); raise HTTPException(403, "Forbidden")
     
     # Verify user exists
-    client = db.execute("SELECT * FROM users WHERE id = ?", (client_id,)).fetchone()
+    client = db.execute("SELECT * FROM auth.users WHERE id = ?", (client_id,)).fetchone()
     if not client:
         db.close(); raise HTTPException(404, "User not found")
 
     messages = db.execute(
-        "SELECT c.*, u.name, u.role, u.avatar_url FROM user_chats c JOIN users u ON c.sender_id = u.id WHERE c.client_id = ? ORDER BY c.created_at ASC",
+        "SELECT c.*, u.name, u.role, u.avatar_url FROM orders.user_chats c JOIN auth.users u ON c.sender_id = u.id WHERE c.client_id = ? ORDER BY c.created_at ASC",
         (client_id,)
     ).fetchall()
 
@@ -46,7 +46,7 @@ def get_chat(client_id: int, user=Depends(get_current_user)):
                 needs_update = True
         
         if needs_update:
-            db.execute("UPDATE users SET details = ? WHERE id = ?", (json.dumps(details), client_id))
+            db.execute("UPDATE auth.users SET details = ? WHERE id = ?", (json.dumps(details), client_id))
     except:
         pass
     
@@ -61,7 +61,7 @@ async def send_chat(client_id: int, body: ChatBody, user=Depends(get_current_use
     if user["role"] == "client" and client_id != user["id"]:
         db.close(); raise HTTPException(403, "Forbidden")
 
-    client = db.execute("SELECT * FROM users WHERE id = ?", (client_id,)).fetchone()
+    client = db.execute("SELECT * FROM auth.users WHERE id = ?", (client_id,)).fetchone()
     if not client:
         db.close(); raise HTTPException(404, "User not found")
 
@@ -77,7 +77,7 @@ async def send_chat(client_id: int, body: ChatBody, user=Depends(get_current_use
             content = f"/uploads/{fname}"
 
     cursor = db.execute(
-        "INSERT INTO user_chats (client_id, sender_id, message_type, content) VALUES (?,?,?,?)",
+        "INSERT INTO orders.user_chats (client_id, sender_id, message_type, content) VALUES (?,?,?,?)",
         (client_id, user["id"], body.message_type, content)
     )
     last_id = cursor.lastrowid
@@ -89,13 +89,13 @@ async def send_chat(client_id: int, body: ChatBody, user=Depends(get_current_use
             details["admin_unread_count"] = details.get("admin_unread_count", 0) + 1
         else:
             details["client_unread_count"] = details.get("client_unread_count", 0) + 1
-        db.execute("UPDATE users SET details = ? WHERE id = ?", (json.dumps(details), client_id))
+        db.execute("UPDATE auth.users SET details = ? WHERE id = ?", (json.dumps(details), client_id))
     except:
         pass
 
     db.commit()
     new_msg = dict(db.execute(
-        "SELECT c.*, u.name, u.role, u.avatar_url FROM user_chats c JOIN users u ON c.sender_id = u.id WHERE c.id = ?",
+        "SELECT c.*, u.name, u.role, u.avatar_url FROM orders.user_chats c JOIN auth.users u ON c.sender_id = u.id WHERE c.id = ?",
         (last_id,)
     ).fetchone())
     db.close()
@@ -146,19 +146,19 @@ async def send_chat(client_id: int, body: ChatBody, user=Depends(get_current_use
             import time as _time
             bot_db = get_db()
             # Use admin user ID if available, otherwise use a system fallback
-            admin_row = bot_db.execute("SELECT id FROM users WHERE role='admin' LIMIT 1").fetchone()
+            admin_row = bot_db.execute("SELECT id FROM auth.users WHERE role='admin' LIMIT 1").fetchone()
             bot_user_id = admin_row["id"] if admin_row else user["id"]
             bot_db.execute(
-                "INSERT INTO user_chats (client_id, sender_id, message_type, content) VALUES (?,?,?,?)",
+                "INSERT INTO orders.user_chats (client_id, sender_id, message_type, content) VALUES (?,?,?,?)",
                 (client_id, bot_user_id, "system", bot_reply)
             )
             
             try:
                 # Update client unread count for the bot reply
-                client_details = bot_db.execute("SELECT details FROM users WHERE id = ?", (client_id,)).fetchone()
+                client_details = bot_db.execute("SELECT details FROM auth.users WHERE id = ?", (client_id,)).fetchone()
                 details = json.loads(client_details["details"] or "{}")
                 details["client_unread_count"] = details.get("client_unread_count", 0) + 1
-                bot_db.execute("UPDATE users SET details = ? WHERE id = ?", (json.dumps(details), client_id))
+                bot_db.execute("UPDATE auth.users SET details = ? WHERE id = ?", (json.dumps(details), client_id))
             except:
                 pass
 

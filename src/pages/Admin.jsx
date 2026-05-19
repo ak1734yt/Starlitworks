@@ -46,7 +46,7 @@ export default function Admin() {
   
   const allowedTabs = TABS.filter(tab => {
     if (['clients', 'coupons', 'pulse'].includes(tab.id)) {
-      return user?.role === 'manager';
+      return user?.role === 'manager' || user?.role === 'admin';
     }
     return true;
   });
@@ -132,7 +132,7 @@ export default function Admin() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const isManager = user?.role === 'manager';
+      const isManagerOrAdmin = user?.role === 'manager' || user?.role === 'admin';
       const [orders, invoices, feedbacks, prices] = await Promise.all([
         getAdminOrders(),
         getInvoices(),
@@ -144,7 +144,7 @@ export default function Admin() {
       let pulse = [];
       let coupons = [];
       
-      if (isManager) {
+      if (isManagerOrAdmin) {
         try {
           const [clientsData, pulseData, couponsData] = await Promise.all([
             request('/admin/clients'),
@@ -691,11 +691,12 @@ export default function Admin() {
                             <th className="px-6 py-3 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Order Status</th>
                             <th className="px-6 py-3 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Payment</th>
                             <th className="px-6 py-3 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Date</th>
+                            <th className="px-6 py-3 text-[10px] font-bold text-gray-400 uppercase tracking-wider text-right">Actions</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-white/5">
                           {allTxns.length === 0 ? (
-                            <tr><td colSpan="10" className="px-6 py-12 text-center text-gray-500">No transaction records found.</td></tr>
+                            <tr><td colSpan="11" className="px-6 py-12 text-center text-gray-500">No transaction records found.</td></tr>
                           ) : allTxns.map(o => {
                             const amount = parseFloat(o.quoted_price || o.total_amount || 0);
                             const payStatus = o.payment_status || 'none';
@@ -718,6 +719,11 @@ export default function Admin() {
                                   <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${payColor}`}>{payStatus === 'none' ? 'Not Paid' : payStatus}</span>
                                 </td>
                                 <td className="px-6 py-3 text-xs text-gray-500">{dateStr}</td>
+                                <td className="px-6 py-3 text-right">
+                                  <button onClick={() => handleDeleteOrder(o.id)} className="text-gray-600 hover:text-red-500 transition-colors" title="Delete Transaction">
+                                    <Trash2 className="w-4 h-4 ml-auto" />
+                                  </button>
+                                </td>
                               </tr>
                             );
                           })}

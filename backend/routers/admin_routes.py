@@ -81,23 +81,23 @@ class FeedbackStatusBody(BaseModel):
 
 # ── Admin ────────────────────────────────────────────────────────────────────
 @router.get("/admin/clients")
-def get_clients(user=Depends(require_manager)):
+def get_clients(user=Depends(require_admin)):
     db = get_db()
-    rows = db.execute("SELECT * FROM users ORDER BY created_at DESC").fetchall()
+    rows = db.execute("SELECT * FROM auth.users ORDER BY created_at DESC").fetchall()
     db.close()
     return [dict(r) for r in rows]
 
 @router.get("/admin/analytics")
 def get_analytics(user=Depends(require_manager)):
     db = get_db()
-    rows = db.execute("SELECT a.*, u.name as user_name FROM analytics_logs a LEFT JOIN users u ON a.user_id = u.id ORDER BY a.created_at DESC LIMIT 500").fetchall()
+    rows = db.execute("SELECT a.*, u.name as user_name FROM orders.analytics_logs a LEFT JOIN auth.users u ON a.user_id = u.id ORDER BY a.created_at DESC LIMIT 500").fetchall()
     db.close()
     return [dict(r) for r in rows]
 
 @router.get("/admin/stats/activity")
 def admin_stats(user=Depends(require_manager)):
     db = get_db()
-    rows = db.execute("SELECT * FROM activity_logs ORDER BY created_at DESC LIMIT 50").fetchall()
+    rows = db.execute("SELECT * FROM orders.activity_logs ORDER BY created_at DESC LIMIT 50").fetchall()
     db.close()
     return [dict(r) for r in rows]
 
@@ -138,7 +138,7 @@ def post_order_update(oid: int, body: OrderUpdateBody, user=Depends(require_mana
     db_o.close()
     # Notify client
     main_db = get_db()
-    order = main_db.execute("SELECT user_id, service_name FROM orders WHERE id = ?", (oid,)).fetchone()
+    order = main_db.execute("SELECT user_id, service_name FROM orders.orders WHERE id = ?", (oid,)).fetchone()
     main_db.close()
     if order:
         create_notification(
@@ -162,7 +162,7 @@ def get_order_updates_client(oid: int, user=Depends(get_current_user)):
 @router.get("/auth/referral")
 def get_referral_info(user=Depends(get_current_user)):
     db = get_db()
-    row = db.execute("SELECT details FROM users WHERE id = ?", (user["id"],)).fetchone()
+    row = db.execute("SELECT details FROM auth.users WHERE id = ?", (user["id"],)).fetchone()
     setting = db.execute("SELECT value FROM site_settings WHERE key = 'referral_credit_amount'").fetchone()
     db.close()
     try:
@@ -175,7 +175,7 @@ def get_referral_info(user=Depends(get_current_user)):
         referral_code = "REF" + secrets.token_hex(4).upper()
         details["referral_code"] = referral_code
         db2 = get_db()
-        db2.execute("UPDATE users SET details = ? WHERE id = ?", (json.dumps(details), user["id"]))
+        db2.execute("UPDATE auth.users SET details = ? WHERE id = ?", (json.dumps(details), user["id"]))
         db2.commit(); db2.close()
     reward = float(setting["value"]) if setting else 50.0
     return {
@@ -193,16 +193,16 @@ def manager_revenue(user=Depends(require_manager)):
     week_ago = now - 7 * 86400
     month_ago = now - 30 * 86400
     week_rev = db.execute(
-        "SELECT COALESCE(SUM(total_amount),0) as total FROM orders WHERE payment_status='verified' AND created_at >= ?", (week_ago,)
+        "SELECT COALESCE(SUM(total_amount),0) as total FROM orders.orders WHERE payment_status='verified' AND created_at >= ?", (week_ago,)
     ).fetchone()["total"]
     month_rev = db.execute(
-        "SELECT COALESCE(SUM(total_amount),0) as total FROM orders WHERE payment_status='verified' AND created_at >= ?", (month_ago,)
+        "SELECT COALESCE(SUM(total_amount),0) as total FROM orders.orders WHERE payment_status='verified' AND created_at >= ?", (month_ago,)
     ).fetchone()["total"]
     pending = db.execute(
-        "SELECT COALESCE(SUM(quoted_price),0) as total FROM orders WHERE payment_status='pending' AND status NOT IN ('rejected','completed')"
+        "SELECT COALESCE(SUM(quoted_price),0) as total FROM orders.orders WHERE payment_status='pending' AND status NOT IN ('rejected','completed')"
     ).fetchone()["total"]
-    total_orders = db.execute("SELECT COUNT(*) as c FROM orders").fetchone()["c"]
-    completed = db.execute("SELECT COUNT(*) as c FROM orders WHERE status='completed'").fetchone()["c"]
+    total_orders = db.execute("SELECT COUNT(*) as c FROM orders.orders").fetchone()["c"]
+    completed = db.execute("SELECT COUNT(*) as c FROM orders.orders WHERE status='completed'").fetchone()["c"]
     db.close()
     return {
         "week_revenue": week_rev,
@@ -225,11 +225,11 @@ def bulk_update_status(body: BulkStatusBody, user=Depends(require_manager)):
     db = get_db()
     updated_user_ids = []
     for oid in body.order_ids:
-        order = db.execute("SELECT user_id FROM orders WHERE id = ?", (oid,)).fetchone()
+        order = db.execute("SELECT user_id FROM orders.orders WHERE id = ?", (oid,)).fetchone()
         if order:
             updated_user_ids.append((oid, order["user_id"]))
     for oid, uid in updated_user_ids:
-        db.execute("UPDATE orders SET status = ?, updated_at = ? WHERE id = ?", (body.status, int(time.time()), oid))
+        db.execute("UPDATE orders.orders SET status = ?, updated_at = ? WHERE id = ?", (body.status, int(time.time()), oid))
         status_labels = {
             "quoted": ("Quote Ready", "Your quote has been prepared. Please review it in your portal.", "success"),
             "in_progress": ("Work Started", "Our team has started working on your project.", "info"),
@@ -252,9 +252,9 @@ class SetCreditBody(BaseModel):
 
 
 @router.post("/admin/users/{uid}/credits")
-def add_user_credits(uid: int, body: CreditBody, user=Depends(require_manager)):
+def add_user_credits(uid: int, body: CreditBody, user=Depends(require_admin)):
     db = get_db()
-    row = db.execute("SELECT details FROM users WHERE id = ?", (uid,)).fetchone()
+    row = db.execute("SELECT details FROM auth.users WHERE id = ?", (uid,)).fetchone()
     if not row:
         db.close()
         raise HTTPException(404, "User not found")
@@ -264,7 +264,7 @@ def add_user_credits(uid: int, body: CreditBody, user=Depends(require_manager)):
         details = {}
     old_balance = details.get("credits", 0.0)
     details["credits"] = max(0, old_balance + body.amount)
-    db.execute("UPDATE users SET details = ? WHERE id = ?", (json.dumps(details), uid))
+    db.execute("UPDATE auth.users SET details = ? WHERE id = ?", (json.dumps(details), uid))
     db.commit()
     db.close()
     if body.amount >= 0:
@@ -276,9 +276,9 @@ def add_user_credits(uid: int, body: CreditBody, user=Depends(require_manager)):
     return {"success": True, "new_balance": details["credits"]}
 
 @router.put("/admin/users/{uid}/credits")
-def set_user_credits(uid: int, body: SetCreditBody, user=Depends(require_manager)):
+def set_user_credits(uid: int, body: SetCreditBody, user=Depends(require_admin)):
     db = get_db()
-    row = db.execute("SELECT details FROM users WHERE id = ?", (uid,)).fetchone()
+    row = db.execute("SELECT details FROM auth.users WHERE id = ?", (uid,)).fetchone()
     if not row:
         db.close()
         raise HTTPException(404, "User not found")
@@ -288,7 +288,7 @@ def set_user_credits(uid: int, body: SetCreditBody, user=Depends(require_manager
         details = {}
     old_balance = details.get("credits", 0.0)
     details["credits"] = body.amount
-    db.execute("UPDATE users SET details = ? WHERE id = ?", (json.dumps(details), uid))
+    db.execute("UPDATE auth.users SET details = ? WHERE id = ?", (json.dumps(details), uid))
     db.commit()
     db.close()
     diff = body.amount - old_balance
@@ -304,24 +304,24 @@ def set_user_credits(uid: int, body: SetCreditBody, user=Depends(require_manager
 @router.get("/manager/logs")
 def manager_logs(user=Depends(require_manager)):
     db = get_db()
-    rows = db.execute("SELECT l.*, u.name as user_name FROM activity_logs l JOIN users u ON l.user_id = u.id ORDER BY l.created_at DESC").fetchall()
+    rows = db.execute("SELECT l.*, u.name as user_name FROM orders.activity_logs l JOIN auth.users u ON l.user_id = u.id ORDER BY l.created_at DESC").fetchall()
     db.close()
     return [dict(r) for r in rows]
 
 @router.get("/manager/users")
 def manager_users(user=Depends(require_manager)):
     db = get_db()
-    rows = db.execute("SELECT * FROM users ORDER BY created_at DESC").fetchall()
+    rows = db.execute("SELECT * FROM auth.users ORDER BY created_at DESC").fetchall()
     db.close()
     return [dict(r) for r in rows]
 
 @router.get("/manager/users/{uid}")
 def manager_user_detail(uid: int, user=Depends(require_manager)):
     db = get_db()
-    row = db.execute("SELECT * FROM users WHERE id = ?", (uid,)).fetchone()
+    row = db.execute("SELECT * FROM auth.users WHERE id = ?", (uid,)).fetchone()
     if not row: db.close(); raise HTTPException(404, "User not found")
-    orders = db.execute("SELECT * FROM orders WHERE user_id = ?", (uid,)).fetchall()
-    activity = db.execute("SELECT * FROM activity_logs WHERE user_id = ? ORDER BY created_at DESC", (uid,)).fetchall()
+    orders = db.execute("SELECT * FROM orders.orders WHERE user_id = ?", (uid,)).fetchall()
+    activity = db.execute("SELECT * FROM orders.activity_logs WHERE user_id = ? ORDER BY created_at DESC", (uid,)).fetchall()
     db.close()
     from auth import safe_user
     return {**safe_user(dict(row)), "orders": [dict(o) for o in orders], "activity": [dict(a) for a in activity]}
@@ -330,7 +330,7 @@ def manager_user_detail(uid: int, user=Depends(require_manager)):
 def update_role(uid: int, body: RoleBody, user=Depends(require_manager)):
     if body.role not in ("client","admin","manager"): raise HTTPException(400, "Invalid role")
     db = get_db()
-    db.execute("UPDATE users SET role = ? WHERE id = ?", (body.role, uid))
+    db.execute("UPDATE auth.users SET role = ? WHERE id = ?", (body.role, uid))
     db.commit(); db.close()
     log_activity(user["id"], "CHANGE_ROLE", f"Changed user {uid} role to {body.role}")
     return {"success": True}
@@ -338,7 +338,7 @@ def update_role(uid: int, body: RoleBody, user=Depends(require_manager)):
 @router.put("/manager/users/{uid}/status")
 def set_user_status(uid: int, body: BanBody, user=Depends(require_manager)):
     db = get_db()
-    db.execute("UPDATE users SET is_banned = ? WHERE id = ?", (1 if body.is_banned else 0, uid))
+    db.execute("UPDATE auth.users SET is_banned = ? WHERE id = ?", (1 if body.is_banned else 0, uid))
     db.commit(); db.close()
     log_activity(user["id"], "BAN_USER" if body.is_banned else "UNBAN_USER", f"User ID {uid}")
     return {"success": True}
@@ -488,7 +488,7 @@ def manager_coupons(user=Depends(require_manager)):
 @router.get("/manager/stats/activity")
 def manager_stats(user=Depends(require_manager)):
     db = get_db()
-    rows = db.execute("SELECT date(created_at,'unixepoch') as date, COUNT(*) as count FROM activity_logs GROUP BY date ORDER BY date DESC LIMIT 30").fetchall()
+    rows = db.execute("SELECT date(created_at,'unixepoch') as date, COUNT(*) as count FROM orders.activity_logs GROUP BY date ORDER BY date DESC LIMIT 30").fetchall()
     db.close()
     return [dict(r) for r in rows]
 

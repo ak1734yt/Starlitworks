@@ -102,14 +102,14 @@ def _get_reward_amount(settings: dict) -> float:
 def _add_credits(user_id: int, amount: float, description: str):
     """Add credits to user account and log the transaction."""
     db = get_db()
-    row = db.execute("SELECT details FROM users WHERE id = ?", (user_id,)).fetchone()
+    row = db.execute("SELECT details FROM auth.users WHERE id = ?", (user_id,)).fetchone()
     if row:
         try:
             details = json.loads(row["details"] or "{}")
         except:
             details = {}
         details["credits"] = round(details.get("credits", 0.0) + amount, 2)
-        db.execute("UPDATE users SET details = ? WHERE id = ?", (json.dumps(details), user_id))
+        db.execute("UPDATE auth.users SET details = ? WHERE id = ?", (json.dumps(details), user_id))
         db.commit()
     db.close()
     # Log referral transaction
@@ -124,14 +124,14 @@ def _add_credits(user_id: int, amount: float, description: str):
 def _add_referral_balance(user_id: int, amount: float, description: str):
     """Add referral balance to user account (separate from credits) and log the transaction."""
     db = get_db()
-    row = db.execute("SELECT details FROM users WHERE id = ?", (user_id,)).fetchone()
+    row = db.execute("SELECT details FROM auth.users WHERE id = ?", (user_id,)).fetchone()
     if row:
         try:
             details = json.loads(row["details"] or "{}")
         except:
             details = {}
         details["referral_balance"] = round(details.get("referral_balance", 0.0) + amount, 2)
-        db.execute("UPDATE users SET details = ? WHERE id = ?", (json.dumps(details), user_id))
+        db.execute("UPDATE auth.users SET details = ? WHERE id = ?", (json.dumps(details), user_id))
         db.commit()
     db.close()
     # Log referral transaction
@@ -146,14 +146,14 @@ def _add_referral_balance(user_id: int, amount: float, description: str):
 def _add_ripple_points(user_id: int, points: int, description: str):
     """Add ripple points to user account and log the transaction."""
     db = get_db()
-    row = db.execute("SELECT details FROM users WHERE id = ?", (user_id,)).fetchone()
+    row = db.execute("SELECT details FROM auth.users WHERE id = ?", (user_id,)).fetchone()
     if row:
         try:
             details = json.loads(row["details"] or "{}")
         except:
             details = {}
         details["ripple_points"] = int(details.get("ripple_points", 0) + points)
-        db.execute("UPDATE users SET details = ? WHERE id = ?", (json.dumps(details), user_id))
+        db.execute("UPDATE auth.users SET details = ? WHERE id = ?", (json.dumps(details), user_id))
         db.commit()
     db.close()
     # Log referral transaction
@@ -302,7 +302,7 @@ def process_referral_on_order_complete(order_id: int, user_id: int, order_amount
 
     # Fetch referrer's details to get their active referral_count
     db_u = get_db()
-    referrer_row = db_u.execute("SELECT details FROM users WHERE id = ?", (referrer_id,)).fetchone()
+    referrer_row = db_u.execute("SELECT details FROM auth.users WHERE id = ?", (referrer_id,)).fetchone()
     db_u.close()
     
     ref_count = 0
@@ -401,7 +401,7 @@ def process_referral_on_signup(new_user_id: int, referral_code: str) -> bool:
 
     # Find referrer by their referral_code (stored in details JSON)
     db = get_db()
-    all_users = db.execute("SELECT id, details, name FROM users WHERE details LIKE ?", (f'%{referral_code}%',)).fetchall()
+    all_users = db.execute("SELECT id, details, name FROM auth.users WHERE details LIKE ?", (f'%{referral_code}%',)).fetchall()
     referrer = None
     for u in all_users:
         try:
@@ -455,20 +455,20 @@ def process_referral_on_signup(new_user_id: int, referral_code: str) -> bool:
     except:
         ref_details = {}
     ref_details["referral_count"] = ref_details.get("referral_count", 0) + 1
-    db.execute("UPDATE users SET details = ? WHERE id = ?", (json.dumps(ref_details), referrer_id))
+    db.execute("UPDATE auth.users SET details = ? WHERE id = ?", (json.dumps(ref_details), referrer_id))
 
     # Mark invite_rewarded in referrals
     conn.execute("UPDATE referrals SET invite_rewarded = 1 WHERE referred_id = ?", (new_user_id,))
 
     # Pay join bonus to new user: Award 2,500 Ripple Points (equivalent to ₹500 INR)
-    new_user_row = db.execute("SELECT details FROM users WHERE id = ?", (new_user_id,)).fetchone()
+    new_user_row = db.execute("SELECT details FROM auth.users WHERE id = ?", (new_user_id,)).fetchone()
     try:
         new_details = json.loads(new_user_row["details"] or "{}")
     except:
         new_details = {}
     new_details["ripple_points"] = int(new_details.get("ripple_points", 0) + 2500)
     new_details["referred_by"] = referral_code
-    db.execute("UPDATE users SET details = ? WHERE id = ?", (json.dumps(new_details), new_user_id))
+    db.execute("UPDATE auth.users SET details = ? WHERE id = ?", (json.dumps(new_details), new_user_id))
     conn.execute("UPDATE referrals SET join_rewarded = 1 WHERE referred_id = ?", (new_user_id,))
     
     # 2500 Ripple Points logged as the joining welcome bonus transaction
@@ -522,7 +522,7 @@ def get_referral_info(user=Depends(get_current_user)):
     settings = _get_referral_settings()
 
     db = get_db()
-    row = db.execute("SELECT details, name FROM users WHERE id = ?", (user["id"],)).fetchone()
+    row = db.execute("SELECT details, name FROM auth.users WHERE id = ?", (user["id"],)).fetchone()
     db.close()
     try:
         details = json.loads(row["details"] or "{}")
@@ -535,7 +535,7 @@ def get_referral_info(user=Depends(get_current_user)):
         referral_code = "REF" + secrets.token_hex(4).upper()
         details["referral_code"] = referral_code
         db2 = get_db()
-        db2.execute("UPDATE users SET details = ? WHERE id = ?", (json.dumps(details), user["id"]))
+        db2.execute("UPDATE auth.users SET details = ? WHERE id = ?", (json.dumps(details), user["id"]))
         db2.commit(); db2.close()
 
     # Get all referrals made by this user
@@ -568,7 +568,7 @@ def get_referral_info(user=Depends(get_current_user)):
     db3 = get_db()
     referral_list = []
     for r in my_referrals:
-        ref_user = db3.execute("SELECT name, email FROM users WHERE id = ?", (r["referred_id"],)).fetchone()
+        ref_user = db3.execute("SELECT name, email FROM auth.users WHERE id = ?", (r["referred_id"],)).fetchone()
         referral_list.append({
             **dict(r),
             "referred_name": ref_user["name"] if ref_user else "Unknown",
@@ -620,7 +620,7 @@ def convert_referral_points(body: ConvertPointsBody, user=Depends(get_current_us
         raise HTTPException(400, "Points amount must be positive")
         
     db = get_db()
-    row = db.execute("SELECT details FROM users WHERE id = ?", (user["id"],)).fetchone()
+    row = db.execute("SELECT details FROM auth.users WHERE id = ?", (user["id"],)).fetchone()
     if not row:
         db.close()
         raise HTTPException(404, "User details not found")
@@ -642,7 +642,7 @@ def convert_referral_points(body: ConvertPointsBody, user=Depends(get_current_us
     details["ripple_points"] = current_points - body.points
     details["credits"] = round(details.get("credits", 0.0) + inr_credits, 2)
     
-    db.execute("UPDATE users SET details = ? WHERE id = ?", (json.dumps(details), user["id"]))
+    db.execute("UPDATE auth.users SET details = ? WHERE id = ?", (json.dumps(details), user["id"]))
     db.commit()
     db.close()
     
@@ -681,8 +681,8 @@ def get_all_referrals(user=Depends(require_manager)):
     db = get_db()
     ref_list = []
     for r in referrals:
-        referrer = db.execute("SELECT name, email FROM users WHERE id = ?", (r["referrer_id"],)).fetchone()
-        referred = db.execute("SELECT name, email FROM users WHERE id = ?", (r["referred_id"],)).fetchone()
+        referrer = db.execute("SELECT name, email FROM auth.users WHERE id = ?", (r["referrer_id"],)).fetchone()
+        referred = db.execute("SELECT name, email FROM auth.users WHERE id = ?", (r["referred_id"],)).fetchone()
         ref_list.append({
             **dict(r),
             "referrer_name": referrer["name"] if referrer else "Unknown",
@@ -756,7 +756,7 @@ class UserReferralOverrideBody(BaseModel):
 @router.put("/manager/users/{uid}/referral-override")
 def set_user_referral_override(uid: int, body: UserReferralOverrideBody, user=Depends(require_manager)):
     db = get_db()
-    row = db.execute("SELECT details FROM users WHERE id = ?", (uid,)).fetchone()
+    row = db.execute("SELECT details FROM auth.users WHERE id = ?", (uid,)).fetchone()
     if not row:
         db.close(); raise HTTPException(404, "User not found")
     try:
@@ -767,7 +767,7 @@ def set_user_referral_override(uid: int, body: UserReferralOverrideBody, user=De
         details.pop("referral_custom_reward", None)
     else:
         details["referral_custom_reward"] = body.custom_reward
-    db.execute("UPDATE users SET details = ? WHERE id = ?", (json.dumps(details), uid))
+    db.execute("UPDATE auth.users SET details = ? WHERE id = ?", (json.dumps(details), uid))
     db.commit(); db.close()
     log_activity(user["id"], "SET_REFERRAL_OVERRIDE", f"Set custom referral reward for user {uid}: {body.custom_reward}")
     return {"success": True}
@@ -796,7 +796,7 @@ def get_user_referrals(uid: int, user=Depends(require_manager)):
     db = get_db()
     ref_list = []
     for r in referrals:
-        referred = db.execute("SELECT name FROM users WHERE id = ?", (r["referred_id"],)).fetchone()
+        referred = db.execute("SELECT name FROM auth.users WHERE id = ?", (r["referred_id"],)).fetchone()
         ref_list.append({**dict(r), "referred_name": referred["name"] if referred else "Unknown"})
     db.close()
     return {
@@ -815,7 +815,7 @@ def request_referral_withdrawal(body: WithdrawRequest, user=Depends(get_current_
         raise HTTPException(400, "Minimum withdrawal amount is ₹1000")
         
     db = get_db()
-    row = db.execute("SELECT details FROM users WHERE id = ?", (user["id"],)).fetchone()
+    row = db.execute("SELECT details FROM auth.users WHERE id = ?", (user["id"],)).fetchone()
     if not row:
         db.close()
         raise HTTPException(404, "User not found")
@@ -831,7 +831,7 @@ def request_referral_withdrawal(body: WithdrawRequest, user=Depends(get_current_
         raise HTTPException(400, f"Insufficient referral balance. Available: ₹{balance}")
         
     details["referral_balance"] = round(balance - body.amount, 2)
-    db.execute("UPDATE users SET details = ? WHERE id = ?", (json.dumps(details), user["id"]))
+    db.execute("UPDATE auth.users SET details = ? WHERE id = ?", (json.dumps(details), user["id"]))
     db.commit()
     db.close()
     
@@ -866,7 +866,7 @@ def get_manager_withdrawals(user=Depends(require_manager)):
     db = get_db()
     withdrawals_list = []
     for r in rows:
-        u = db.execute("SELECT name, email FROM users WHERE id = ?", (r["user_id"],)).fetchone()
+        u = db.execute("SELECT name, email FROM auth.users WHERE id = ?", (r["user_id"],)).fetchone()
         withdrawals_list.append({
             **dict(r),
             "user_name": u["name"] if u else "Unknown",
@@ -906,14 +906,14 @@ def update_withdrawal_status(wid: int, body: WithdrawStatusBody, user=Depends(re
     # If rejected, refund the amount
     if body.status == "rejected":
         db = get_db()
-        row = db.execute("SELECT details FROM users WHERE id = ?", (w["user_id"],)).fetchone()
+        row = db.execute("SELECT details FROM auth.users WHERE id = ?", (w["user_id"],)).fetchone()
         if row:
             try:
                 details = json.loads(row["details"] or "{}")
             except:
                 details = {}
             details["referral_balance"] = round(details.get("referral_balance", 0.0) + w["amount"], 2)
-            db.execute("UPDATE users SET details = ? WHERE id = ?", (json.dumps(details), w["user_id"]))
+            db.execute("UPDATE auth.users SET details = ? WHERE id = ?", (json.dumps(details), w["user_id"]))
             db.commit()
         db.close()
         

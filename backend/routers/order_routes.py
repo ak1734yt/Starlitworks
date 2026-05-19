@@ -23,9 +23,9 @@ os.makedirs(INVOICES_DIR, exist_ok=True)
 
 def auto_generate_invoice(order_id: int):
     db = get_db()
-    order = db.execute("SELECT * FROM orders WHERE id = ?", (order_id,)).fetchone()
+    order = db.execute("SELECT * FROM orders.orders WHERE id = ?", (order_id,)).fetchone()
     if not order: return
-    user = db.execute("SELECT name FROM users WHERE id = ?", (order["user_id"],)).fetchone()
+    user = db.execute("SELECT name FROM auth.users WHERE id = ?", (order["user_id"],)).fetchone()
     db.close()
     
     # Check if invoice already exists for this order
@@ -129,7 +129,7 @@ class NegotiationStatusBody(BaseModel):
 async def create_order(body: OrderBody, user=Depends(get_current_user)):
     db = get_db()
     result = db.execute("""
-        INSERT INTO orders (user_id, service_id, service_name, server_link, description, timeline,
+        INSERT INTO orders.orders (user_id, service_id, service_name, server_link, description, timeline,
             discord_username, quoted_price, tax_rate, cgst, sgst, total_amount, payment_plan, quantity)
         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     """, (user["id"], body.service_id, body.service_name, body.server_link, body.description,
@@ -144,14 +144,14 @@ async def create_order(body: OrderBody, user=Depends(get_current_user)):
 @router.get("/orders/mine")
 def get_my_orders(user=Depends(get_current_user)):
     db = get_db()
-    rows = db.execute("SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC", (user["id"],)).fetchall()
+    rows = db.execute("SELECT * FROM orders.orders WHERE user_id = ? ORDER BY created_at DESC", (user["id"],)).fetchall()
     db.close()
     return [dict(r) for r in rows]
 
 @router.get("/orders/{order_id}")
 def get_order(order_id: int, user=Depends(get_current_user)):
     db = get_db()
-    row = db.execute("SELECT * FROM orders WHERE id = ?", (order_id,)).fetchone()
+    row = db.execute("SELECT * FROM orders.orders WHERE id = ?", (order_id,)).fetchone()
     db.close()
     if not row: raise HTTPException(404, "Order not found")
     order = dict(row)
@@ -161,9 +161,9 @@ def get_order(order_id: int, user=Depends(get_current_user)):
 @router.post("/orders/{order_id}/negotiate")
 def negotiate_order(order_id: int, body: NegotiateBody, user=Depends(get_current_user)):
     db = get_db()
-    row = db.execute("SELECT * FROM orders WHERE id = ? AND user_id = ?", (order_id, user["id"])).fetchone()
+    row = db.execute("SELECT * FROM orders.orders WHERE id = ? AND user_id = ?", (order_id, user["id"])).fetchone()
     if not row: db.close(); raise HTTPException(404, "Not found")
-    db.execute("UPDATE orders SET negotiated_price=?, negotiation_reason=?, negotiation_status='pending', updated_at=? WHERE id=?",
+    db.execute("UPDATE orders.orders SET negotiated_price=?, negotiation_reason=?, negotiation_status='pending', updated_at=? WHERE id=?",
                (body.negotiated_price, body.negotiation_reason, int(time.time()), order_id))
     db.commit(); db.close()
     return {"success": True}
@@ -171,9 +171,9 @@ def negotiate_order(order_id: int, body: NegotiateBody, user=Depends(get_current
 @router.post("/orders/{order_id}/accept")
 def accept_order(order_id: int, user=Depends(get_current_user)):
     db = get_db()
-    row = db.execute("SELECT * FROM orders WHERE id = ? AND user_id = ?", (order_id, user["id"])).fetchone()
+    row = db.execute("SELECT * FROM orders.orders WHERE id = ? AND user_id = ?", (order_id, user["id"])).fetchone()
     if not row: db.close(); raise HTTPException(404, "Not found")
-    db.execute("UPDATE orders SET status='accepted', updated_at=? WHERE id=?", (int(time.time()), order_id))
+    db.execute("UPDATE orders.orders SET status='accepted', updated_at=? WHERE id=?", (int(time.time()), order_id))
     db.commit(); db.close()
     auto_generate_invoice(order_id)
     return {"success": True}
@@ -202,7 +202,7 @@ async def submit_payment_proof(order_id: str, body: PaymentProofBody, user=Depen
     db = get_db()
     
     # 1. Fetch user details and validate credits
-    user_row = db.execute("SELECT details FROM users WHERE id=?", (user["id"],)).fetchone()
+    user_row = db.execute("SELECT details FROM auth.users WHERE id=?", (user["id"],)).fetchone()
     if not user_row:
         db.close()
         raise HTTPException(404, "User not found")
@@ -217,12 +217,12 @@ async def submit_payment_proof(order_id: str, body: PaymentProofBody, user=Depen
     # Deduct credits from user profile immediately
     if applied > 0:
         user_details["credits"] = max(0.0, user_credits - applied)
-        db.execute("UPDATE users SET details=? WHERE id=?", (json.dumps(user_details), user["id"]))
+        db.execute("UPDATE auth.users SET details=? WHERE id=?", (json.dumps(user_details), user["id"]))
         db.commit()
         log_activity(user["id"], "USE_CREDITS", f"Applied ₹{applied} credits to order/invoice {order_id}")
 
     if is_numeric_order:
-        row = db.execute("SELECT * FROM orders WHERE id = ? AND user_id = ?", (numeric_order_id, user["id"])).fetchone()
+        row = db.execute("SELECT * FROM orders.orders WHERE id = ? AND user_id = ?", (numeric_order_id, user["id"])).fetchone()
         if not row: db.close(); raise HTTPException(404, "Order not found")
         
         screenshot_url = ""
@@ -238,7 +238,7 @@ async def submit_payment_proof(order_id: str, body: PaymentProofBody, user=Depen
                 
         if body.payment_method == "credits":
             # Auto-approve since credit covers it
-            db.execute("""UPDATE orders SET status='accepted', payment_status='completed',
+            db.execute("""UPDATE orders.orders SET status='accepted', payment_status='completed',
                 payment_method=?, transaction_id=?, payment_screenshot=?,
                 payment_plan=COALESCE(?,payment_plan), payment_proof_submitted_at=?, updated_at=?,
                 credits_applied=? WHERE id=?""",
@@ -248,7 +248,7 @@ async def submit_payment_proof(order_id: str, body: PaymentProofBody, user=Depen
             
             # System confirmation chat log
             sys_msg = f"✅ Payment confirmed! Your project is now officially accepted via Starlit Credits (₹{applied} applied). We'll begin work shortly."
-            db.execute("INSERT INTO chat_messages (order_id, user_id, message_type, content) VALUES (?,?,?,?)",
+            db.execute("INSERT INTO orders.chat_messages (order_id, user_id, message_type, content) VALUES (?,?,?,?)",
                        (numeric_order_id, user["id"], "system", sys_msg))
             db.commit()
             create_notification(user["id"], "Order Paid", sys_msg[:100], "success")
@@ -259,7 +259,7 @@ async def submit_payment_proof(order_id: str, body: PaymentProofBody, user=Depen
                 print("Error generating invoice for credit purchase:", e)
         else:
             # Partial or cash payment
-            db.execute("""UPDATE orders SET status='payment_pending', payment_status='pending',
+            db.execute("""UPDATE orders.orders SET status='payment_pending', payment_status='pending',
                 payment_method=?, transaction_id=?, payment_screenshot=?,
                 payment_plan=COALESCE(?,payment_plan), payment_proof_submitted_at=?, updated_at=?,
                 credits_applied=? WHERE id=?""",
@@ -322,7 +322,7 @@ async def submit_payment_proof(order_id: str, body: PaymentProofBody, user=Depen
 @router.get("/admin/orders")
 def admin_get_orders(user=Depends(require_admin)):
     db = get_db()
-    rows = db.execute("SELECT o.*, u.name AS client_name, u.email AS client_email FROM orders o LEFT JOIN users u ON o.user_id = u.id ORDER BY o.created_at DESC").fetchall()
+    rows = db.execute("SELECT o.*, u.name AS client_name, u.email AS client_email FROM orders.orders o LEFT JOIN auth.users u ON o.user_id = u.id ORDER BY o.created_at DESC").fetchall()
     db.close()
     return [dict(r) for r in rows]
 
@@ -333,13 +333,13 @@ async def admin_update_order(order_id: int, body: AdminOrderUpdate, user=Depends
     accepted_by = user["id"] if body.status in ("accepted","quoted") else None
     db = get_db()
     
-    row = db.execute("SELECT * FROM orders WHERE id = ?", (order_id,)).fetchone()
+    row = db.execute("SELECT * FROM orders.orders WHERE id = ?", (order_id,)).fetchone()
     if not row: db.close(); raise HTTPException(404, "Order not found")
 
     # ── Enforce min_price floor ──────────────────────────────────────────────
     if body.quoted_price is not None and body.quoted_price > 0:
         product_row = db.execute(
-            "SELECT min_price FROM products WHERE (product_key = ? OR name = ?) AND is_deleted = 0",
+            "SELECT min_price FROM shop.products WHERE (product_key = ? OR name = ?) AND is_deleted = 0",
             (row["service_id"], row["service_name"])
         ).fetchone()
         if product_row:
@@ -348,7 +348,7 @@ async def admin_update_order(order_id: int, body: AdminOrderUpdate, user=Depends
                 db.close()
                 raise HTTPException(400, f"Quoted price ₹{body.quoted_price} is below the minimum allowed price of ₹{floor} set by the Manager.")
     
-    db.execute("UPDATE orders SET status=?, quoted_price=?, admin_notes=?, accepted_by=COALESCE(?,accepted_by), updated_at=? WHERE id=?",
+    db.execute("UPDATE orders.orders SET status=?, quoted_price=?, admin_notes=?, accepted_by=COALESCE(?,accepted_by), updated_at=? WHERE id=?",
                (body.status, body.quoted_price, body.admin_notes, accepted_by, int(time.time()), order_id))
     db.commit()
     db.close()
@@ -377,7 +377,7 @@ async def admin_update_order(order_id: int, body: AdminOrderUpdate, user=Depends
             "pending":         "🔔 Your order is back in the queue. Our team will review it shortly.",
         }
         sys_msg = auto_responses.get(body.status, f"📌 Order status updated to {body.status.upper().replace('_', ' ')}.")
-        db_chat.execute("INSERT INTO chat_messages (order_id, user_id, message_type, content) VALUES (?,?,?,?)",
+        db_chat.execute("INSERT INTO orders.chat_messages (order_id, user_id, message_type, content) VALUES (?,?,?,?)",
                    (order_id, user["id"], "system", sys_msg))
         db_chat.commit()
         create_notification(row["user_id"], "Order Update", sys_msg[:100], "info")
@@ -390,14 +390,14 @@ async def admin_update_order(order_id: int, body: AdminOrderUpdate, user=Depends
 @router.post("/admin/orders/{order_id}/negotiation")
 def admin_update_negotiation(order_id: int, body: NegotiationStatusBody, user=Depends(require_admin)):
     db = get_db()
-    db.execute("UPDATE orders SET negotiation_status=?, updated_at=? WHERE id=?", (body.negotiation_status, int(time.time()), order_id))
+    db.execute("UPDATE orders.orders SET negotiation_status=?, updated_at=? WHERE id=?", (body.negotiation_status, int(time.time()), order_id))
     db.commit(); db.close()
     return {"success": True}
 
 @router.put("/admin/orders/{order_id}/verify-payment")
 def verify_payment(order_id: int, body: VerifyPaymentBody, user=Depends(require_admin)):
     db = get_db()
-    row = db.execute("SELECT * FROM orders WHERE id=?", (order_id,)).fetchone()
+    row = db.execute("SELECT * FROM orders.orders WHERE id=?", (order_id,)).fetchone()
     if not row: db.close(); raise HTTPException(404, "Order not found")
 
     if body.approved:
@@ -410,14 +410,14 @@ def verify_payment(order_id: int, body: VerifyPaymentBody, user=Depends(require_
             user_id = row["user_id"]
             amount_to_add = float(row["total_amount"] or row["quoted_price"] or 0)
             
-            user_row = db.execute("SELECT details FROM users WHERE id=?", (user_id,)).fetchone()
+            user_row = db.execute("SELECT details FROM auth.users WHERE id=?", (user_id,)).fetchone()
             if user_row:
                 user_details = json.loads(user_row["details"] or "{}")
                 current_credits = float(user_details.get("credits", 0.0))
                 new_credits = current_credits + amount_to_add
                 user_details["credits"] = new_credits
                 
-                db.execute("UPDATE users SET details=? WHERE id=?", (json.dumps(user_details), user_id))
+                db.execute("UPDATE auth.users SET details=? WHERE id=?", (json.dumps(user_details), user_id))
         else:
             status = "accepted" 
             pay_status = "completed"
@@ -429,16 +429,16 @@ def verify_payment(order_id: int, body: VerifyPaymentBody, user=Depends(require_
         credits_applied = float(row["credits_applied"] or 0.0)
         if credits_applied > 0:
             user_id = row["user_id"]
-            user_row = db.execute("SELECT details FROM users WHERE id=?", (user_id,)).fetchone()
+            user_row = db.execute("SELECT details FROM auth.users WHERE id=?", (user_id,)).fetchone()
             if user_row:
                 user_details = json.loads(user_row["details"] or "{}")
                 current_credits = float(user_details.get("credits", 0.0))
                 user_details["credits"] = current_credits + credits_applied
-                db.execute("UPDATE users SET details=? WHERE id=?", (json.dumps(user_details), user_id))
+                db.execute("UPDATE auth.users SET details=? WHERE id=?", (json.dumps(user_details), user_id))
             # Reset credits_applied on the order to 0 since they've been refunded
-            db.execute("UPDATE orders SET credits_applied=0 WHERE id=?", (order_id,))
+            db.execute("UPDATE orders.orders SET credits_applied=0 WHERE id=?", (order_id,))
 
-    db.execute("UPDATE orders SET status=?, payment_status=?, updated_at=? WHERE id=?", (status, pay_status, int(time.time()), order_id))
+    db.execute("UPDATE orders.orders SET status=?, payment_status=?, updated_at=? WHERE id=?", (status, pay_status, int(time.time()), order_id))
     db.commit(); db.close()
 
     log_activity(user["id"], "VERIFY_PAYMENT", f"Order {order_id} Approved={body.approved}")
@@ -486,9 +486,9 @@ def verify_payment(order_id: int, body: VerifyPaymentBody, user=Depends(require_
 @router.put("/admin/orders/{order_id}/vault")
 def update_vault(order_id: int, body: VaultBody, user=Depends(require_admin)):
     db = get_db()
-    db.execute("UPDATE orders SET vault_data=?, updated_at=? WHERE id=?", (json.dumps(body.vault_data), int(time.time()), order_id))
+    db.execute("UPDATE orders.orders SET vault_data=?, updated_at=? WHERE id=?", (json.dumps(body.vault_data), int(time.time()), order_id))
     db.commit()
-    row = db.execute("SELECT user_id FROM orders WHERE id = ?", (order_id,)).fetchone()
+    row = db.execute("SELECT user_id FROM orders.orders WHERE id = ?", (order_id,)).fetchone()
     db.close()
     if row: create_notification(row["user_id"], "Vault Updated", f"New assets added to Order #{order_id}", "success")
     return {"success": True}
@@ -496,8 +496,8 @@ def update_vault(order_id: int, body: VaultBody, user=Depends(require_admin)):
 @router.delete("/admin/orders/{order_id}")
 def delete_order(order_id: int, user=Depends(require_admin)):
     db = get_db()
-    db.execute("DELETE FROM chat_messages WHERE order_id = ?", (order_id,))
-    db.execute("DELETE FROM orders WHERE id = ?", (order_id,))
+    db.execute("DELETE FROM orders.chat_messages WHERE order_id = ?", (order_id,))
+    db.execute("DELETE FROM orders.orders WHERE id = ?", (order_id,))
     db.commit(); db.close()
     log_activity(user["id"], "DELETE_ORDER", f"Deleted order #{order_id}")
     return {"message": "Order deleted successfully"}
