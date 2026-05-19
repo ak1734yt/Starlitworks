@@ -10,6 +10,9 @@ load_dotenv()
 init_db()
 start_notification_service()
 
+from discord_stats import start_discord_stats_loop
+start_discord_stats_loop()
+
 # Start Discord Operations Bot in the background
 def start_discord_bot_background():
     import threading

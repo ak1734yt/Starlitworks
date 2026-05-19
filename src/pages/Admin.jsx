@@ -12,7 +12,8 @@ import {
   getAnalyticsLogs, updateOrderVault, updateInstallment,
   getAdminOrders, getInvoices, getAdminFeedbacks, updateOrderStatus,
   verifyPayment, updateFeedbackStatus, getCoupons, createCoupon,
-  adminUpdateInvoiceStatus, adminNotifyUserInvoice, adminEditInvoice, adminAddUserCredits
+  adminUpdateInvoiceStatus, adminNotifyUserInvoice, adminEditInvoice, adminAddUserCredits,
+  deleteInvoice
 } from '../services/api';
 import UserChat from '../components/UserChat';
 
@@ -56,6 +57,7 @@ export default function Admin() {
   
   // Modals / Editing state
   const [editingOrder, setEditingOrder] = useState(null);
+  const [editingInvoice, setEditingInvoice] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
@@ -223,6 +225,50 @@ export default function Admin() {
       fetchData();
     } catch (err) {
       toast.error(err.message);
+    }
+  };
+
+  const handleDeleteInvoice = async (id) => {
+    if (!confirm('Are you sure you want to delete this invoice?')) return;
+    try {
+      await deleteInvoice(id);
+      toast.success('Invoice deleted successfully');
+      fetchData();
+    } catch (err) {
+      toast.error(err.message);
+    }
+  };
+
+  const handleEditInvoiceSave = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      let items = editingInvoice.items;
+      if (typeof items === 'string') {
+        try {
+          items = JSON.parse(items);
+        } catch (err) {
+          throw new Error('Invalid JSON in Invoice Items field');
+        }
+      }
+      const updateData = {
+        invoiceNumber: editingInvoice.invoiceNumber,
+        invoiceDate: editingInvoice.invoiceDate,
+        currency: editingInvoice.currency,
+        grandTotal: Number(editingInvoice.grandTotal),
+        paymentStatus: editingInvoice.paymentStatus,
+        paymentType: editingInvoice.paymentType,
+        items: items,
+        client: editingInvoice.client
+      };
+      await adminEditInvoice(editingInvoice.id, updateData);
+      toast.success('Invoice updated successfully');
+      setEditingInvoice(null);
+      fetchData();
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -792,6 +838,20 @@ export default function Admin() {
                                 <Bell className="w-4 h-4" />
                               </button>
                               <button 
+                                onClick={(e) => { e.stopPropagation(); setEditingInvoice(inv); }}
+                                className="p-1.5 hover:bg-white/10 rounded-lg text-gray-400 transition-all"
+                                title="Edit Invoice"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </button>
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); handleDeleteInvoice(inv.id); }} 
+                                className="p-1.5 hover:bg-red-500/10 rounded-lg text-red-500 transition-all"
+                                title="Delete Invoice"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                              <button 
                                 onClick={(e) => { e.stopPropagation(); handleDownloadInvoice(inv.id); }} 
                                 className="p-1.5 hover:bg-white/10 rounded-lg text-gray-400 transition-all"
                                 title="Download"
@@ -1316,6 +1376,85 @@ export default function Admin() {
                   <p className="text-xs text-gray-400 italic leading-relaxed">"{selectedInvoice.notes}"</p>
                 </div>
               )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      
+      {/* --- EDIT INVOICE MODAL --- */}
+      <AnimatePresence>
+        {editingInvoice && (
+          <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+            <motion.div initial={{scale:0.95}} animate={{scale:1}} className="bg-[#0A0A0A] border border-white/10 rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-bold flex items-center gap-2"><FileText className="w-5 h-5 text-brand-primary"/> Edit Invoice</h3>
+                <button onClick={() => setEditingInvoice(null)} className="text-gray-500 hover:text-white"><X className="w-5 h-5"/></button>
+              </div>
+              
+              <form onSubmit={handleEditInvoiceSave} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">Invoice Number</label>
+                    <input type="text" required value={editingInvoice.invoiceNumber || ''} onChange={e => setEditingInvoice({...editingInvoice, invoiceNumber: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-brand-primary" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">Invoice Date</label>
+                    <input type="text" required value={editingInvoice.invoiceDate || ''} onChange={e => setEditingInvoice({...editingInvoice, invoiceDate: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-brand-primary" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">Client Name</label>
+                    <input type="text" required value={editingInvoice.client?.name || ''} onChange={e => setEditingInvoice({...editingInvoice, client: { ...editingInvoice.client, name: e.target.value }})} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-brand-primary" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">Client Server/Project</label>
+                    <input type="text" value={editingInvoice.client?.serverName || ''} onChange={e => setEditingInvoice({...editingInvoice, client: { ...editingInvoice.client, serverName: e.target.value }})} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-brand-primary" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">Client GSTIN</label>
+                    <input type="text" value={editingInvoice.client?.gstin || ''} onChange={e => setEditingInvoice({...editingInvoice, client: { ...editingInvoice.client, gstin: e.target.value }})} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-brand-primary" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">Currency</label>
+                    <input type="text" required value={editingInvoice.currency || ''} onChange={e => setEditingInvoice({...editingInvoice, currency: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-brand-primary" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">Grand Total</label>
+                    <input type="number" required value={editingInvoice.grandTotal || ''} onChange={e => setEditingInvoice({...editingInvoice, grandTotal: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-brand-primary" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">Status</label>
+                    <select value={editingInvoice.paymentStatus || 'pending'} onChange={e => setEditingInvoice({...editingInvoice, paymentStatus: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-brand-primary">
+                      <option value="pending" className="bg-brand-bg">Pending</option>
+                      <option value="paid" className="bg-brand-bg">Paid</option>
+                      <option value="payment_pending" className="bg-brand-bg">Payment Pending</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Invoice Items (JSON Format)</label>
+                  <textarea 
+                    rows={4}
+                    value={typeof editingInvoice.items === 'string' ? editingInvoice.items : JSON.stringify(editingInvoice.items, null, 2)}
+                    onChange={e => setEditingInvoice({...editingInvoice, items: e.target.value})}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-xs font-mono text-white focus:outline-none focus:border-brand-primary resize-none" 
+                  />
+                  <p className="text-[9px] text-gray-500 italic mt-1">Format: [&#123;"description": "Item 1", "qty": 1, "price": 1000&#125;]</p>
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button type="button" onClick={() => setEditingInvoice(null)} className="flex-1 btn-outline">Cancel</button>
+                  <button type="submit" disabled={saving} className="flex-1 btn-primary flex items-center justify-center gap-2">
+                    {saving ? <Loader2 className="w-4 h-4 animate-spin"/> : <Save className="w-4 h-4"/>} Update Invoice
+                  </button>
+                </div>
+              </form>
             </motion.div>
           </motion.div>
         )}

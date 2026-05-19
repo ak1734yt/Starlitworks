@@ -80,7 +80,7 @@ const Navbar = () => {
               {hasInstallments && (
                 <Link to="/tracker" className="hover:text-brand-primary transition-colors flex items-center gap-1.5"><CreditCard className="w-3.5 h-3.5"/>Tracker</Link>
               )}
-              {(user.role === 'admin' || user.role === 'manager') && (
+              {user.role === 'admin' && (
                 <Link to="/admin" className="hover:text-yellow-400 transition-colors flex items-center gap-1.5 text-yellow-500">
                   <Shield className="w-3.5 h-3.5"/>Admin
                 </Link>
@@ -206,7 +206,7 @@ const Navbar = () => {
                       <button onClick={() => { navigate('/profile'); setUserMenuOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/5 rounded-lg transition-all">
                         <Settings className="w-4 h-4" /> Manage Account
                       </button>
-                      {(user.role === 'admin' || user.role === 'manager') && (
+                      {user.role === 'admin' && (
                         <button onClick={() => { navigate('/admin'); setUserMenuOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/5 rounded-lg transition-all">
                           <Shield className="w-4 h-4" /> Admin Panel
                         </button>
@@ -323,7 +323,7 @@ const Navbar = () => {
                       <CreditCard className="w-4 h-4" /> Tracker
                     </Link>
                   )}
-                  {(user.role === 'admin' || user.role === 'manager') && (
+                  {user.role === 'admin' && (
                     <Link to="/admin" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-3 p-3 text-yellow-500/80 hover:text-yellow-400 hover:bg-yellow-500/10 rounded-xl transition-all font-bold">
                       <Shield className="w-4 h-4" /> Admin Panel
                     </Link>

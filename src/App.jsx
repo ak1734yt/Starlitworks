@@ -6,6 +6,11 @@ import TransitionScreen from "./components/TransitionScreen";
 import AuthModal from "./components/AuthModal";
 import { useAuth } from "./context/AuthContext";
 import CookieConsent from "./components/CookieConsent";
+import ChatBubble from "./components/ChatBubble";
+import ParticlesBg from "./components/ParticlesBg";
+
+
+
 
 import Home           from "./pages/Home";
 import About          from "./pages/About";
@@ -96,10 +101,13 @@ function AppInner() {
   }, [pathname, hash]);
   return (
     <>
+      <div className="viewport-frame" />
+      <ParticlesBg />
       <TransitionScreen show={showTransition} />
       <AuthModal />
       <CookieConsent />
       <PulseTracker />
+      <ChatBubble />
       <Routes>
         {/* Public */}
         <Route path="/"               element={<Home />} />

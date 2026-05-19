@@ -56,6 +56,36 @@
       radial-gradient(circle at 2px 2px, rgba(255, 255, 255, 0.1) 1px, transparent 0);
     background-size: 24px 24px;
   }
+
+  /* Viewport frame style */
+  .viewport-frame {
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    box-shadow: inset 0 0 15px rgba(59, 130, 246, 0.08), 0 0 20px rgba(59, 130, 246, 0.12);
+    pointer-events: none;
+    z-index: 9999;
+    border-radius: 16px;
+  }
+
+  /* Glow Utilities */
+  .text-glow {
+    text-shadow: 0 0 20px rgba(255, 255, 255, 0.35);
+  }
+
+  .text-glow-primary {
+    text-shadow: 0 0 25px rgba(124, 58, 237, 0.45);
+  }
+
+  .btn-glow-white {
+    @apply px-8 py-3 rounded-full font-bold transition-all duration-300
+           bg-white text-black hover:bg-white/90
+           shadow-[0_0_20px_rgba(255,255,255,0.25)] hover:shadow-[0_0_35px_rgba(255,255,255,0.45)]
+           hover:scale-105 active:scale-95;
+  }
 }
 
 html {
@@ -65,4 +95,5 @@ html {
 section {
   scroll-margin-top: 100px;
 }
+
 

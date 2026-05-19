@@ -6,7 +6,9 @@ import {
   Calendar, Clock, CheckCircle2, XCircle,
   BarChart3, Settings, LogOut, Search,
   Star, MessageSquare, Palette, Globe, Megaphone, 
-  Layers, ListOrdered, Share2, TrendingUp, Loader2, Gift
+  Layers, ListOrdered, Share2, TrendingUp, Loader2, Gift,
+  Edit, FileText, Download, CreditCard, History, Check, Bell, ExternalLink, DollarSign, X, ShoppingBag, Zap,
+  ArrowLeft, MoreVertical, Layout, PieChart, IndianRupee
 } from 'lucide-react';
 import { 
   getManagerLogs, getManagerUsers, updateUserRole, 
@@ -19,7 +21,8 @@ import {
   adminNotifyUserInvoice, adminAddUserCredits, seedCatalog,
   getManagerReferrals, getManagerReferralSettings, updateManagerReferralSettings,
   updateReferralTiers, setUserReferralOverride, grantManualBonus,
-  getUserReferralStats, getManagerRevenue, bulkUpdateOrderStatus
+  getUserReferralStats, getManagerRevenue, bulkUpdateOrderStatus,
+  deleteInvoice, adminEditInvoice, updateOrderStatus, updateOrderVault
 } from '../services/api';
 import UserChat from '../components/UserChat';
 
@@ -31,7 +34,6 @@ const getScreenshotUrl = (url) => {
   }
   return url;
 };
-import { CreditCard, ExternalLink, Check, X, ArrowLeft, MoreVertical, Layout, PieChart, IndianRupee, Bell, Download, FileText } from 'lucide-react';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, 
   Tooltip, ResponsiveContainer 
@@ -88,6 +90,11 @@ export default function Manager() {
   const [addingCreditTo, setAddingCreditTo] = useState(null);
   const [creditAmount, setCreditAmount] = useState(0);
   const [submittingCredit, setSubmittingCredit] = useState(false);
+  
+  const [editingInvoice, setEditingInvoice] = useState(null);
+  const [editingOrder, setEditingOrder] = useState(null);
+  const [paymentFilter, setPaymentFilter] = useState('pending');
+  const [saving, setSaving] = useState(false);
 
   // Coupon State
   const [couponForm, setCouponForm] = useState({
@@ -269,11 +276,11 @@ export default function Manager() {
 
   const handleAddCredits = async (e) => {
     e.preventDefault();
-    if (!addingCreditTo || creditAmount <= 0) return;
+    if (!addingCreditTo || creditAmount === 0) return;
     setSubmittingCredit(true);
     try {
       await adminAddUserCredits(addingCreditTo.id, creditAmount);
-      toast.success(`Successfully added ₹${creditAmount} credits to ${addingCreditTo.name}`);
+      toast.success(`Successfully updated credits for ${addingCreditTo.name}`);
       setAddingCreditTo(null);
       setCreditAmount(0);
       fetchData();
@@ -282,6 +289,72 @@ export default function Manager() {
     } finally {
       setSubmittingCredit(false);
     }
+  };
+
+  const handleDeleteInvoice = async (id) => {
+    if (!confirm('Are you sure you want to delete this invoice?')) return;
+    try {
+      await deleteInvoice(id);
+      toast.success('Invoice deleted successfully');
+      fetchData();
+    } catch (err) {
+      toast.error(err.message);
+    }
+  };
+
+  const handleEditInvoiceSave = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      let items = editingInvoice.items;
+      if (typeof items === 'string') {
+        try {
+          items = JSON.parse(items);
+        } catch (err) {
+          throw new Error('Invalid JSON in Invoice Items field');
+        }
+      }
+      const updateData = {
+        invoiceNumber: editingInvoice.invoiceNumber,
+        invoiceDate: editingInvoice.invoiceDate,
+        currency: editingInvoice.currency,
+        grandTotal: Number(editingInvoice.grandTotal),
+        paymentStatus: editingInvoice.paymentStatus,
+        paymentType: editingInvoice.paymentType,
+        items: items,
+        client: editingInvoice.client
+      };
+      await adminEditInvoice(editingInvoice.id, updateData);
+      toast.success('Invoice updated successfully');
+      setEditingInvoice(null);
+      fetchData();
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveOrder = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await updateOrderStatus(editingOrder.id, editingOrder);
+      
+      if (editingOrder.vault_data) {
+        let vData = editingOrder.vault_data;
+        if (typeof vData === 'string') {
+          try { vData = JSON.parse(vData); } catch(e) { throw new Error("Invalid JSON in Starlit Vault"); }
+        }
+        await updateOrderVault(editingOrder.id, vData);
+      }
+
+      toast.success('Order & Vault updated');
+      setEditingOrder(null);
+      fetchData();
+    } catch (err) { 
+      toast.error(err.message);
+    } finally { setSaving(false); }
   };
 
   const handleToggleInvoicePaid = async (inv) => {
@@ -688,84 +761,142 @@ export default function Manager() {
         )}
 
         {activeTab === 'payments' && (
-          <motion.div key="payments" initial={{opacity:0, y:10}} animate={{opacity:1, y:0}} exit={{opacity:0, y:-10}} className="grid gap-8">
-            {orders.filter(o => o.status === 'payment_pending').length === 0 ? (
-              <div className="bg-[#0A0A0A] border border-white/10 rounded-2xl py-20 text-center text-gray-500 shadow-2xl">
-                No pending payments to verify.
+          <motion.div key="payments" initial={{opacity:0, y:10}} animate={{opacity:1, y:0}} exit={{opacity:0, y:-10}} className="grid gap-6">
+            <div className="flex justify-between items-center bg-[#0A0A0A] border border-white/10 p-4 rounded-2xl">
+              <div className="flex gap-2">
+                {[
+                  { id: 'pending', label: 'Verification Required' },
+                  { id: 'active', label: 'Active Orders' },
+                  { id: 'all', label: 'All Orders' }
+                ].map(opt => (
+                  <button
+                    key={opt.id}
+                    onClick={() => setPaymentFilter(opt.id)}
+                    className={`px-4 py-2 text-xs font-bold rounded-xl transition-all ${
+                      paymentFilter === opt.id 
+                        ? 'bg-brand-primary text-white shadow-lg' 
+                        : 'bg-white/5 text-gray-400 hover:text-white'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
               </div>
-            ) : orders.filter(o => o.status === 'payment_pending').map(order => (
-              <div key={order.id} className="bg-[#0A0A0A] border border-white/10 rounded-2xl p-8 grid lg:grid-cols-3 gap-8 shadow-2xl relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-brand-primary/5 blur-3xl -mr-16 -mt-16" />
-                
-                <div className="space-y-6 relative">
-                  <div>
-                    <p className="text-[10px] text-brand-primary uppercase font-bold tracking-widest mb-1">Order #{order.id}</p>
-                    <h4 className="font-bold text-2xl">{order.service_name}</h4>
-                    <p className="text-sm text-gray-500">Client: <span className="text-white">{order.client_name}</span></p>
-                  </div>
+            </div>
 
-                  <div className="p-4 bg-white/[0.02] rounded-xl border border-white/5 space-y-3">
-                    <div>
-                      <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest mb-1">Transaction ID</p>
-                      <p className="text-sm font-mono text-brand-primary break-all">{order.transaction_id || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest mb-1">Quoted Price</p>
-                      <p className="text-lg font-bold">₹{order.quoted_price?.toLocaleString() || '0'}</p>
-                    </div>
-                  </div>
+            {(() => {
+              const filteredOrders = orders.filter(o => {
+                if (paymentFilter === 'pending') return o.status === 'payment_pending';
+                if (paymentFilter === 'active') return o.status === 'accepted';
+                return true;
+              });
 
-                  <div className="flex gap-3">
-                    <button 
-                      onClick={() => handleVerifyPayment(order.id, true)}
-                      className="flex-1 py-3 bg-green-500/10 text-green-500 border border-green-500/20 rounded-xl text-xs font-bold hover:bg-green-500 hover:text-white transition-all flex items-center justify-center gap-2"
-                    >
-                      <Check className="w-4 h-4" /> Approve
-                    </button>
-                    <button 
-                      onClick={() => handleVerifyPayment(order.id, false)}
-                      className="flex-1 py-3 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl text-xs font-bold hover:bg-red-500 hover:text-white transition-all flex items-center justify-center gap-2"
-                    >
-                      <X className="w-4 h-4" /> Reject
-                    </button>
-                    <button 
-                      onClick={() => handleDeleteOrder(order.id)}
-                      className="p-3 bg-white/5 text-gray-500 border border-white/10 rounded-xl hover:bg-red-500/10 hover:text-red-500 transition-all"
-                      title="Delete Order"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+              if (filteredOrders.length === 0) {
+                return (
+                  <div className="bg-[#0A0A0A] border border-white/10 rounded-2xl py-20 text-center text-gray-500 shadow-2xl">
+                    No orders found matching this filter.
                   </div>
-                </div>
-                
-                <div className="relative group aspect-video lg:aspect-square bg-black/50 rounded-2xl overflow-hidden border border-white/10">
-                  {order.payment_screenshot ? (
-                    <>
-                      <img src={getScreenshotUrl(order.payment_screenshot)} alt="Proof" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
-                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm">
-                        <a 
-                          href={getScreenshotUrl(order.payment_screenshot)} 
-                          target="_blank" 
-                          rel="noreferrer"
-                          className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-xs font-bold flex items-center gap-2 border border-white/10 transition-all"
-                        >
-                          <ExternalLink className="w-4 h-4" /> View Full Image
-                        </a>
+                );
+              }
+
+              return (
+                <div className="grid gap-8">
+                  {filteredOrders.map(order => (
+                    <div key={order.id} className="bg-[#0A0A0A] border border-white/10 rounded-2xl p-8 grid lg:grid-cols-3 gap-8 shadow-2xl relative overflow-hidden">
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-brand-primary/5 blur-3xl -mr-16 -mt-16" />
+                      
+                      <div className="space-y-6 relative">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-[10px] text-brand-primary uppercase font-bold tracking-widest">Order #{order.id}</span>
+                            <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${
+                              order.status === 'payment_pending' ? 'bg-yellow-500/10 text-yellow-500' :
+                              order.status === 'accepted' ? 'bg-green-500/10 text-green-500' :
+                              order.status === 'completed' ? 'bg-blue-500/10 text-blue-400' : 'bg-gray-500/10 text-gray-500'
+                            }`}>
+                              {order.status}
+                            </span>
+                          </div>
+                          <h4 className="font-bold text-2xl">{order.service_name}</h4>
+                          <p className="text-sm text-gray-500">Client: <span className="text-white">{order.client_name}</span></p>
+                        </div>
+
+                        <div className="p-4 bg-white/[0.02] rounded-xl border border-white/5 space-y-3">
+                          <div>
+                            <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest mb-1">Transaction ID</p>
+                            <p className="text-sm font-mono text-brand-primary break-all">{order.transaction_id || 'N/A'}</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest mb-1">Quoted Price</p>
+                            <p className="text-lg font-bold">₹{order.quoted_price?.toLocaleString() || '0'}</p>
+                          </div>
+                        </div>
+
+                        <div className="flex gap-3 flex-wrap">
+                          {order.status === 'payment_pending' && (
+                            <>
+                              <button 
+                                onClick={() => handleVerifyPayment(order.id, true)}
+                                className="flex-1 min-w-[80px] py-3 bg-green-500/10 text-green-500 border border-green-500/20 rounded-xl text-xs font-bold hover:bg-green-500 hover:text-white transition-all flex items-center justify-center gap-2"
+                              >
+                                <Check className="w-4 h-4" /> Approve
+                              </button>
+                              <button 
+                                onClick={() => handleVerifyPayment(order.id, false)}
+                                className="flex-1 min-w-[80px] py-3 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl text-xs font-bold hover:bg-red-500 hover:text-white transition-all flex items-center justify-center gap-2"
+                              >
+                                <X className="w-4 h-4" /> Reject
+                              </button>
+                            </>
+                          )}
+                          <button 
+                            onClick={() => setEditingOrder(order)}
+                            className="flex-1 min-w-[80px] py-3 bg-white/5 text-gray-300 border border-white/10 rounded-xl text-xs font-bold hover:bg-white/10 hover:text-white transition-all flex items-center justify-center gap-2"
+                            title="Edit Order"
+                          >
+                            <Edit className="w-4 h-4" /> Edit
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteOrder(order.id)}
+                            className="p-3 bg-white/5 text-gray-500 border border-white/10 rounded-xl hover:bg-red-500/10 hover:text-red-500 transition-all"
+                            title="Delete Order"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
-                    </>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center h-full text-gray-700 gap-2">
-                      <Activity className="w-8 h-8 opacity-20" />
-                      <span className="text-xs font-bold uppercase tracking-widest opacity-20">No Screenshot</span>
-                    </div>
-                  )}
-                </div>
+                      
+                      <div className="relative group aspect-video lg:aspect-square bg-black/50 rounded-2xl overflow-hidden border border-white/10">
+                        {order.payment_screenshot ? (
+                          <>
+                            <img src={getScreenshotUrl(order.payment_screenshot)} alt="Proof" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm">
+                              <a 
+                                href={getScreenshotUrl(order.payment_screenshot)} 
+                                target="_blank" 
+                                rel="noreferrer"
+                                className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-xs font-bold flex items-center gap-2 border border-white/10 transition-all"
+                              >
+                                <ExternalLink className="w-4 h-4" /> View Full Image
+                              </a>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="flex flex-col items-center justify-center h-full text-gray-700 gap-2">
+                            <Activity className="w-8 h-8 opacity-20" />
+                            <span className="text-xs font-bold uppercase tracking-widest opacity-20">No Screenshot</span>
+                          </div>
+                        )}
+                      </div>
 
-                <div className="h-[450px] lg:h-full min-h-[400px] border-l border-white/5 pl-8">
-                  <UserChat userId={order.user_id} />
+                      <div className="h-[450px] lg:h-full min-h-[400px] border-l border-white/5 pl-8">
+                        <UserChat userId={order.user_id} />
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              </div>
-            ))}
+              );
+            })()}
           </motion.div>
         )}
 
@@ -1580,6 +1711,20 @@ export default function Manager() {
                               <Bell className="w-4 h-4" />
                             </button>
                             <button 
+                              onClick={(e) => { e.stopPropagation(); setEditingInvoice(inv); }}
+                              className="p-1.5 hover:bg-white/10 rounded-lg text-gray-400 transition-all"
+                              title="Edit Invoice"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); handleDeleteInvoice(inv.id); }} 
+                              className="p-1.5 hover:bg-red-500/10 rounded-lg text-red-500 transition-all"
+                              title="Delete Invoice"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                            <button 
                               onClick={(e) => { e.stopPropagation(); handleDownloadInvoice(inv.id); }} 
                               className="p-1.5 hover:bg-white/10 rounded-lg text-gray-400 transition-all"
                               title="Download TXT"
@@ -2341,6 +2486,230 @@ export default function Manager() {
               )}
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+
+      {/* --- EDIT INVOICE MODAL --- */}
+      <AnimatePresence>
+        {editingInvoice && (
+          <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+            <motion.div initial={{scale:0.95}} animate={{scale:1}} className="bg-[#0A0A0A] border border-white/10 rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-bold flex items-center gap-2"><FileText className="w-5 h-5 text-brand-primary"/> Edit Invoice</h3>
+                <button onClick={() => setEditingInvoice(null)} className="text-gray-500 hover:text-white"><X className="w-5 h-5"/></button>
+              </div>
+              
+              <form onSubmit={handleEditInvoiceSave} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">Invoice Number</label>
+                    <input type="text" required value={editingInvoice.invoiceNumber || ''} onChange={e => setEditingInvoice({...editingInvoice, invoiceNumber: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-brand-primary" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">Invoice Date</label>
+                    <input type="text" required value={editingInvoice.invoiceDate || ''} onChange={e => setEditingInvoice({...editingInvoice, invoiceDate: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-brand-primary" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">Client Name</label>
+                    <input type="text" required value={editingInvoice.client?.name || ''} onChange={e => setEditingInvoice({...editingInvoice, client: { ...editingInvoice.client, name: e.target.value }})} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-brand-primary" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">Client Server/Project</label>
+                    <input type="text" value={editingInvoice.client?.serverName || ''} onChange={e => setEditingInvoice({...editingInvoice, client: { ...editingInvoice.client, serverName: e.target.value }})} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-brand-primary" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">Client GSTIN</label>
+                    <input type="text" value={editingInvoice.client?.gstin || ''} onChange={e => setEditingInvoice({...editingInvoice, client: { ...editingInvoice.client, gstin: e.target.value }})} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-brand-primary" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">Currency</label>
+                    <input type="text" required value={editingInvoice.currency || ''} onChange={e => setEditingInvoice({...editingInvoice, currency: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-brand-primary" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">Grand Total</label>
+                    <input type="number" required value={editingInvoice.grandTotal || ''} onChange={e => setEditingInvoice({...editingInvoice, grandTotal: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-brand-primary" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">Status</label>
+                    <select value={editingInvoice.paymentStatus || 'pending'} onChange={e => setEditingInvoice({...editingInvoice, paymentStatus: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-brand-primary">
+                      <option value="pending" className="bg-[#0A0A0A]">Pending</option>
+                      <option value="paid" className="bg-[#0A0A0A]">Paid</option>
+                      <option value="payment_pending" className="bg-[#0A0A0A]">Payment Pending</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Invoice Items (JSON Format)</label>
+                  <textarea 
+                    rows={4}
+                    value={typeof editingInvoice.items === 'string' ? editingInvoice.items : JSON.stringify(editingInvoice.items, null, 2)}
+                    onChange={e => setEditingInvoice({...editingInvoice, items: e.target.value})}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-xs font-mono text-white focus:outline-none focus:border-brand-primary resize-none" 
+                  />
+                  <p className="text-[9px] text-gray-500 italic mt-1">Format: [&#123;"description": "Item 1", "qty": 1, "price": 1000&#125;]</p>
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button type="button" onClick={() => setEditingInvoice(null)} className="flex-1 btn-outline">Cancel</button>
+                  <button type="submit" disabled={saving} className="flex-1 btn-primary flex items-center justify-center gap-2">
+                    {saving ? <Loader2 className="w-4 h-4 animate-spin"/> : <Save className="w-4 h-4"/>} Update Invoice
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* --- EDIT ORDER MODAL --- */}
+      <AnimatePresence>
+        {editingOrder && (
+          <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+            <motion.div initial={{scale:0.95}} animate={{scale:1}} className="bg-brand-card border border-brand-border rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto text-white">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-bold flex items-center gap-2"><ShoppingBag className="w-5 h-5 text-brand-primary"/> Edit Order</h3>
+                <button onClick={() => setEditingOrder(null)} className="text-gray-500 hover:text-white"><X className="w-5 h-5"/></button>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4 mb-6 text-sm">
+                <div className="bg-white/5 p-4 rounded-xl border border-white/5">
+                  <p className="text-gray-500 text-xs mb-1">Client</p>
+                  <p className="font-bold">{editingOrder.client_name}</p>
+                  <p className="text-gray-400">{editingOrder.client_email}</p>
+                  {editingOrder.discord_username && (
+                    <p className="text-brand-secondary text-xs mt-2 flex items-center gap-1">
+                      <span className="font-bold">Discord:</span> {editingOrder.discord_username}
+                    </p>
+                  )}
+                </div>
+                <div className="bg-white/5 p-4 rounded-xl border border-white/5">
+                  <p className="text-gray-500 text-xs mb-1">Service Requested</p>
+                  <p className="font-bold text-brand-primary">{editingOrder.service_name}</p>
+                  <p className="text-gray-400 capitalize mb-1">Timeline: {editingOrder.timeline || 'Flexible'}</p>
+                  <p className="text-xs text-gray-400">Quantity: <span className="font-mono font-bold text-brand-secondary">{editingOrder.quantity || 1}</span></p>
+                </div>
+              </div>
+
+              <div className="mb-6">
+                <p className="text-gray-500 text-xs mb-2">Client Description</p>
+                <div className="bg-black/30 p-4 rounded-xl border border-white/5 text-sm leading-relaxed text-gray-300 mb-4">
+                  {editingOrder.description}
+                </div>
+
+                {editingOrder.negotiation_status && (
+                  <div className={`p-4 rounded-xl border ${editingOrder.negotiation_status === 'pending' ? 'bg-yellow-500/5 border-yellow-500/20' : 'bg-green-500/5 border-green-500/20'}`}>
+                    <p className="text-[10px] uppercase font-bold tracking-widest text-gray-500 mb-2">Negotiation Info</p>
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <p className="text-xs text-gray-400">Requested Price</p>
+                        <p className="text-lg font-bold text-white">₹{editingOrder.negotiated_price}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-gray-400">Status</p>
+                        <p className={`text-sm font-bold uppercase ${editingOrder.negotiation_status === 'pending' ? 'text-yellow-500' : 'text-green-500'}`}>{editingOrder.negotiation_status}</p>
+                      </div>
+                    </div>
+                    <div className="mt-3 pt-3 border-t border-white/5">
+                      <p className="text-xs text-gray-500 mb-1">Reason</p>
+                      <p className="text-sm italic text-gray-400">"{editingOrder.negotiation_reason}"</p>
+                    </div>
+                  </div>
+                )}
+                
+                {editingOrder.server_link && (
+                  <a href={editingOrder.server_link} target="_blank" rel="noreferrer" className="inline-block mt-3 text-sm text-brand-primary hover:underline">
+                    🔗 View Discord Server
+                  </a>
+                )}
+              </div>
+
+              {/* STALIT VAULT ASSET MANAGER */}
+              <div className="mb-8 p-4 bg-brand-primary/5 border border-brand-primary/20 rounded-2xl">
+                <div className="flex justify-between items-center mb-4">
+                  <h4 className="text-xs font-black uppercase tracking-widest text-brand-primary flex items-center gap-2">
+                    <Zap className="w-3 h-3" /> The Starlit Vault
+                  </h4>
+                  <span className="text-[10px] text-gray-500 font-bold uppercase">Client Assets</span>
+                </div>
+                <div className="space-y-3" key={editingOrder.id}>
+                  <textarea 
+                    placeholder='{"Bot Token": "MTAy...", "License": "SSW-99X"}'
+                    defaultValue={(() => {
+                      try {
+                        const raw = editingOrder.vault_data;
+                        if (typeof raw === 'string') return raw;
+                        return JSON.stringify(raw || {}, null, 2);
+                      } catch {
+                        return '';
+                      }
+                    })()}
+                    onChange={(e) => {
+                      try {
+                        const val = e.target.value;
+                        setEditingOrder({ ...editingOrder, vault_data: val });
+                      } catch(err) {
+                        console.error(err);
+                      }
+                    }}
+                    className="w-full h-32 bg-black/50 border border-white/5 rounded-xl p-3 text-xs font-mono text-brand-primary focus:border-brand-primary outline-none transition-all resize-none"
+                  />
+                  <p className="text-[9px] text-gray-600 italic">Enter assets as JSON format. These will be visible only to the client once the order is completed.</p>
+                </div>
+              </div>
+
+              <form onSubmit={handleSaveOrder} className="space-y-4 border-t border-white/10 pt-6">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">Status</label>
+                    <select value={editingOrder.status} onChange={e => setEditingOrder({...editingOrder, status: e.target.value})} className="w-full bg-[#0A0A0A] border border-white/20 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-primary">
+                      <option value="pending">Pending</option>
+                      <option value="quoted">Quoted (Awaiting Client)</option>
+                      <option value="accepted">Accepted (In Progress)</option>
+                      <option value="completed">Completed</option>
+                      <option value="rejected">Rejected</option>
+                    </select>
+                  </div>
+                  <div>
+                    <div className="flex justify-between items-end mb-1">
+                      <label className="block text-xs text-gray-400">Custom Quote Price (₹)</label>
+                      {(() => {
+                        const prod = prices?.find(p => p.name === editingOrder.service_name || p.product_key === editingOrder.service_id);
+                        if (!prod) return null;
+                        const floor = parseFloat(prod.min_price || 0);
+                        const hint = prod.show_price_to_admin !== 0 ? parseFloat(prod.price || 0) : 0;
+                        return (
+                          <div className="text-[10px] text-right">
+                            {hint > 0 && <span className="text-brand-primary mr-2">Suggested: ₹{hint}</span>}
+                            {floor > 0 && <span className="text-amber-500 font-bold">Floor: ₹{floor}</span>}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                    <input type="number" value={editingOrder.quoted_price || ''} onChange={e => setEditingOrder({...editingOrder, quoted_price: Number(e.target.value)})} placeholder="e.g. 1500" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-primary" />
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Admin Notes (Private)</label>
+                  <textarea value={editingOrder.admin_notes || ''} onChange={e => setEditingOrder({...editingOrder, admin_notes: e.target.value})} rows={2} placeholder="Internal notes..." className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-brand-primary resize-none" />
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button type="button" onClick={() => setEditingOrder(null)} className="flex-1 btn-outline">Cancel</button>
+                  <button type="submit" disabled={saving} className="flex-1 btn-primary flex items-center justify-center gap-2">
+                    {saving ? <Loader2 className="w-4 h-4 animate-spin"/> : <Save className="w-4 h-4"/>} Update Order
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>

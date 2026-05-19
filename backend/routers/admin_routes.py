@@ -400,10 +400,10 @@ def seed_catalog(user=Depends(require_manager)):
         {"category": "promo", "product_key": "promo_exp_10_70", "name": "10 Members Express (70 Servers)", "price": 800, "min_price": 800, "tag": "1-2 Days | ₹800", "description": "Express priority Discord server promotion across 70 servers with 10 members.", "features": ["Delivery: 1 – 2 Days", "₹11.42 / server equivalent", "Server Icon & Logo required", "Description & Text required"], "is_manual_price": 0, "show_price_to_admin": 1},
         {"category": "promo", "product_key": "promo_exp_10_100", "name": "10 Members Express (100 Servers)", "price": 1200, "min_price": 1200, "tag": "1-2 Days | ₹1200", "description": "Express priority Discord server promotion across 100 servers with 10 members.", "features": ["Delivery: 1 – 2 Days", "₹12.0 / server equivalent", "Server Icon & Logo required", "Description & Text required"], "is_manual_price": 0, "show_price_to_admin": 1},
         
-        {"category": "subscriptions", "product_key": "sub_support_monthly", "name": "Private Support Bot (Monthly Access)", "price": 999, "min_price": 999, "tag": "Monthly | ₹999", "description": "High-speed private support ticket and utility bot hosted on our ultra-low latency server. Renewable monthly access.", "features": ["Full custom ticketer system", "Sensible customer server design", "Active anti-abuse algorithms", "24/7 dedicated hosting uptime"], "is_manual_price": 0, "show_price_to_admin": 1},
-        {"category": "subscriptions", "product_key": "sub_support_lifetime", "name": "Private Support Bot (Complete Access)", "price": 9999, "min_price": 9999, "tag": "Lifetime | ₹9999", "description": "Lifetime complete access and ownership of your premium private support bot. Full server design and zero hosting fees.", "features": ["Lifetime support bot license", "Includes complete server design", "Priority custom bot feature updates", "No renewal fees forever"], "is_manual_price": 0, "show_price_to_admin": 1},
-        {"category": "subscriptions", "product_key": "sub_guard_monthly", "name": "Premium Guard Bot (Monthly Access)", "price": 1499, "min_price": 1499, "tag": "Monthly | ₹1499", "description": "High security anti-nuke defense bot hosted monthly on your server. Protects your community from rogue actions.", "features": ["Full anti-nuke defense shield", "24/7 priority hosting protection", "Automated threat response triggers", "Custom security rules configurator"], "is_manual_price": 0, "show_price_to_admin": 1},
-        {"category": "subscriptions", "product_key": "sub_guard_lifetime", "name": "Premium Guard Bot (Complete Access)", "price": 14999, "min_price": 14999, "tag": "Lifetime | ₹14999", "description": "Complete lifetime security anti-nuke defense shield bot. High impact protection with zero ongoing subscription costs.", "features": ["Lifetime high security bot license", "Anti-nuke dedicated defense", "Priority security patch releases", "Ultimate shield protection levels"], "is_manual_price": 0, "show_price_to_admin": 1}
+        {"category": "subscriptions", "product_key": "sub_bot_1m", "name": "Premium Bot Subscription (1 Month)", "price": 999, "min_price": 999, "tag": "1 Month | ₹999", "description": "High-speed private support ticket and utility bot hosted on our ultra-low latency server for 1 month.", "features": ["Full custom ticketer system", "Active anti-abuse algorithms", "24/7 dedicated hosting uptime", "1 Month Access"], "is_manual_price": 0, "show_price_to_admin": 1},
+        {"category": "subscriptions", "product_key": "sub_bot_3m", "name": "Premium Bot Subscription (3 Months)", "price": 2799, "min_price": 2799, "tag": "3 Months | ₹2799", "description": "High-speed private support ticket and utility bot hosted on our ultra-low latency server for 3 months.", "features": ["Full custom ticketer system", "Active anti-abuse algorithms", "24/7 dedicated hosting uptime", "3 Months Access"], "is_manual_price": 0, "show_price_to_admin": 1},
+        {"category": "subscriptions", "product_key": "sub_bot_6m", "name": "Premium Bot Subscription (6 Months)", "price": 5499, "min_price": 5499, "tag": "6 Months | ₹5499", "description": "High-speed private support ticket and utility bot hosted on our ultra-low latency server for 6 months.", "features": ["Full custom ticketer system", "Active anti-abuse algorithms", "24/7 dedicated hosting uptime", "6 Months Access"], "is_manual_price": 0, "show_price_to_admin": 1},
+        {"category": "subscriptions", "product_key": "sub_bot_12m", "name": "Premium Bot Subscription (12 Months)", "price": 9999, "min_price": 9999, "tag": "12 Months | ₹9999", "description": "High-speed private support ticket and utility bot hosted on our ultra-low latency server for 12 months.", "features": ["Full custom ticketer system", "Active anti-abuse algorithms", "24/7 dedicated hosting uptime", "12 Months Access"], "is_manual_price": 0, "show_price_to_admin": 1}
     ]
     
     for p in products:
@@ -529,5 +529,15 @@ def public_stats():
     db = get_db()
     feedbacks = db.execute("SELECT COUNT(*) as c FROM feedbacks WHERE status = 'approved'").fetchone()["c"]
     orders = db.execute("SELECT COUNT(*) as c FROM orders WHERE status = 'completed'").fetchone()["c"]
+    
+    # Read member count from site_settings
+    member_row = db.execute("SELECT value FROM site_settings WHERE key = 'discord_member_count'").fetchone()
+    member_count = int(member_row["value"]) if member_row else 10000
+    
     db.close()
-    return {"total_clients": 40 + feedbacks, "rating": 4.9, "completed_projects": 50 + orders}
+    return {
+        "total_clients": 40 + feedbacks,
+        "rating": 4.9,
+        "completed_projects": 50 + orders,
+        "member_count": member_count
+    }
