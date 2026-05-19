@@ -3,8 +3,8 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
-GMAIL_USER = os.getenv("GMAIL_USER")
-GMAIL_PASS = os.getenv("GMAIL_APP_PASSWORD")
+GMAIL_USER = os.getenv("GMAIL_USER", "").strip()
+GMAIL_PASS = os.getenv("GMAIL_APP_PASSWORD", "").replace(" ", "")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
 

@@ -107,7 +107,7 @@ function AppInner() {
       <AuthModal />
       <CookieConsent />
       <PulseTracker />
-      <ChatBubble />
+      {!['/login', '/signup'].includes(pathname) && <ChatBubble />}
       <Routes>
         {/* Public */}
         <Route path="/"               element={<Home />} />

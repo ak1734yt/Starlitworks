@@ -138,10 +138,10 @@ async def send_modular_webhook(alert_type: str, payload: dict):
 def log_activity(user_id: int, action: str, details: str = ""):
     try:
         db = get_db()
-        user = db.execute("SELECT name FROM users WHERE id = ?", (user_id,)).fetchone()
+        user = db.execute("SELECT name FROM auth.users WHERE id = ?", (user_id,)).fetchone()
         admin_name = user["name"] if user else "Unknown"
         log_str = f"[{admin_name}] {details}"
-        db.execute("INSERT INTO activity_logs (user_id, action, details) VALUES (?, ?, ?)", (user_id, action, log_str))
+        db.execute("INSERT INTO orders.activity_logs (user_id, action, details) VALUES (?, ?, ?)", (user_id, action, log_str))
         db.commit()
         db.close()
         
@@ -186,7 +186,7 @@ def log_activity(user_id: int, action: str, details: str = ""):
 def create_notification(user_id: int, title: str, message: str, type_: str = "info"):
     try:
         db = get_db()
-        db.execute("INSERT INTO notifications (user_id, title, message, type) VALUES (?, ?, ?, ?)",
+        db.execute("INSERT INTO orders.notifications (user_id, title, message, type) VALUES (?, ?, ?, ?)",
                    (user_id, title, message, type_))
         db.commit()
         db.close()
@@ -207,7 +207,7 @@ def calculate_risk_score(data: dict, db) -> tuple[int, list]:
     ip = data.get("ip")
     if ip:
         row = db.execute(
-            "SELECT COUNT(DISTINCT user_id) as count FROM analytics_logs WHERE ip = ? AND user_id IS NOT NULL", (ip,)
+            "SELECT COUNT(DISTINCT user_id) as count FROM orders.analytics_logs WHERE ip = ? AND user_id IS NOT NULL", (ip,)
         ).fetchone()
         if row and row["count"] > 1:
             score += 30
