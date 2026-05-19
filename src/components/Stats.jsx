@@ -63,9 +63,37 @@ const AnimatedNumber = ({ value }) => {
 const Stats = () => {
   const [liveStats, setLiveStats] = useState(null);
   const scrollContainerRef = useRef(null);
+  const isHoveredRef = useRef(false);
 
   useEffect(() => {
     getPublicStats().then(setLiveStats).catch(console.error);
+  }, []);
+
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const intervalId = setInterval(() => {
+      if (isHoveredRef.current) return;
+      
+      const { scrollLeft, scrollWidth, clientWidth } = container;
+      // 280px card min-width + 24px gap = 304px scroll amount per rotation
+      const scrollAmount = 304;
+      
+      if (scrollLeft + clientWidth >= scrollWidth - 15) {
+        container.scrollTo({
+          left: 0,
+          behavior: 'smooth'
+        });
+      } else {
+        container.scrollTo({
+          left: scrollLeft + scrollAmount,
+          behavior: 'smooth'
+        });
+      }
+    }, 4000); // rotates every 4 seconds
+
+    return () => clearInterval(intervalId);
   }, []);
 
   const getVal = (stat) => {
@@ -118,6 +146,8 @@ const Stats = () => {
 
         <div 
           ref={scrollContainerRef}
+          onMouseEnter={() => { isHoveredRef.current = true; }}
+          onMouseLeave={() => { isHoveredRef.current = false; }}
           className="flex gap-6 overflow-x-auto scrollbar-none pb-4 snap-x snap-mandatory touch-pan-x"
         >
           {STATS_DATA.map((stat, index) => (

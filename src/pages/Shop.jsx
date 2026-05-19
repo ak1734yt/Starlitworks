@@ -65,7 +65,29 @@ export default function Shop() {
     return meta[catId] || { label: catId.replace(/_/g, ' '), icon: '📦' };
   };
 
-  const serviceCategories = Object.keys(groupedProducts).filter(cat => cat !== 'subscriptions');
+  const CATEGORY_ORDER = [
+    'server',
+    'addon',
+    'bot',
+    'scripts',
+    'infra',
+    'events',
+    'promo',
+    'joins',
+    'decorations_gift',
+    'decorations_login',
+    'nitro_accounts',
+    'booster'
+  ];
+
+  const serviceCategories = Object.keys(groupedProducts)
+    .filter(cat => cat !== 'subscriptions')
+    .sort((a, b) => {
+      const idxA = CATEGORY_ORDER.indexOf(a);
+      const idxB = CATEGORY_ORDER.indexOf(b);
+      return (idxA === -1 ? 999 : idxA) - (idxB === -1 ? 999 : idxB);
+    });
+
   const categoriesList = serviceCategories.map(cat => ({
     id: cat,
     label: getCategoryMeta(cat).label,
@@ -336,46 +358,6 @@ export default function Shop() {
           </section>
         )}
 
-        {/* --- DYNAMIC FALLBACK FOR UNKNOWN CATEGORIES --- */}
-        {serviceCategories.filter(cat => !['server', 'addon', 'bot', 'infra', 'scripts', 'events', 'joins', 'decorations_gift', 'decorations_login', 'nitro_accounts', 'booster', 'promo'].includes(cat)).map(cat => (
-          <section key={cat} className="mb-24 mt-16" id={cat}>
-            <h2 className="text-2xl font-bold mb-8 flex items-center gap-3 capitalize text-brand-primary">
-              <span className="text-3xl">{getCategoryMeta(cat).icon}</span>
-              {getCategoryMeta(cat).label}
-            </h2>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {(groupedProducts[cat] || []).map(item => {
-                const key = item.product_key || String(item.id);
-                return (
-                  <div
-                    key={item.id}
-                    onClick={() => toggleItem(key)}
-                    className={`glass-card border-2 cursor-pointer transition-all flex flex-col p-6 rounded-2xl relative group ${isSelected(key) ? 'border-brand-primary bg-brand-primary/5' : 'border-white/5 hover:border-brand-primary/30'}`}
-                  >
-                    <button
-                      onClick={e => { e.stopPropagation(); setModalProduct(item); }}
-                      className="absolute top-4 right-4 w-8 h-8 rounded-xl bg-white/5 hover:bg-brand-primary/20 flex items-center justify-center text-gray-500 hover:text-brand-primary transition-colors opacity-0 group-hover:opacity-100"
-                    >
-                      <Info className="w-4 h-4" />
-                    </button>
-                    {item.tag && (
-                      <div className="text-[9px] font-bold px-2 py-1 rounded-full mb-3 inline-block w-fit border border-brand-primary/20 text-brand-primary bg-brand-primary/10">
-                        {item.tag.split('|')[0].trim()}
-                      </div>
-                    )}
-                    <div className="flex justify-between items-start mb-2 mt-2">
-                      <h3 className="font-bold text-lg">{item.name}</h3>
-                    </div>
-                    <p className="text-xs text-gray-500 mb-4 flex-grow">{item.description}</p>
-                    <PriceDisplay product={item} />
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        ))}
-
-
         {/* --- ADDONS --- */}
         {(groupedProducts["addon"] || []).length > 0 && (
           <section className="mb-24 mt-16" id="addon">
@@ -494,6 +476,45 @@ export default function Shop() {
           </section>
         )}
 
+        {/* --- INFRASTRUCTURE --- */}
+        {(groupedProducts["infra"] || []).length > 0 && (
+          <section className="mb-24 mt-16" id="infra">
+            <h2 className="text-2xl font-bold mb-8 flex items-center gap-3">
+              <Database className="w-6 h-6 text-blue-400" />
+              Infrastructure & Hosting
+            </h2>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {(groupedProducts["infra"] || []).map(item => {
+                const selected = isSelected(item.product_key || String(item.id));
+                return (
+                  <div
+                    key={item.id}
+                    onClick={() => toggleItem(item.product_key || String(item.id))}
+                    className={`glass p-5 rounded-2xl flex items-center justify-between border-2 cursor-pointer transition-colors relative group ${selected ? 'border-blue-400 bg-blue-400/5' : 'border-white/5 hover:border-white/20'}`}
+                  >
+                    <button
+                      onClick={e => { e.stopPropagation(); setModalProduct(item); }}
+                      className="absolute top-3 right-3 w-6 h-6 rounded-lg bg-white/5 hover:bg-blue-400/20 flex items-center justify-center text-gray-500 hover:text-blue-400 transition-colors opacity-0 group-hover:opacity-100"
+                    >
+                      <Info className="w-3.5 h-3.5" />
+                    </button>
+                    <div>
+                      <span className="font-medium block">{item.name}</span>
+                      <span className="text-[10px] text-gray-500 block mb-1">{item.description}</span>
+                      <PriceDisplay product={item} isSmall />
+                    </div>
+                    {selected ? (
+                      <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-white"><Check className="w-3 h-3" /></div>
+                    ) : (
+                      <div className="w-6 h-6 rounded-full border border-white/20" />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
         {/* --- EVENTS --- */}
         {(groupedProducts["events"] || []).length > 0 && (
           <section className="mb-24 mt-16" id="events">
@@ -530,7 +551,42 @@ export default function Shop() {
           </section>
         )}
 
-        {/* --- JOINS --- */}
+        {/* --- SERVER PROMOTIONS --- */}
+        {(groupedProducts["promo"] || []).length > 0 && (
+          <section className="mb-24 mt-20" id="promo">
+            <h2 className="text-2xl font-bold mb-2 flex items-center gap-3">
+              <span className="text-2xl">📢</span>
+              Server Promotion Services
+            </h2>
+            <p className="text-gray-500 text-sm mb-2">Grow your Discord server across multiple communities. Pricing depends on delivery speed and promotion members.</p>
+            <div className="mb-6 p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-300 text-xs font-medium">
+              📦 Requirements: Server Logo/Icon · Server Name · Promotion Description
+            </div>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {(groupedProducts["promo"] || []).map(item => {
+                const key = item.product_key || String(item.id);
+                const isExpress = item.name.toLowerCase().includes('express');
+                const accent = isExpress ? 'orange' : 'blue';
+                const accentClasses = isExpress
+                  ? { border: 'border-orange-400', bg: 'bg-orange-400/5', hover: 'hover:border-orange-400/30', check: 'text-orange-400', badge: 'text-orange-300 bg-orange-500/10 border-orange-500/20', btn: 'bg-orange-500 text-white' }
+                  : { border: 'border-blue-400', bg: 'bg-blue-400/5', hover: 'hover:border-blue-400/30', check: 'text-blue-400', badge: 'text-blue-300 bg-blue-500/10 border-blue-500/20', btn: 'bg-blue-500 text-white' };
+                return (
+                  <div
+                    key={item.id}
+                    onClick={() => toggleItem(key)}
+                    className={`glass-card border-2 cursor-pointer transition-all flex flex-col p-5 rounded-2xl relative group ${isSelected(key) ? `${accentClasses.border} ${accentClasses.bg}` : `border-white/5 ${accentClasses.hover}`}`}
+                  >
+                    <button
+                      onClick={e => { e.stopPropagation(); setModalProduct(item); }}
+                      className={`absolute top-3 right-3 w-6 h-6 rounded-lg bg-white/5 hover:bg-opacity-20 flex items-center justify-center text-gray-500 hover:${accentClasses.check} transition-colors opacity-0 group-hover:opacity-100`}
+                    >
+                      <Info className="w-3.5 h-3.5" />
+                    </button>
+                    {item.tag && (
+                      <div className={`text-[9px] font-bold px-2 py-1 rounded-full mb-3 inline-block w-fit border ${accentClasses.badge}`}>
+                        {item.tag.split('|')[0].trim()}
+                      </div>
+                    )}        {/* --- JOINS --- */}
         {(groupedProducts["joins"] || []).length > 0 && (
           <section className="mb-24 mt-16" id="joins">
             <h2 className="text-2xl font-bold mb-2 flex items-center gap-3">
@@ -605,45 +661,6 @@ export default function Shop() {
                           <p className="text-[10px] text-gray-600 mt-1.5 text-center">Each unit = 1,000 members</p>
                         )}
                       </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        )}
-
-        {/* --- INFRASTRUCTURE --- */}
-        {(groupedProducts["infra"] || []).length > 0 && (
-          <section className="mb-24 mt-16" id="infra">
-            <h2 className="text-2xl font-bold mb-8 flex items-center gap-3">
-              <Database className="w-6 h-6 text-blue-400" />
-              Infrastructure & Hosting
-            </h2>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {(groupedProducts["infra"] || []).map(item => {
-                const selected = isSelected(item.product_key || String(item.id));
-                return (
-                  <div
-                    key={item.id}
-                    onClick={() => toggleItem(item.product_key || String(item.id))}
-                    className={`glass p-5 rounded-2xl flex items-center justify-between border-2 cursor-pointer transition-colors relative group ${selected ? 'border-blue-400 bg-blue-400/5' : 'border-white/5 hover:border-white/20'}`}
-                  >
-                    <button
-                      onClick={e => { e.stopPropagation(); setModalProduct(item); }}
-                      className="absolute top-3 right-3 w-6 h-6 rounded-lg bg-white/5 hover:bg-blue-400/20 flex items-center justify-center text-gray-500 hover:text-blue-400 transition-colors opacity-0 group-hover:opacity-100"
-                    >
-                      <Info className="w-3.5 h-3.5" />
-                    </button>
-                    <div>
-                      <span className="font-medium block">{item.name}</span>
-                      <span className="text-[10px] text-gray-500 block mb-1">{item.description}</span>
-                      <PriceDisplay product={item} isSmall />
-                    </div>
-                    {selected ? (
-                      <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-white"><Check className="w-3 h-3" /></div>
-                    ) : (
-                      <div className="w-6 h-6 rounded-full border border-white/20" />
                     )}
                   </div>
                 );
@@ -850,42 +867,47 @@ export default function Shop() {
           </section>
         )}
 
-        {/* --- SERVER PROMOTIONS --- */}
-        {(groupedProducts["promo"] || []).length > 0 && (
-          <section className="mb-24 mt-20" id="promo">
-            <h2 className="text-2xl font-bold mb-2 flex items-center gap-3">
-              <span className="text-2xl">📢</span>
-              Server Promotion Services
+        {/* --- DYNAMIC FALLBACK FOR UNKNOWN CATEGORIES --- */}
+        {serviceCategories.filter(cat => !['server', 'addon', 'bot', 'infra', 'scripts', 'events', 'joins', 'decorations_gift', 'decorations_login', 'nitro_accounts', 'booster', 'promo'].includes(cat)).map(cat => (
+          <section key={cat} className="mb-24 mt-16" id={cat}>
+            <h2 className="text-2xl font-bold mb-8 flex items-center gap-3 capitalize text-brand-primary">
+              <span className="text-3xl">{getCategoryMeta(cat).icon}</span>
+              {getCategoryMeta(cat).label}
             </h2>
-            <p className="text-gray-500 text-sm mb-2">Grow your Discord server across multiple communities. Pricing depends on delivery speed and promotion members.</p>
-            <div className="mb-6 p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-300 text-xs font-medium">
-              📦 Requirements: Server Logo/Icon · Server Name · Promotion Description
-            </div>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {(groupedProducts["promo"] || []).map(item => {
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {(groupedProducts[cat] || []).map(item => {
                 const key = item.product_key || String(item.id);
-                const isExpress = item.name.toLowerCase().includes('express');
-                const accent = isExpress ? 'orange' : 'blue';
-                const accentClasses = isExpress
-                  ? { border: 'border-orange-400', bg: 'bg-orange-400/5', hover: 'hover:border-orange-400/30', check: 'text-orange-400', badge: 'text-orange-300 bg-orange-500/10 border-orange-500/20', btn: 'bg-orange-500 text-white' }
-                  : { border: 'border-blue-400', bg: 'bg-blue-400/5', hover: 'hover:border-blue-400/30', check: 'text-blue-400', badge: 'text-blue-300 bg-blue-500/10 border-blue-500/20', btn: 'bg-blue-500 text-white' };
                 return (
                   <div
                     key={item.id}
                     onClick={() => toggleItem(key)}
-                    className={`glass-card border-2 cursor-pointer transition-all flex flex-col p-5 rounded-2xl relative group ${isSelected(key) ? `${accentClasses.border} ${accentClasses.bg}` : `border-white/5 ${accentClasses.hover}`}`}
+                    className={`glass-card border-2 cursor-pointer transition-all flex flex-col p-6 rounded-2xl relative group ${isSelected(key) ? 'border-brand-primary bg-brand-primary/5' : 'border-white/5 hover:border-brand-primary/30'}`}
                   >
                     <button
                       onClick={e => { e.stopPropagation(); setModalProduct(item); }}
-                      className={`absolute top-3 right-3 w-6 h-6 rounded-lg bg-white/5 hover:bg-opacity-20 flex items-center justify-center text-gray-500 hover:${accentClasses.check} transition-colors opacity-0 group-hover:opacity-100`}
+                      className="absolute top-4 right-4 w-8 h-8 rounded-xl bg-white/5 hover:bg-brand-primary/20 flex items-center justify-center text-gray-500 hover:text-brand-primary transition-colors opacity-0 group-hover:opacity-100"
                     >
-                      <Info className="w-3.5 h-3.5" />
+                      <Info className="w-4 h-4" />
                     </button>
                     {item.tag && (
-                      <div className={`text-[9px] font-bold px-2 py-1 rounded-full mb-3 inline-block w-fit border ${accentClasses.badge}`}>
+                      <div className="text-[9px] font-bold px-2 py-1 rounded-full mb-3 inline-block w-fit border border-brand-primary/20 text-brand-primary bg-brand-primary/10">
                         {item.tag.split('|')[0].trim()}
                       </div>
                     )}
+                    <div className="flex justify-between items-start mb-2 mt-2">
+                      <h3 className="font-bold text-lg">{item.name}</h3>
+                    </div>
+                    <p className="text-xs text-gray-500 mb-4 flex-grow">{item.description}</p>
+                    <PriceDisplay product={item} />
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        ))}
+
+
+
                     <div className="flex justify-between items-start">
                       <h3 className="font-bold text-sm mb-1 leading-snug flex-1">{item.name}</h3>
                       {isSelected(key) && <Check className={`w-4 h-4 shrink-0 ${accentClasses.check}`} />}

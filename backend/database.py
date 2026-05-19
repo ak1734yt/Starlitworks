@@ -37,7 +37,8 @@ DEFAULT_SETTINGS = [
     ("stat_client_satisfaction", "100%"),
     ("stat_commands_written", "900+"),
     ("stat_uptime", "99%"),
-    ("stat_support", "24/7")
+    ("stat_support", "24/7"),
+    ("discord_member_count", "10000")
 ]
 
 def get_db():
@@ -205,6 +206,7 @@ def init_db():
             pass
         
         conn_shop.executemany("INSERT OR IGNORE INTO site_settings (key, value) VALUES (?, ?)", DEFAULT_SETTINGS)
+        conn_shop.execute("INSERT OR IGNORE INTO site_settings (key, value) VALUES ('discord_member_count', '10000')")
         conn_shop.commit()
     except Exception as e:
         print(f"Error checking default settings: {e}")
