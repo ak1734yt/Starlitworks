@@ -144,6 +144,12 @@ class PaymentProofBody(BaseModel):
     payment_method: str = "manual"
     payment_plan: Optional[str] = None
     credits_applied: float = 0
+    coupon_code: Optional[str] = None
+    discount_amount: Optional[float] = None
+    subtotal: Optional[float] = None
+    cgst: Optional[float] = None
+    sgst: Optional[float] = None
+    grand_total: Optional[float] = None
 
 class VaultBody(BaseModel):
     vault_data: dict = {}
@@ -231,6 +237,13 @@ async def submit_payment_proof(order_id: str, body: PaymentProofBody, user=Depen
 
     db = get_db()
     
+    # Process coupon usage increment
+    if body.coupon_code:
+        coupon_row = db.execute("SELECT id FROM shop.coupons WHERE LOWER(code) = LOWER(?)", (body.coupon_code,)).fetchone()
+        if coupon_row:
+            db.execute("UPDATE shop.coupons SET used_count = used_count + 1 WHERE id = ?", (coupon_row["id"],))
+            db.commit()
+    
     # 1. Fetch user details and validate credits
     user_row = db.execute("SELECT details FROM auth.users WHERE id=?", (user["id"],)).fetchone()
     if not user_row:
@@ -254,6 +267,12 @@ async def submit_payment_proof(order_id: str, body: PaymentProofBody, user=Depen
     if is_numeric_order:
         row = db.execute("SELECT * FROM orders.orders WHERE id = ? AND user_id = ?", (numeric_order_id, user["id"])).fetchone()
         if not row: db.close(); raise HTTPException(404, "Order not found")
+        
+        # If we have updated pricing (e.g. from coupon), update order pricing columns
+        if body.grand_total is not None:
+            db.execute("""UPDATE orders.orders SET total_amount = ?, cgst = ?, sgst = ? WHERE id = ?""",
+                       (body.grand_total, body.cgst or 0.0, body.sgst or 0.0, numeric_order_id))
+            db.commit()
         
         screenshot_url = ""
         if body.base64Screenshot:
@@ -332,6 +351,28 @@ async def submit_payment_proof(order_id: str, body: PaymentProofBody, user=Depen
         inv["payment_screenshot"] = screenshot_url
         inv["payment_proof_submitted_at"] = int(time.time())
         inv["credits_applied"] = applied
+
+        # Apply coupon and updated totals to the invoice JSON if provided
+        if body.grand_total is not None:
+            inv["grandTotal"] = body.grand_total
+            inv["subtotal"] = body.subtotal if body.subtotal is not None else inv.get("subtotal", 0.0)
+            inv["taxTotal"] = (body.cgst or 0.0) + (body.sgst or 0.0)
+            inv["discountAmount"] = (inv.get("discountAmount") or 0.0) + (body.discount_amount or 0.0)
+            if body.coupon_code:
+                inv["couponCode"] = body.coupon_code
+                
+            # Also update items rate/total
+            if inv.get("items"):
+                qty = inv["items"][0].get("qty") or 1
+                inv["items"][0]["rate"] = body.grand_total / float(qty)
+                inv["items"][0]["total"] = body.grand_total
+                
+            # If installment plan and has installments, update installment amounts proportionately
+            if inv.get("paymentType") == "installment" and inv.get("installments"):
+                total_inst = len(inv["installments"])
+                if total_inst > 0:
+                    for i in range(total_inst):
+                        inv["installments"][i]["amount"] = body.grand_total / total_inst
         
         with open(p, "w") as f:
             json.dump(inv, f, indent=2)

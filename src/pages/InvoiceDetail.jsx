@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ShieldCheck, Tag, Download, CreditCard, Loader2, Sparkles, X, 
-  ArrowRight, Printer, QrCode, Info, CheckCircle, Upload, IndianRupee
+  ArrowRight, Printer, QrCode, Info, CheckCircle, Upload, IndianRupee, Clock
 } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import { useAuth } from '../context/AuthContext';
@@ -294,7 +294,7 @@ export default function InvoiceDetail() {
                                   <button 
                                     onClick={async () => {
                                       try {
-                                        const res = await updateInstallment(invoice.id, i, !inst.paid);
+                                        const res = await updateInstallment(invoice.id, i, !inst.paid ? 'paid' : 'pending');
                                         if (res.success) {
                                           setInvoice(res.invoice);
                                           toast.success(!inst.paid ? 'Installment marked as paid' : 'Reverted to pending');

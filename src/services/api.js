@@ -35,9 +35,9 @@ export async function request(path, options = {}) {
 export const getInvoices = () => request('/invoices');
 export const getInvoice = (id) => request(`/invoices/${id}`);
 export const saveInvoice = (inv) => request('/invoices', { method: 'POST', body: JSON.stringify(inv) });
-export const updateInstallment = (id, index, paid) => request(`/invoices/${id}/installment`, { 
+export const updateInstallment = (id, index, status) => request(`/invoices/${id}/installment`, { 
   method: 'PATCH', 
-  body: JSON.stringify({ index, paid }) 
+  body: JSON.stringify({ index, status }) 
 });
 export const deleteInvoice = (id) => request(`/invoices/${id}`, { method: 'DELETE' });
 export const clearAllInvoices = () => request('/invoices', { method: 'DELETE' });

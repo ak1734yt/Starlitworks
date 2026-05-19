@@ -119,14 +119,17 @@ export default function Checkout() {
   
   const isInvoice = type === 'invoice';
   const subtotal = isInvoice ? Number(data?.subtotal || 0) : (Number(data?.price || 0) * quantity);
-  const discount = isInvoice 
-    ? Number(data?.discountAmount || 0)
-    : Number(coupon 
-        ? (coupon.discount_type === 'percentage' ? (subtotal * coupon.discount_value / 100) : coupon.discount_value)
-        : 0);
-  const totalBeforeTax = isInvoice ? (subtotal - discount) : Math.max(0, subtotal - discount);
-  const taxAmount = isInvoice ? Number(data?.taxTotal || 0) : (totalBeforeTax * 0.18);
-  const finalTotal = isInvoice ? Number(data?.grandTotal || 0) : (totalBeforeTax + taxAmount);
+  const couponDiscount = Number(coupon 
+    ? (coupon.discount_type === 'percentage' ? (subtotal * coupon.discount_value / 100) : coupon.discount_value)
+    : 0);
+  const discount = (isInvoice ? Number(data?.discountAmount || 0) : 0) + couponDiscount;
+  const totalBeforeTax = Math.max(0, subtotal - discount);
+  const taxAmount = isInvoice 
+    ? (coupon ? (totalBeforeTax * 0.18) : Number(data?.taxTotal || 0))
+    : (totalBeforeTax * 0.18);
+  const finalTotal = isInvoice 
+    ? (coupon ? (totalBeforeTax + taxAmount) : Number(data?.grandTotal || 0))
+    : (totalBeforeTax + taxAmount);
 
   let amountToPay = finalTotal;
   if (paymentPlan === 'advance') amountToPay = finalTotal / 2;
@@ -234,7 +237,13 @@ export default function Checkout() {
         base64Screenshot: b64,
         payment_method: method,
         payment_plan: paymentPlan,
-        credits_applied: creditsToApply
+        credits_applied: creditsToApply,
+        coupon_code: coupon?.code || null,
+        discount_amount: discount,
+        subtotal: subtotal,
+        cgst: cgst,
+        sgst: sgst,
+        grand_total: finalTotal
       });
 
       await refreshMe();
@@ -615,6 +624,14 @@ export default function Checkout() {
                   <span className="font-bold font-mono">{convertPrice(subtotal)}</span>
                 </div>
                 
+                {isInvoice && Number(data?.discountAmount || 0) > 0 && (
+                  <div className="flex justify-between items-center group">
+                    <span className="text-gray-500 text-sm group-hover:text-gray-400 transition-colors">Contract Discount</span>
+                    <div className="flex-1 border-b border-white/5 border-dotted mx-4" />
+                    <span className="font-bold font-mono text-red-400">-{convertPrice(Number(data.discountAmount))}</span>
+                  </div>
+                )}
+
                 {coupon && (
                   <div className="flex justify-between items-center group">
                     <span className="text-brand-primary text-sm flex items-center gap-2">
@@ -622,7 +639,7 @@ export default function Checkout() {
                       Privilege Code ({coupon.code})
                     </span>
                     <div className="flex-1 border-b border-brand-primary/10 border-dotted mx-4" />
-                    <span className="font-bold font-mono text-brand-primary">-{convertPrice(discount)}</span>
+                    <span className="font-bold font-mono text-brand-primary">-{convertPrice(couponDiscount)}</span>
                   </div>
                 )}
 
