@@ -6,6 +6,21 @@ import threading
 from database import DB_SHOP
 
 def update_discord_member_count():
+    # Try fetching from the running bot instance first
+    try:
+        from discord_bot import bot
+        if bot and bot.is_ready() and bot.guilds:
+            total_members = sum(g.member_count for g in bot.guilds if g.member_count)
+            if total_members > 0:
+                conn = sqlite3.connect(DB_SHOP)
+                conn.execute("INSERT OR REPLACE INTO site_settings (key, value) VALUES (?, ?)", ("discord_member_count", str(total_members)))
+                conn.commit()
+                conn.close()
+                print(f"[DISCORD STATS] Updated total member count via Discord Bot: {total_members}")
+                return
+    except Exception as e:
+        print(f"[DISCORD STATS] Error getting count from active bot instance: {e}")
+
     selfbot_token = os.getenv("DISCORD_SELFBOT_TOKEN")
     bot_token = os.getenv("DISCORD_BOT_TOKEN")
     guild_ids_str = os.getenv("DISCORD_TARGET_GUILD_ID", "")
@@ -13,7 +28,8 @@ def update_discord_member_count():
     # Parse comma-separated guild IDs
     guild_ids = [gid.strip() for gid in guild_ids_str.split(",") if gid.strip()]
     if not guild_ids:
-        print("[DISCORD STATS] No target guild IDs configured in DISCORD_TARGET_GUILD_ID. Skipping.")
+        # If we got here and couldn't fetch via bot, skip
+        print("[DISCORD STATS] No target guild IDs configured in DISCORD_TARGET_GUILD_ID and bot is not ready. Skipping.")
         return
 
     token = selfbot_token or bot_token

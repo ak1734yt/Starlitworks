@@ -4,6 +4,62 @@ import { STATS_DATA } from "../constants/statsData";
 import { getPublicStats } from "../services/api";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
+const parseValue = (valStr) => {
+  if (!valStr) return { number: 0, prefix: '', suffix: '', formatComma: false };
+  const str = String(valStr);
+  const match = str.match(/^([^\d]*)([\d,.]+)([^\d]*)$/);
+  if (match) {
+    const prefix = match[1];
+    const numStr = match[2];
+    const suffix = match[3];
+    const formatComma = numStr.includes(',');
+    const number = parseFloat(numStr.replace(/,/g, '')) || 0;
+    return { number, prefix, suffix, formatComma };
+  }
+  return { number: 0, prefix: '', suffix: str, formatComma: false };
+};
+
+const AnimatedNumber = ({ value }) => {
+  const { number, prefix, suffix, formatComma } = parseValue(value);
+  const [currentValue, setCurrentValue] = useState(0);
+
+  useEffect(() => {
+    let start = 0;
+    const end = number;
+    if (start === end) {
+      setCurrentValue(end);
+      return;
+    }
+
+    const duration = 1500;
+    const startTime = performance.now();
+
+    const animate = (now) => {
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const easeProgress = progress * (2 - progress);
+      const current = Math.floor(easeProgress * end);
+      setCurrentValue(current);
+
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        setCurrentValue(end);
+      }
+    };
+
+    requestAnimationFrame(animate);
+  }, [number]);
+
+  const formattedNum = formatComma ? currentValue.toLocaleString() : currentValue;
+  return (
+    <span>
+      {prefix}{formattedNum}{suffix}
+    </span>
+  );
+};
+
+
 const Stats = () => {
   const [liveStats, setLiveStats] = useState(null);
   const scrollContainerRef = useRef(null);
@@ -83,7 +139,7 @@ const Stats = () => {
               
               <div>
                 <h3 className="text-2xl font-black font-display text-white mb-0.5 tracking-tight group-hover:text-brand-primary transition-colors">
-                  {getVal(stat)}
+                  <AnimatedNumber value={getVal(stat)} />
                 </h3>
                 <p className="text-gray-500 font-bold uppercase tracking-[0.15em] text-[9px]">
                   {stat.label}
