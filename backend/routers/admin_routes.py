@@ -104,14 +104,14 @@ def admin_stats(user=Depends(require_manager)):
 @router.get("/admin/feedbacks")
 def admin_feedbacks(user=Depends(require_admin)):
     db = get_db()
-    rows = db.execute("SELECT f.*, u.name FROM feedbacks f JOIN users u ON f.user_id = u.id ORDER BY f.created_at DESC").fetchall()
+    rows = db.execute("SELECT f.*, u.name FROM shop.feedbacks f JOIN auth.users u ON f.user_id = u.id ORDER BY f.created_at DESC").fetchall()
     db.close()
     return [dict(r) for r in rows]
 
 @router.put("/admin/feedbacks/{fid}")
 def update_feedback(fid: int, body: FeedbackStatusBody, user=Depends(require_admin)):
     db = get_db()
-    db.execute("UPDATE feedbacks SET status = ? WHERE id = ?", (body.status, fid))
+    db.execute("UPDATE shop.feedbacks SET status = ? WHERE id = ?", (body.status, fid))
     db.commit(); db.close()
     return {"success": True}
 
@@ -246,6 +246,10 @@ def bulk_update_status(body: BulkStatusBody, user=Depends(require_manager)):
 class CreditBody(BaseModel):
     amount: float
 
+class SetCreditBody(BaseModel):
+    amount: float
+    reason: str = ""
+
 
 @router.post("/admin/users/{uid}/credits")
 def add_user_credits(uid: int, body: CreditBody, user=Depends(require_manager)):
@@ -258,13 +262,43 @@ def add_user_credits(uid: int, body: CreditBody, user=Depends(require_manager)):
         details = json.loads(row["details"] or "{}")
     except:
         details = {}
-    details["credits"] = details.get("credits", 0.0) + body.amount
+    old_balance = details.get("credits", 0.0)
+    details["credits"] = max(0, old_balance + body.amount)
     db.execute("UPDATE users SET details = ? WHERE id = ?", (json.dumps(details), uid))
     db.commit()
     db.close()
-    create_notification(uid, "Credits Added", f"An admin has added ₹{body.amount} credits to your account.", "info")
-    log_activity(user["id"], "ADD_CREDITS", f"Added ₹{body.amount} credits to user {uid}")
+    if body.amount >= 0:
+        create_notification(uid, "Credits Added", f"₹{body.amount} credits have been added to your account.", "info")
+        log_activity(user["id"], "ADD_CREDITS", f"Added ₹{body.amount} credits to user {uid}")
+    else:
+        create_notification(uid, "Credits Deducted", f"₹{abs(body.amount)} credits have been deducted from your account.", "warning")
+        log_activity(user["id"], "DEDUCT_CREDITS", f"Deducted ₹{abs(body.amount)} credits from user {uid}")
     return {"success": True, "new_balance": details["credits"]}
+
+@router.put("/admin/users/{uid}/credits")
+def set_user_credits(uid: int, body: SetCreditBody, user=Depends(require_manager)):
+    db = get_db()
+    row = db.execute("SELECT details FROM users WHERE id = ?", (uid,)).fetchone()
+    if not row:
+        db.close()
+        raise HTTPException(404, "User not found")
+    try:
+        details = json.loads(row["details"] or "{}")
+    except:
+        details = {}
+    old_balance = details.get("credits", 0.0)
+    details["credits"] = body.amount
+    db.execute("UPDATE users SET details = ? WHERE id = ?", (json.dumps(details), uid))
+    db.commit()
+    db.close()
+    diff = body.amount - old_balance
+    reason_text = f" Reason: {body.reason}" if body.reason else ""
+    if diff >= 0:
+        create_notification(uid, "Credits Updated", f"Your credit balance has been set to ₹{body.amount}.{reason_text}", "info")
+    else:
+        create_notification(uid, "Credits Adjusted", f"₹{abs(diff)} credits have been removed. New balance: ₹{body.amount}.{reason_text}", "warning")
+    log_activity(user["id"], "SET_CREDITS", f"Set user {uid} credits from ₹{old_balance} to ₹{body.amount}.{reason_text}")
+    return {"success": True, "old_balance": old_balance, "new_balance": body.amount}
 
 # ── Manager ───────────────────────────────────────────────────────────────────
 @router.get("/manager/logs")
@@ -312,7 +346,7 @@ def set_user_status(uid: int, body: BanBody, user=Depends(require_manager)):
 @router.get("/manager/prices")
 def manager_prices(user=Depends(require_manager)):
     db = get_db()
-    rows = db.execute("SELECT * FROM products WHERE is_deleted = 0 ORDER BY category, sort_order").fetchall()
+    rows = db.execute("SELECT * FROM shop.products WHERE is_deleted = 0 ORDER BY category, sort_order").fetchall()
     db.close()
     return [dict(r) for r in rows]
 
@@ -321,7 +355,7 @@ def create_product(body: ProductBody, user=Depends(require_manager)):
     product_key = body.name.lower().replace(" ", "_") + "_" + str(int(time.time()))
     db = get_db()
     db.execute(
-        """INSERT INTO products
+        """INSERT INTO shop.products
            (category, product_key, name, price, min_price, tag, description, features,
             is_manual_price, show_price_to_admin, is_recurring, unit_label)
            VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
@@ -339,7 +373,7 @@ def create_product(body: ProductBody, user=Depends(require_manager)):
 def update_price(pid: int, body: PriceUpdateBody, user=Depends(require_manager)):
     db = get_db()
     db.execute(
-        """UPDATE products
+        """UPDATE shop.products
            SET price=?, min_price=?, tag=?, description=?, is_manual_price=?,
                show_price_to_admin=?, unit_label=?, updated_at=?
            WHERE id=?""",
@@ -355,11 +389,11 @@ def update_price(pid: int, body: PriceUpdateBody, user=Depends(require_manager))
 @router.delete("/manager/prices/{pid}")
 def delete_product(pid: int, user=Depends(require_manager)):
     db = get_db()
-    row = db.execute("SELECT product_key FROM products WHERE id = ?", (pid,)).fetchone()
+    row = db.execute("SELECT product_key FROM shop.products WHERE id = ?", (pid,)).fetchone()
     if row:
         product_key = row["product_key"]
-        db.execute("INSERT OR IGNORE INTO deleted_product_keys (product_key) VALUES (?)", (product_key,))
-        db.execute("DELETE FROM products WHERE id = ?", (pid,))
+        db.execute("INSERT OR IGNORE INTO shop.deleted_product_keys (product_key) VALUES (?)", (product_key,))
+        db.execute("DELETE FROM shop.products WHERE id = ?", (pid,))
         db.commit()
     db.close()
     log_activity(user["id"], "DELETE_PRODUCT", f"Deleted product {pid}")
@@ -412,15 +446,15 @@ def seed_catalog(user=Depends(require_manager)):
     ]
     
     # Check deleted keys to prevent re-adding them
-    db.execute("CREATE TABLE IF NOT EXISTS deleted_product_keys (product_key TEXT UNIQUE NOT NULL)")
-    rows = db.execute("SELECT product_key FROM deleted_product_keys").fetchall()
+    db.execute("CREATE TABLE IF NOT EXISTS shop.deleted_product_keys (product_key TEXT UNIQUE NOT NULL)")
+    rows = db.execute("SELECT product_key FROM shop.deleted_product_keys").fetchall()
     deleted_keys = {r["product_key"] for r in rows}
 
     for p in products:
         if p["product_key"] in deleted_keys:
             continue
         db.execute(
-            """INSERT OR IGNORE INTO products 
+            """INSERT OR IGNORE INTO shop.products 
                (category, product_key, name, price, min_price, tag, description, features, is_manual_price, show_price_to_admin) 
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (p["category"], p["product_key"], p["name"], p["price"], p["min_price"], p["tag"], p["description"], json.dumps(p["features"]), p["is_manual_price"], p["show_price_to_admin"])
@@ -438,7 +472,7 @@ def create_coupon(body: CouponBody, user=Depends(require_manager)):
     elif not code.startswith("STYLIT_"):
         code = "STYLIT_" + code.upper()
     db = get_db()
-    db.execute("INSERT INTO coupons (code, discount_type, discount_value, max_uses, expires_at, created_by) VALUES (?,?,?,?,?,?)",
+    db.execute("INSERT INTO shop.coupons (code, discount_type, discount_value, max_uses, expires_at, created_by) VALUES (?,?,?,?,?,?)",
                (code, body.discount_type, body.discount_value, body.max_uses, body.expires_at, user["id"]))
     db.commit(); db.close()
     log_activity(user["id"], "CREATE_COUPON", f"Created coupon {code}")
@@ -447,7 +481,7 @@ def create_coupon(body: CouponBody, user=Depends(require_manager)):
 @router.get("/manager/coupons")
 def manager_coupons(user=Depends(require_manager)):
     db = get_db()
-    rows = db.execute("SELECT * FROM coupons ORDER BY created_at DESC").fetchall()
+    rows = db.execute("SELECT * FROM shop.coupons ORDER BY created_at DESC").fetchall()
     db.close()
     return [dict(r) for r in rows]
 
@@ -462,14 +496,14 @@ def manager_stats(user=Depends(require_manager)):
 @router.get("/portfolio")
 def get_portfolio():
     db = get_db()
-    rows = db.execute("SELECT * FROM portfolio ORDER BY sort_order ASC").fetchall()
+    rows = db.execute("SELECT * FROM shop.portfolio ORDER BY sort_order ASC").fetchall()
     db.close()
     return [dict(r) for r in rows]
 
 @router.post("/manager/portfolio", status_code=201)
 def add_portfolio(body: PortfolioBody, user=Depends(require_manager)):
     db = get_db()
-    db.execute("INSERT INTO portfolio (title, description, banner_url, member_count, link, category) VALUES (?,?,?,?,?,?)",
+    db.execute("INSERT INTO shop.portfolio (title, description, banner_url, member_count, link, category) VALUES (?,?,?,?,?,?)",
                (body.title, body.description, body.banner_url, body.member_count, body.link, body.category))
     db.commit(); db.close()
     return {"success": True}
@@ -477,7 +511,7 @@ def add_portfolio(body: PortfolioBody, user=Depends(require_manager)):
 @router.delete("/manager/portfolio/{pid}")
 def delete_portfolio(pid: int, user=Depends(require_manager)):
     db = get_db()
-    db.execute("DELETE FROM portfolio WHERE id = ?", (pid,))
+    db.execute("DELETE FROM shop.portfolio WHERE id = ?", (pid,))
     db.commit(); db.close()
     return {"success": True}
 
@@ -485,7 +519,7 @@ def delete_portfolio(pid: int, user=Depends(require_manager)):
 @router.get("/site/settings")
 def get_settings():
     db = get_db()
-    rows = db.execute("SELECT * FROM site_settings").fetchall()
+    rows = db.execute("SELECT * FROM shop.site_settings").fetchall()
     db.close()
     return {r["key"]: r["value"] for r in rows}
 
@@ -493,7 +527,7 @@ def get_settings():
 def update_settings(request_body: dict, user=Depends(require_manager)):
     db = get_db()
     for key, value in request_body.items():
-        db.execute("INSERT OR REPLACE INTO site_settings (key, value) VALUES (?,?)", (key, value))
+        db.execute("INSERT OR REPLACE INTO shop.site_settings (key, value) VALUES (?,?)", (key, value))
     db.commit(); db.close()
     log_activity(user["id"], "UPDATE_SITE_SETTINGS", "Updated website content")
     return {"success": True}
@@ -502,7 +536,7 @@ def update_settings(request_body: dict, user=Depends(require_manager)):
 @router.get("/prices")
 def get_prices():
     db = get_db()
-    rows = db.execute("SELECT * FROM products WHERE is_deleted = 0 ORDER BY category, sort_order").fetchall()
+    rows = db.execute("SELECT * FROM shop.products WHERE is_deleted = 0 ORDER BY category, sort_order").fetchall()
     db.close()
     result = []
     for r in rows:
@@ -514,7 +548,7 @@ def get_prices():
 @router.get("/coupons/{code}")
 def get_coupon(code: str, user=Depends(get_current_user)):
     db = get_db()
-    row = db.execute("SELECT * FROM coupons WHERE LOWER(code) = LOWER(?)", (code,)).fetchone()
+    row = db.execute("SELECT * FROM shop.coupons WHERE LOWER(code) = LOWER(?)", (code,)).fetchone()
     db.close()
     if not row: raise HTTPException(404, "Coupon not found")
     c = dict(row)
@@ -525,21 +559,21 @@ def get_coupon(code: str, user=Depends(get_current_user)):
 @router.get("/feedbacks")
 def get_feedbacks():
     db = get_db()
-    rows = db.execute("SELECT f.*, u.name, u.avatar_url FROM feedbacks f JOIN users u ON f.user_id = u.id WHERE f.status = 'approved' ORDER BY f.created_at DESC").fetchall()
+    rows = db.execute("SELECT f.*, u.name, u.avatar_url FROM shop.feedbacks f JOIN auth.users u ON f.user_id = u.id WHERE f.status = 'approved' ORDER BY f.created_at DESC").fetchall()
     db.close()
     return [dict(r) for r in rows]
 
 @router.post("/feedbacks", status_code=201)
 def submit_feedback(body: FeedbackBody, user=Depends(get_current_user)):
     db = get_db()
-    db.execute("INSERT INTO feedbacks (user_id, rating, comment) VALUES (?,?,?)", (user["id"], body.rating, body.comment))
+    db.execute("INSERT INTO shop.feedbacks (user_id, rating, comment) VALUES (?,?,?)", (user["id"], body.rating, body.comment))
     db.commit(); db.close()
     return {"success": True}
 
 @router.get("/public/stats")
 def public_stats():
     db = get_db()
-    rows = db.execute("SELECT key, value FROM site_settings WHERE key IN ('discord_member_count', 'stat_bots_developed', 'stat_dev_servers', 'stat_projects_developed', 'stat_client_satisfaction', 'stat_commands_written', 'stat_uptime', 'stat_support')").fetchall()
+    rows = db.execute("SELECT key, value FROM shop.site_settings WHERE key IN ('discord_member_count', 'stat_bots_developed', 'stat_dev_servers', 'stat_projects_developed', 'stat_client_satisfaction', 'stat_commands_written', 'stat_uptime', 'stat_support')").fetchall()
     settings_dict = {r["key"]: r["value"] for r in rows}
     member_count = int(settings_dict.get("discord_member_count", "10000"))
     db.close()

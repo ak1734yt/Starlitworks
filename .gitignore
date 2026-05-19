@@ -15,6 +15,7 @@ build/
 # Backend Specific
 backend/.env
 backend/data/
+backend/data_backup/
 backend/invoices/
 backend/ssw.db
 backend/ssw.db-journal

@@ -11,8 +11,10 @@ DB_USERS = os.path.join(DATA_DIR, "users.db")
 DB_SHOP = os.path.join(DATA_DIR, "shop.db")
 DB_ORDERS = os.path.join(DATA_DIR, "orders.db")
 
-# Primary connection router file
+# Primary router database used only for attaching the physical databases
 DB_PATH = os.path.join(DATA_DIR, "ssw.db")
+TEMP_DB_PATH = os.path.join(DATA_DIR, "ssw_temp_migration.db")
+LEGACY_BACKUP_PATH = os.path.join(DATA_DIR, "ssw_legacy_backup.db")
 
 DEFAULT_SETTINGS = [
     ("hero_title", "Elevate Your <br /> <span class=\"text-gradient\">Discord Experience</span>"),
@@ -41,26 +43,34 @@ DEFAULT_SETTINGS = [
     ("discord_member_count", "10000")
 ]
 
+def attach_databases(conn):
+    conn.execute(f"ATTACH DATABASE '{DB_USERS}' AS auth")
+    conn.execute(f"ATTACH DATABASE '{DB_SHOP}' AS shop")
+    conn.execute(f"ATTACH DATABASE '{DB_ORDERS}' AS orders")
+
 def get_db():
     conn = sqlite3.connect(DB_PATH, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA foreign_keys=ON")
-    
-    # Decouple tables by attaching databases
-    conn.execute(f"ATTACH DATABASE '{DB_USERS}' AS auth")
-    conn.execute(f"ATTACH DATABASE '{DB_SHOP}' AS shop")
-    conn.execute(f"ATTACH DATABASE '{DB_ORDERS}' AS orders")
+    attach_databases(conn)
     return conn
 
 def init_db():
+    # Clean up any stale migration file from a previous interrupted run
+    if os.path.exists(TEMP_DB_PATH):
+        try:
+            os.remove(TEMP_DB_PATH)
+        except Exception:
+            pass
+
     # Check if ssw.db has legacy tables and schemas
     has_legacy = False
     legacy_tables = {}
     
     if os.path.exists(DB_PATH) and os.path.getsize(DB_PATH) > 0:
         # Create a temporary copy of ssw.db to bypass read locks
-        temp_db_path = os.path.join(DATA_DIR, "ssw_temp_migration.db")
+        temp_db_path = TEMP_DB_PATH
         if os.path.exists(temp_db_path):
             try:
                 os.remove(temp_db_path)
@@ -382,36 +392,44 @@ def init_db():
             
             conn_temp.close()
             
-            # Remove the temporary database copy
+        # Backup old ssw.db to ssw_legacy_backup.db
+        if os.path.exists(LEGACY_BACKUP_PATH):
             try:
-                os.remove(temp_db_path)
+                os.remove(LEGACY_BACKUP_PATH)
             except Exception:
                 pass
             
-            # Backup old ssw.db to ssw_legacy_backup.db
-            backup_path = os.path.join(DATA_DIR, "ssw_legacy_backup.db")
-            if os.path.exists(backup_path):
-                try:
-                    os.remove(backup_path)
-                except Exception:
-                    pass
-                
-            try:
-                shutil.copy2(DB_PATH, backup_path)
-                print(f"Combined database successfully backed up to {os.path.basename(backup_path)}")
-                
-                # Truncate/Recreate legacy file to make it a blank router connection
-                conn_clear = sqlite3.connect(DB_PATH)
-                conn_clear.execute("VACUUM")
-                conn_clear.close()
-                print("Primary connection router cleared successfully.")
-            except Exception as e:
-                print(f"Failed to backup legacy database: {e}")
+        try:
+            shutil.copy2(DB_PATH, LEGACY_BACKUP_PATH)
+            print(f"Combined database successfully backed up to {os.path.basename(LEGACY_BACKUP_PATH)}")
+            
+            # Truncate/Recreate legacy file to make it a blank router connection
+            conn_clear = sqlite3.connect(DB_PATH)
+            conn_clear.execute("PRAGMA foreign_keys=OFF")
+            cursor_clear = conn_clear.cursor()
+            cursor_clear.execute("SELECT name FROM sqlite_master WHERE type='table' AND name != 'sqlite_sequence'")
+            tables_to_drop = [row[0] for row in cursor_clear.fetchall()]
+            for t in tables_to_drop:
+                conn_clear.execute(f"DROP TABLE IF EXISTS {t}")
+            conn_clear.commit()
+            conn_clear.execute("VACUUM")
+            conn_clear.close()
+            print("Primary connection router cleared successfully.")
+        except Exception as e:
+            print(f"Failed to clear legacy tables from router database: {e}")
     else:
         # Recreate the router ssw.db as a blank database
         conn_main = sqlite3.connect(DB_PATH)
         conn_main.commit()
         conn_main.close()
+
+    # Clean up any leftover temp migration database
+    if os.path.exists(TEMP_DB_PATH):
+        try:
+            os.remove(TEMP_DB_PATH)
+            print("Temporary migration database cleaned up.")
+        except Exception:
+            pass
 
 if __name__ == "__main__":
     init_db()

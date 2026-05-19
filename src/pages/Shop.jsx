@@ -65,29 +65,7 @@ export default function Shop() {
     return meta[catId] || { label: catId.replace(/_/g, ' '), icon: '📦' };
   };
 
-  const CATEGORY_ORDER = [
-    'server',
-    'addon',
-    'bot',
-    'scripts',
-    'infra',
-    'events',
-    'promo',
-    'joins',
-    'decorations_gift',
-    'decorations_login',
-    'nitro_accounts',
-    'booster'
-  ];
-
-  const serviceCategories = Object.keys(groupedProducts)
-    .filter(cat => cat !== 'subscriptions')
-    .sort((a, b) => {
-      const idxA = CATEGORY_ORDER.indexOf(a);
-      const idxB = CATEGORY_ORDER.indexOf(b);
-      return (idxA === -1 ? 999 : idxA) - (idxB === -1 ? 999 : idxB);
-    });
-
+  const serviceCategories = Object.keys(groupedProducts).filter(cat => cat !== 'subscriptions');
   const categoriesList = serviceCategories.map(cat => ({
     id: cat,
     label: getCategoryMeta(cat).label,
@@ -313,7 +291,7 @@ export default function Shop() {
               <Server className="w-6 h-6 text-brand-primary" />
               Server Packages
             </h2>
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
               {(groupedProducts["server"] || []).map(plan => {
                 const planKey = plan.product_key || String(plan.id);
                 return (
@@ -365,7 +343,7 @@ export default function Shop() {
               <Sparkles className="w-6 h-6 text-brand-secondary" />
               Server Add-ons
             </h2>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4">
               {(groupedProducts["addon"] || []).map(addon => {
                 const addonKey = addon.product_key || String(addon.id);
                 return (
@@ -402,7 +380,7 @@ export default function Shop() {
               <Bot className="w-6 h-6 text-green-400" />
               Bot Packages
             </h2>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6">
               {(groupedProducts["bot"] || []).map(bot => {
                 return (
                   <div
@@ -447,7 +425,7 @@ export default function Shop() {
               <Sparkles className="w-6 h-6 text-teal-400" />
               Custom Scripts
             </h2>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6">
               {(groupedProducts["scripts"] || []).map(script => {
                 return (
                   <div
@@ -483,7 +461,7 @@ export default function Shop() {
               <Database className="w-6 h-6 text-blue-400" />
               Infrastructure & Hosting
             </h2>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4">
               {(groupedProducts["infra"] || []).map(item => {
                 const selected = isSelected(item.product_key || String(item.id));
                 return (
@@ -522,7 +500,7 @@ export default function Shop() {
               <Sparkles className="w-6 h-6 text-orange-400" />
               Event Management
             </h2>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6">
               {(groupedProducts["events"] || []).map(event => {
                 return (
                   <div
@@ -562,7 +540,7 @@ export default function Shop() {
             <div className="mb-6 p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-300 text-xs font-medium">
               📦 Requirements: Server Logo/Icon · Server Name · Promotion Description
             </div>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-5">
               {(groupedProducts["promo"] || []).map(item => {
                 const key = item.product_key || String(item.id);
                 const isExpress = item.name.toLowerCase().includes('express');
@@ -586,7 +564,36 @@ export default function Shop() {
                       <div className={`text-[9px] font-bold px-2 py-1 rounded-full mb-3 inline-block w-fit border ${accentClasses.badge}`}>
                         {item.tag.split('|')[0].trim()}
                       </div>
-                    )}        {/* --- JOINS --- */}
+                    )}
+                    <div className="flex justify-between items-start">
+                      <h3 className="font-bold text-sm mb-1 leading-snug flex-1">{item.name}</h3>
+                      {isSelected(key) && <Check className={`w-4 h-4 shrink-0 ${accentClasses.check}`} />}
+                    </div>
+                    <p className="text-[10px] text-gray-500 mb-3 flex-grow leading-relaxed">{item.description.split('[Admin')[0].trim()}</p>
+                    {item.is_manual_price ? (
+                      <p className={`text-xs font-semibold mb-3 ${accentClasses.check}`}>Custom Quote</p>
+                    ) : (
+                      <div className="flex items-baseline gap-1 mb-3">
+                        <span className="font-bold text-white text-lg font-display">{convertPrice(item.price)}</span>
+                        {item.unit_label && <span className="text-gray-500 text-[10px]">{item.unit_label}</span>}
+                      </div>
+                    )}
+                    <ul className="space-y-1 mb-4">
+                      {(Array.isArray(item.features) ? item.features : []).map((f, i) => (
+                        <li key={i} className="flex items-center gap-1.5 text-[10px] text-gray-400">
+                          <Check className={`w-3 h-3 shrink-0 ${accentClasses.check}`} />{f}
+                        </li>
+                      ))}
+                    </ul>
+                    <button className={`w-full py-2 rounded-xl text-xs font-bold transition-all ${isSelected(key) ? accentClasses.btn : 'bg-white/5 hover:bg-white/10'}`}>
+                      {isSelected(key) ? 'Selected ✓' : 'Select'}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}        {/* --- JOINS --- */}
         {(groupedProducts["joins"] || []).length > 0 && (
           <section className="mb-24 mt-16" id="joins">
             <h2 className="text-2xl font-bold mb-2 flex items-center gap-3">
@@ -597,7 +604,7 @@ export default function Shop() {
             <div className="mb-6 p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/20 text-yellow-500/80 text-xs font-medium text-center">
               Disclaimer: Our Join & Member growth services are strictly promotional and adhere to Discord's Terms of Service.
             </div>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6">
               {(groupedProducts["joins"] || []).map(join => {
                 const key = join.product_key || String(join.id);
                 const selected = isSelected(key);
@@ -677,7 +684,7 @@ export default function Shop() {
               Decorations via Gift Link
             </h2>
             <p className="text-gray-500 text-sm mb-8">Discord profile decorations delivered via secure gift link. 47h fresh links, instant delivery.</p>
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4">
               {(groupedProducts["decorations_gift"] || []).map(item => {
                 const key = item.product_key || String(item.id);
                 return (
@@ -725,7 +732,7 @@ export default function Shop() {
               Decorations via Login
             </h2>
             <p className="text-gray-500 text-sm mb-8">Applied directly to your account. You provide email + password. All transactions legally paid.</p>
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4">
               {(groupedProducts["decorations_login"] || []).map(item => {
                 const key = item.product_key || String(item.id);
                 return (
@@ -773,7 +780,7 @@ export default function Shop() {
               Nitro Accounts
             </h2>
             <p className="text-gray-500 text-sm mb-8">Freshly claimed Discord Nitro accounts with full access. Boosts included where specified.</p>
-            <div className="grid md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6">
               {(groupedProducts["nitro_accounts"] || []).map(item => {
                 const key = item.product_key || String(item.id);
                 return (
@@ -827,7 +834,7 @@ export default function Shop() {
               Server Boosters
             </h2>
             <p className="text-gray-500 text-sm mb-8">14x high-quality server boosts. Choose between login-based or VCC. Full revoke warranty included.</p>
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-5">
               {(groupedProducts["booster"] || []).map(item => {
                 const key = item.product_key || String(item.id);
                 return (
@@ -874,7 +881,7 @@ export default function Shop() {
               <span className="text-3xl">{getCategoryMeta(cat).icon}</span>
               {getCategoryMeta(cat).label}
             </h2>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6">
               {(groupedProducts[cat] || []).map(item => {
                 const key = item.product_key || String(item.id);
                 return (
@@ -908,35 +915,6 @@ export default function Shop() {
 
 
 
-                    <div className="flex justify-between items-start">
-                      <h3 className="font-bold text-sm mb-1 leading-snug flex-1">{item.name}</h3>
-                      {isSelected(key) && <Check className={`w-4 h-4 shrink-0 ${accentClasses.check}`} />}
-                    </div>
-                    <p className="text-[10px] text-gray-500 mb-3 flex-grow leading-relaxed">{item.description.split('[Admin')[0].trim()}</p>
-                    {item.is_manual_price ? (
-                      <p className={`text-xs font-semibold mb-3 ${accentClasses.check}`}>Custom Quote</p>
-                    ) : (
-                      <div className="flex items-baseline gap-1 mb-3">
-                        <span className="font-bold text-white text-lg font-display">{convertPrice(item.price)}</span>
-                        {item.unit_label && <span className="text-gray-500 text-[10px]">{item.unit_label}</span>}
-                      </div>
-                    )}
-                    <ul className="space-y-1 mb-4">
-                      {(Array.isArray(item.features) ? item.features : []).map((f, i) => (
-                        <li key={i} className="flex items-center gap-1.5 text-[10px] text-gray-400">
-                          <Check className={`w-3 h-3 shrink-0 ${accentClasses.check}`} />{f}
-                        </li>
-                      ))}
-                    </ul>
-                    <button className={`w-full py-2 rounded-xl text-xs font-bold transition-all ${isSelected(key) ? accentClasses.btn : 'bg-white/5 hover:bg-white/10'}`}>
-                      {isSelected(key) ? 'Selected ✓' : 'Select'}
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        )}
           </div>
           )}
 
@@ -951,7 +929,7 @@ export default function Shop() {
                   <p className="text-gray-400 max-w-xl mx-auto">Get exclusive, ultra-low latency bot hosting and premium guard protection on a monthly or yearly basis.</p>
                 </div>
                 
-                <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 max-w-6xl mx-auto">
                   {(groupedProducts['subscriptions'] || []).map(item => {
                     const key = item.product_key || String(item.id);
                     return (

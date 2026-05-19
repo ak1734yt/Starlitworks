@@ -1,16 +1,13 @@
-import os, time, json, sqlite3, asyncio
+import os, time, json, asyncio
 import discord
 from discord.ext import commands, tasks
 import psutil
 from datetime import datetime
+from database import get_db
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
 DATA_DIR   = os.path.join(os.path.dirname(__file__), "data")
 os.makedirs(DATA_DIR, exist_ok=True)
-DB_PATH    = os.path.join(DATA_DIR, "ssw.db")
-DB_USERS   = os.path.join(DATA_DIR, "users.db")
-DB_SHOP    = os.path.join(DATA_DIR, "shop.db")
-DB_ORDERS  = os.path.join(DATA_DIR, "orders.db")
 CONFIG     = os.path.join(DATA_DIR, "webhooks_config.json")
 POSTED     = os.path.join(DATA_DIR, "bot_posted_orders.json")
 START_TIME = time.time()
@@ -34,12 +31,7 @@ def save_posted(s):
 
 # ── DB ─────────────────────────────────────────────────────────────────────────
 def db():
-    c = sqlite3.connect(DB_PATH, check_same_thread=False)
-    c.row_factory = sqlite3.Row
-    c.execute(f"ATTACH DATABASE '{DB_USERS}' AS auth")
-    c.execute(f"ATTACH DATABASE '{DB_SHOP}'  AS shop")
-    c.execute(f"ATTACH DATABASE '{DB_ORDERS}' AS orders")
-    return c
+    return get_db()
 
 def get_order(order_id):
     c = db()
