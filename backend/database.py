@@ -31,6 +31,13 @@ DEFAULT_SETTINGS = [
     ("discord_link", "https://discord.gg/cozyclouds"),
     ("show_stats", "true"),
     ("show_feedbacks", "true"),
+    ("stat_bots_developed", "10"),
+    ("stat_dev_servers", "20+"),
+    ("stat_projects_developed", "50+"),
+    ("stat_client_satisfaction", "100%"),
+    ("stat_commands_written", "900+"),
+    ("stat_uptime", "99%"),
+    ("stat_support", "24/7")
 ]
 
 def get_db():
@@ -135,7 +142,13 @@ def init_db():
         is_recurring         INTEGER DEFAULT 0,
         sort_order           INTEGER DEFAULT 0,
         unit_label           TEXT    DEFAULT '',
-        updated_at           INTEGER DEFAULT (strftime('%s','now'))
+        updated_at           INTEGER DEFAULT (strftime('%s','now')),
+        is_deleted           INTEGER DEFAULT 0
+    );
+    """)
+    create_table_in_db(DB_SHOP, "deleted_product_keys", """
+    CREATE TABLE IF NOT EXISTS deleted_product_keys (
+        product_key TEXT UNIQUE NOT NULL
     );
     """)
     create_table_in_db(DB_SHOP, "coupons", """
@@ -181,13 +194,18 @@ def init_db():
     );
     """)
     
-    # Check default settings in shop.db
+    # Check default settings and handle migrations in shop.db
     conn_shop = sqlite3.connect(DB_SHOP)
     try:
-        count = conn_shop.execute("SELECT COUNT(*) FROM site_settings").fetchone()[0]
-        if count == 0:
-            conn_shop.executemany("INSERT OR IGNORE INTO site_settings (key, value) VALUES (?, ?)", DEFAULT_SETTINGS)
+        # Migration for is_deleted
+        try:
+            conn_shop.execute("ALTER TABLE products ADD COLUMN is_deleted INTEGER DEFAULT 0")
             conn_shop.commit()
+        except Exception:
+            pass
+        
+        conn_shop.executemany("INSERT OR IGNORE INTO site_settings (key, value) VALUES (?, ?)", DEFAULT_SETTINGS)
+        conn_shop.commit()
     except Exception as e:
         print(f"Error checking default settings: {e}")
     finally:

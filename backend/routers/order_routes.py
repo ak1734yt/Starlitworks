@@ -339,7 +339,7 @@ async def admin_update_order(order_id: int, body: AdminOrderUpdate, user=Depends
     # ── Enforce min_price floor ──────────────────────────────────────────────
     if body.quoted_price is not None and body.quoted_price > 0:
         product_row = db.execute(
-            "SELECT min_price FROM products WHERE product_key = ? OR name = ?",
+            "SELECT min_price FROM products WHERE (product_key = ? OR name = ?) AND is_deleted = 0",
             (row["service_id"], row["service_name"])
         ).fetchone()
         if product_row:

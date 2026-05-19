@@ -763,7 +763,7 @@ export default function Manager() {
         {activeTab === 'payments' && (
           <motion.div key="payments" initial={{opacity:0, y:10}} animate={{opacity:1, y:0}} exit={{opacity:0, y:-10}} className="grid gap-6">
             <div className="flex justify-between items-center bg-[#0A0A0A] border border-white/10 p-4 rounded-2xl">
-              <div className="flex gap-2">
+              <div className="flex bg-white/5 p-1 rounded-2xl border border-white/10 shrink-0">
                 {[
                   { id: 'pending', label: 'Verification Required' },
                   { id: 'active', label: 'Active Orders' },
@@ -772,10 +772,10 @@ export default function Manager() {
                   <button
                     key={opt.id}
                     onClick={() => setPaymentFilter(opt.id)}
-                    className={`px-4 py-2 text-xs font-bold rounded-xl transition-all ${
+                    className={`px-6 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
                       paymentFilter === opt.id 
                         ? 'bg-brand-primary text-white shadow-lg' 
-                        : 'bg-white/5 text-gray-400 hover:text-white'
+                        : 'text-gray-400 hover:text-white'
                     }`}
                   >
                     {opt.label}
@@ -800,100 +800,55 @@ export default function Manager() {
               }
 
               return (
-                <div className="grid gap-8">
-                  {filteredOrders.map(order => (
-                    <div key={order.id} className="bg-[#0A0A0A] border border-white/10 rounded-2xl p-8 grid lg:grid-cols-3 gap-8 shadow-2xl relative overflow-hidden">
-                      <div className="absolute top-0 right-0 w-32 h-32 bg-brand-primary/5 blur-3xl -mr-16 -mt-16" />
-                      
-                      <div className="space-y-6 relative">
-                        <div>
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="text-[10px] text-brand-primary uppercase font-bold tracking-widest">Order #{order.id}</span>
-                            <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${
-                              order.status === 'payment_pending' ? 'bg-yellow-500/10 text-yellow-500' :
-                              order.status === 'accepted' ? 'bg-green-500/10 text-green-500' :
-                              order.status === 'completed' ? 'bg-blue-500/10 text-blue-400' : 'bg-gray-500/10 text-gray-500'
-                            }`}>
-                              {order.status}
-                            </span>
-                          </div>
-                          <h4 className="font-bold text-2xl">{order.service_name}</h4>
-                          <p className="text-sm text-gray-500">Client: <span className="text-white">{order.client_name}</span></p>
-                        </div>
-
-                        <div className="p-4 bg-white/[0.02] rounded-xl border border-white/5 space-y-3">
-                          <div>
-                            <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest mb-1">Transaction ID</p>
-                            <p className="text-sm font-mono text-brand-primary break-all">{order.transaction_id || 'N/A'}</p>
-                          </div>
-                          <div>
-                            <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest mb-1">Quoted Price</p>
-                            <p className="text-lg font-bold">₹{order.quoted_price?.toLocaleString() || '0'}</p>
-                          </div>
-                        </div>
-
-                        <div className="flex gap-3 flex-wrap">
-                          {order.status === 'payment_pending' && (
-                            <>
-                              <button 
-                                onClick={() => handleVerifyPayment(order.id, true)}
-                                className="flex-1 min-w-[80px] py-3 bg-green-500/10 text-green-500 border border-green-500/20 rounded-xl text-xs font-bold hover:bg-green-500 hover:text-white transition-all flex items-center justify-center gap-2"
-                              >
-                                <Check className="w-4 h-4" /> Approve
-                              </button>
-                              <button 
-                                onClick={() => handleVerifyPayment(order.id, false)}
-                                className="flex-1 min-w-[80px] py-3 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl text-xs font-bold hover:bg-red-500 hover:text-white transition-all flex items-center justify-center gap-2"
-                              >
-                                <X className="w-4 h-4" /> Reject
-                              </button>
-                            </>
-                          )}
-                          <button 
+                <div className="bg-[#0A0A0A] border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                      <thead>
+                        <tr className="border-b border-white/10 bg-white/[0.02]">
+                          <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Order ID</th>
+                          <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Client Name</th>
+                          <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Category / Service</th>
+                          <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Amount</th>
+                          <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+                          <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/5 text-sm">
+                        {filteredOrders.map(order => (
+                          <tr 
+                            key={order.id} 
                             onClick={() => setEditingOrder(order)}
-                            className="flex-1 min-w-[80px] py-3 bg-white/5 text-gray-300 border border-white/10 rounded-xl text-xs font-bold hover:bg-white/10 hover:text-white transition-all flex items-center justify-center gap-2"
-                            title="Edit Order"
+                            className="hover:bg-white/[0.02] cursor-pointer transition-colors"
                           >
-                            <Edit className="w-4 h-4" /> Edit
-                          </button>
-                          <button 
-                            onClick={() => handleDeleteOrder(order.id)}
-                            className="p-3 bg-white/5 text-gray-500 border border-white/10 rounded-xl hover:bg-red-500/10 hover:text-red-500 transition-all"
-                            title="Delete Order"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-                      
-                      <div className="relative group aspect-video lg:aspect-square bg-black/50 rounded-2xl overflow-hidden border border-white/10">
-                        {order.payment_screenshot ? (
-                          <>
-                            <img src={getScreenshotUrl(order.payment_screenshot)} alt="Proof" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
-                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm">
-                              <a 
-                                href={getScreenshotUrl(order.payment_screenshot)} 
-                                target="_blank" 
-                                rel="noreferrer"
-                                className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-xs font-bold flex items-center gap-2 border border-white/10 transition-all"
+                            <td className="px-6 py-4 font-mono text-xs text-brand-primary font-bold">#{order.id}</td>
+                            <td className="px-6 py-4">
+                              <div className="font-semibold text-white">{order.client_name}</div>
+                              <div className="text-[10px] text-gray-500">{order.client_email}</div>
+                            </td>
+                            <td className="px-6 py-4 font-medium text-gray-300">{order.service_name}</td>
+                            <td className="px-6 py-4 font-bold text-white">₹{order.quoted_price?.toLocaleString() || '0'}</td>
+                            <td className="px-6 py-4">
+                              <span className={`px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-wider ${
+                                order.status === 'payment_pending' ? 'bg-yellow-500/10 text-yellow-500' :
+                                order.status === 'accepted' ? 'bg-green-500/10 text-green-500' :
+                                order.status === 'completed' ? 'bg-blue-500/10 text-blue-400' : 'bg-gray-500/10 text-gray-500'
+                              }`}>
+                                {order.status}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-right">
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); setEditingOrder(order); }}
+                                className="px-3 py-1.5 bg-white/5 hover:bg-brand-primary/10 border border-white/5 hover:border-brand-primary/20 rounded-xl text-xs font-semibold text-gray-300 hover:text-white transition-all"
                               >
-                                <ExternalLink className="w-4 h-4" /> View Full Image
-                              </a>
-                            </div>
-                          </>
-                        ) : (
-                          <div className="flex flex-col items-center justify-center h-full text-gray-700 gap-2">
-                            <Activity className="w-8 h-8 opacity-20" />
-                            <span className="text-xs font-bold uppercase tracking-widest opacity-20">No Screenshot</span>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="h-[450px] lg:h-full min-h-[400px] border-l border-white/5 pl-8">
-                        <UserChat userId={order.user_id} />
-                      </div>
-                    </div>
-                  ))}
+                                View / Manage
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               );
             })()}
@@ -1311,6 +1266,47 @@ export default function Manager() {
                       <label className="text-xs text-gray-500 uppercase tracking-widest font-bold block mb-2">OG Image URL (Social Sharing)</label>
                       <input name="meta_og_image" defaultValue={siteSettings.meta_og_image} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-brand-primary transition-all" />
                     </div>
+                  </div>
+                </div>
+              </div>
+              {/* Website Stats Customizer */}
+              <div className="bg-[#0A0A0A] border border-white/10 rounded-2xl p-8 shadow-2xl">
+                <h3 className="text-xl font-bold mb-6 flex items-center gap-2 border-b border-white/5 pb-4">
+                  <TrendingUp className="w-5 h-5 text-brand-primary" />
+                  Website Stats Customizer
+                </h3>
+                <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <div>
+                    <label className="text-xs text-gray-500 uppercase tracking-widest font-bold block mb-2">Bots Developed</label>
+                    <input name="stat_bots_developed" defaultValue={siteSettings.stat_bots_developed || "10"} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-brand-primary transition-all" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 uppercase tracking-widest font-bold block mb-2">Dev Servers</label>
+                    <input name="stat_dev_servers" defaultValue={siteSettings.stat_dev_servers || "20+"} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-brand-primary transition-all" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 uppercase tracking-widest font-bold block mb-2">Total Users</label>
+                    <input name="discord_member_count" defaultValue={siteSettings.discord_member_count || "10000"} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-brand-primary transition-all" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 uppercase tracking-widest font-bold block mb-2">Commands Written</label>
+                    <input name="stat_commands_written" defaultValue={siteSettings.stat_commands_written || "900+"} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-brand-primary transition-all" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 uppercase tracking-widest font-bold block mb-2">Projects Developed</label>
+                    <input name="stat_projects_developed" defaultValue={siteSettings.stat_projects_developed || "50+"} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-brand-primary transition-all" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 uppercase tracking-widest font-bold block mb-2">Client Satisfaction</label>
+                    <input name="stat_client_satisfaction" defaultValue={siteSettings.stat_client_satisfaction || "100%"} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-brand-primary transition-all" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 uppercase tracking-widest font-bold block mb-2">Uptime %</label>
+                    <input name="stat_uptime" defaultValue={siteSettings.stat_uptime || "99%"} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-brand-primary transition-all" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 uppercase tracking-widest font-bold block mb-2">Support</label>
+                    <input name="stat_support" defaultValue={siteSettings.stat_support || "24/7"} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-brand-primary transition-all" />
                   </div>
                 </div>
               </div>
@@ -2572,142 +2568,219 @@ export default function Manager() {
       <AnimatePresence>
         {editingOrder && (
           <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-            <motion.div initial={{scale:0.95}} animate={{scale:1}} className="bg-brand-card border border-brand-border rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto text-white">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-bold flex items-center gap-2"><ShoppingBag className="w-5 h-5 text-brand-primary"/> Edit Order</h3>
-                <button onClick={() => setEditingOrder(null)} className="text-gray-500 hover:text-white"><X className="w-5 h-5"/></button>
+            <motion.div initial={{scale:0.95}} animate={{scale:1}} className="bg-[#07070c] border border-white/10 rounded-3xl p-8 w-full max-w-5xl max-h-[90vh] overflow-y-auto text-white shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
+              <div className="flex justify-between items-center mb-6 border-b border-white/5 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-brand-primary/10 flex items-center justify-center border border-brand-primary/20">
+                    <ShoppingBag className="w-5 h-5 text-brand-primary"/>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold">Manage Order</h3>
+                    <p className="text-[10px] text-gray-500 uppercase tracking-widest">Order ID: #{editingOrder.id}</p>
+                  </div>
+                </div>
+                <button onClick={() => setEditingOrder(null)} className="text-gray-500 hover:text-white p-2 hover:bg-white/5 rounded-xl transition-all"><X className="w-5 h-5"/></button>
               </div>
+
+              {editingOrder.status === 'payment_pending' && (
+                <div className="mb-6 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-2xl flex flex-col sm:flex-row justify-between items-center gap-4">
+                  <div>
+                    <p className="text-xs font-bold text-yellow-500 uppercase tracking-wider mb-0.5">Verification Required</p>
+                    <p className="text-xs text-gray-400">Please review proof and click Approve to activate this order.</p>
+                  </div>
+                  <div className="flex gap-2 w-full sm:w-auto">
+                    <button 
+                      type="button"
+                      onClick={async () => {
+                        await handleVerifyPayment(editingOrder.id, true);
+                        setEditingOrder(null);
+                      }}
+                      className="flex-1 sm:flex-initial px-4 py-2 bg-green-500 text-white rounded-xl text-xs font-bold hover:bg-green-600 transition-all flex items-center justify-center gap-1.5"
+                    >
+                      <Check className="w-3.5 h-3.5" /> Approve Payment
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={async () => {
+                        await handleVerifyPayment(editingOrder.id, false);
+                        setEditingOrder(null);
+                      }}
+                      className="flex-1 sm:flex-initial px-4 py-2 bg-red-500 text-white rounded-xl text-xs font-bold hover:bg-red-600 transition-all flex items-center justify-center gap-1.5"
+                    >
+                      <X className="w-3.5 h-3.5" /> Reject Proof
+                    </button>
+                  </div>
+                </div>
+              )}
               
-              <div className="grid grid-cols-2 gap-4 mb-6 text-sm">
-                <div className="bg-white/5 p-4 rounded-xl border border-white/5">
-                  <p className="text-gray-500 text-xs mb-1">Client</p>
-                  <p className="font-bold">{editingOrder.client_name}</p>
-                  <p className="text-gray-400">{editingOrder.client_email}</p>
-                  {editingOrder.discord_username && (
-                    <p className="text-brand-secondary text-xs mt-2 flex items-center gap-1">
-                      <span className="font-bold">Discord:</span> {editingOrder.discord_username}
-                    </p>
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                {/* Left Column: Details & Form */}
+                <div className="lg:col-span-7 space-y-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="bg-white/5 p-4 rounded-xl border border-white/5">
+                      <p className="text-gray-500 text-[10px] uppercase font-bold tracking-widest mb-1">Client Info</p>
+                      <p className="font-bold text-sm">{editingOrder.client_name}</p>
+                      <p className="text-xs text-gray-400">{editingOrder.client_email}</p>
+                      {editingOrder.discord_username && (
+                        <div className="inline-block px-2 py-0.5 mt-2 bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-[10px] font-bold rounded-md">
+                          Discord: {editingOrder.discord_username}
+                        </div>
+                      )}
+                    </div>
+                    <div className="bg-white/5 p-4 rounded-xl border border-white/5">
+                      <p className="text-gray-500 text-[10px] uppercase font-bold tracking-widest mb-1">Requested Service</p>
+                      <p className="font-bold text-sm text-brand-primary">{editingOrder.service_name}</p>
+                      <p className="text-xs text-gray-400 mt-1 capitalize">Timeline: {editingOrder.timeline || 'Flexible'}</p>
+                      <p className="text-xs text-gray-400">Qty: <span className="font-mono font-bold text-brand-secondary">{editingOrder.quantity || 1}</span></p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest mb-2">Description</p>
+                    <div className="bg-black/40 p-4 rounded-xl border border-white/5 text-xs md:text-sm leading-relaxed text-gray-300">
+                      {editingOrder.description || "No description provided."}
+                    </div>
+                    {editingOrder.server_link && (
+                      <a href={editingOrder.server_link} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 mt-3 text-xs text-brand-primary hover:underline">
+                        🔗 View Discord Server Link
+                      </a>
+                    )}
+                  </div>
+
+                  {editingOrder.negotiation_status && (
+                    <div className={`p-4 rounded-xl border ${editingOrder.negotiation_status === 'pending' ? 'bg-yellow-500/5 border-yellow-500/20' : 'bg-green-500/5 border-green-500/20'}`}>
+                      <p className="text-[10px] uppercase font-bold tracking-widest text-gray-500 mb-2">Negotiation Details</p>
+                      <div className="flex justify-between items-center text-xs">
+                        <div>
+                          <p className="text-gray-500">Requested Custom Price</p>
+                          <p className="text-sm font-bold text-white">₹{editingOrder.negotiated_price}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-gray-500">Status</p>
+                          <p className={`font-bold uppercase ${editingOrder.negotiation_status === 'pending' ? 'text-yellow-500' : 'text-green-500'}`}>{editingOrder.negotiation_status}</p>
+                        </div>
+                      </div>
+                      <div className="mt-3 pt-3 border-t border-white/5 text-xs">
+                        <p className="text-gray-500 mb-1">Reason</p>
+                        <p className="italic text-gray-400">"{editingOrder.negotiation_reason}"</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* STARLIT VAULT */}
+                  <div className="p-4 bg-brand-primary/5 border border-brand-primary/20 rounded-xl">
+                    <h4 className="text-[10px] font-black uppercase tracking-widest text-brand-primary flex items-center gap-2 mb-3">
+                      <Zap className="w-3 h-3" /> The Starlit Vault
+                    </h4>
+                    <textarea 
+                      placeholder='{"Bot Token": "MTAy...", "License": "SSW-99X"}'
+                      defaultValue={(() => {
+                        try {
+                          const raw = editingOrder.vault_data;
+                          if (typeof raw === 'string') return raw;
+                          return JSON.stringify(raw || {}, null, 2);
+                        } catch {
+                          return '';
+                        }
+                      })()}
+                      onChange={(e) => {
+                        try {
+                          setEditingOrder({ ...editingOrder, vault_data: e.target.value });
+                        } catch(err) {
+                          console.error(err);
+                        }
+                      }}
+                      className="w-full h-24 bg-black/40 border border-white/5 rounded-xl p-3 text-xs font-mono text-brand-primary focus:border-brand-primary outline-none transition-all resize-none"
+                    />
+                    <p className="text-[9px] text-gray-600 mt-1 italic">Deliver tokens, credentials, or licenses privately to the client.</p>
+                  </div>
+
+                  <form onSubmit={handleSaveOrder} className="space-y-4 border-t border-white/5 pt-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1">Order Status</label>
+                        <select value={editingOrder.status} onChange={e => setEditingOrder({...editingOrder, status: e.target.value})} className="w-full bg-[#0A0A0A] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-brand-primary">
+                          <option value="pending">Pending</option>
+                          <option value="quoted">Quoted (Awaiting Client)</option>
+                          <option value="accepted">Accepted (In Progress)</option>
+                          <option value="completed">Completed</option>
+                          <option value="rejected">Rejected</option>
+                        </select>
+                      </div>
+                      <div>
+                        <div className="flex justify-between items-end mb-1">
+                          <label className="block text-xs text-gray-400">Quote Price (₹)</label>
+                          {(() => {
+                            const prod = prices?.find(p => p.name === editingOrder.service_name || p.product_key === editingOrder.service_id);
+                            if (!prod) return null;
+                            const floor = parseFloat(prod.min_price || 0);
+                            const hint = prod.show_price_to_admin !== 0 ? parseFloat(prod.price || 0) : 0;
+                            return (
+                              <div className="text-[9px] text-right">
+                                {hint > 0 && <span className="text-brand-primary mr-2">List: ₹{hint}</span>}
+                                {floor > 0 && <span className="text-amber-500 font-bold">Floor: ₹{floor}</span>}
+                              </div>
+                            );
+                          })()}
+                        </div>
+                        <input type="number" value={editingOrder.quoted_price || ''} onChange={e => setEditingOrder({...editingOrder, quoted_price: Number(e.target.value)})} placeholder="e.g. 1500" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-brand-primary" />
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Admin Notes (Private)</label>
+                      <textarea value={editingOrder.admin_notes || ''} onChange={e => setEditingOrder({...editingOrder, admin_notes: e.target.value})} rows={2} placeholder="Internal details..." className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-brand-primary resize-none" />
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                      <button 
+                        type="button" 
+                        onClick={async () => {
+                          if (window.confirm("Are you sure you want to delete this order? This action is permanent!")) {
+                            await handleDeleteOrder(editingOrder.id);
+                            setEditingOrder(null);
+                          }
+                        }} 
+                        className="px-4 py-2.5 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl text-xs font-bold hover:bg-red-500 hover:text-white transition-all flex items-center justify-center gap-1.5"
+                      >
+                        <Trash2 className="w-4 h-4"/> Delete Order
+                      </button>
+                      <div className="flex-1 flex gap-2">
+                        <button type="button" onClick={() => setEditingOrder(null)} className="flex-1 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs font-bold transition-all text-center">Cancel</button>
+                        <button type="submit" disabled={saving} className="flex-1 py-2.5 bg-brand-primary hover:bg-brand-secondary rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2">
+                          {saving ? <Loader2 className="w-4 h-4 animate-spin"/> : <Save className="w-4 h-4"/>} Save Details
+                        </button>
+                      </div>
+                    </div>
+                  </form>
+                </div>
+
+                {/* Right Column: Chat & Screenshots */}
+                <div className="lg:col-span-5 flex flex-col gap-6">
+                  <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden h-[400px] flex flex-col shadow-inner">
+                    <UserChat userId={editingOrder.user_id} />
+                  </div>
+
+                  {editingOrder.payment_screenshot && (
+                    <div className="bg-white/5 border border-white/10 rounded-2xl p-4 space-y-3">
+                      <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Payment Proof</p>
+                      <div className="relative aspect-video rounded-xl overflow-hidden border border-white/5 group bg-black/40">
+                        <img src={getScreenshotUrl(editingOrder.payment_screenshot)} alt="Proof" className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm">
+                          <a 
+                            href={getScreenshotUrl(editingOrder.payment_screenshot)} 
+                            target="_blank" 
+                            rel="noreferrer"
+                            className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-xs font-bold flex items-center gap-2 border border-white/10 transition-all"
+                          >
+                            <ExternalLink className="w-4 h-4" /> View Full Image
+                          </a>
+                        </div>
+                      </div>
+                    </div>
                   )}
                 </div>
-                <div className="bg-white/5 p-4 rounded-xl border border-white/5">
-                  <p className="text-gray-500 text-xs mb-1">Service Requested</p>
-                  <p className="font-bold text-brand-primary">{editingOrder.service_name}</p>
-                  <p className="text-gray-400 capitalize mb-1">Timeline: {editingOrder.timeline || 'Flexible'}</p>
-                  <p className="text-xs text-gray-400">Quantity: <span className="font-mono font-bold text-brand-secondary">{editingOrder.quantity || 1}</span></p>
-                </div>
               </div>
-
-              <div className="mb-6">
-                <p className="text-gray-500 text-xs mb-2">Client Description</p>
-                <div className="bg-black/30 p-4 rounded-xl border border-white/5 text-sm leading-relaxed text-gray-300 mb-4">
-                  {editingOrder.description}
-                </div>
-
-                {editingOrder.negotiation_status && (
-                  <div className={`p-4 rounded-xl border ${editingOrder.negotiation_status === 'pending' ? 'bg-yellow-500/5 border-yellow-500/20' : 'bg-green-500/5 border-green-500/20'}`}>
-                    <p className="text-[10px] uppercase font-bold tracking-widest text-gray-500 mb-2">Negotiation Info</p>
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <p className="text-xs text-gray-400">Requested Price</p>
-                        <p className="text-lg font-bold text-white">₹{editingOrder.negotiated_price}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-xs text-gray-400">Status</p>
-                        <p className={`text-sm font-bold uppercase ${editingOrder.negotiation_status === 'pending' ? 'text-yellow-500' : 'text-green-500'}`}>{editingOrder.negotiation_status}</p>
-                      </div>
-                    </div>
-                    <div className="mt-3 pt-3 border-t border-white/5">
-                      <p className="text-xs text-gray-500 mb-1">Reason</p>
-                      <p className="text-sm italic text-gray-400">"{editingOrder.negotiation_reason}"</p>
-                    </div>
-                  </div>
-                )}
-                
-                {editingOrder.server_link && (
-                  <a href={editingOrder.server_link} target="_blank" rel="noreferrer" className="inline-block mt-3 text-sm text-brand-primary hover:underline">
-                    🔗 View Discord Server
-                  </a>
-                )}
-              </div>
-
-              {/* STALIT VAULT ASSET MANAGER */}
-              <div className="mb-8 p-4 bg-brand-primary/5 border border-brand-primary/20 rounded-2xl">
-                <div className="flex justify-between items-center mb-4">
-                  <h4 className="text-xs font-black uppercase tracking-widest text-brand-primary flex items-center gap-2">
-                    <Zap className="w-3 h-3" /> The Starlit Vault
-                  </h4>
-                  <span className="text-[10px] text-gray-500 font-bold uppercase">Client Assets</span>
-                </div>
-                <div className="space-y-3" key={editingOrder.id}>
-                  <textarea 
-                    placeholder='{"Bot Token": "MTAy...", "License": "SSW-99X"}'
-                    defaultValue={(() => {
-                      try {
-                        const raw = editingOrder.vault_data;
-                        if (typeof raw === 'string') return raw;
-                        return JSON.stringify(raw || {}, null, 2);
-                      } catch {
-                        return '';
-                      }
-                    })()}
-                    onChange={(e) => {
-                      try {
-                        const val = e.target.value;
-                        setEditingOrder({ ...editingOrder, vault_data: val });
-                      } catch(err) {
-                        console.error(err);
-                      }
-                    }}
-                    className="w-full h-32 bg-black/50 border border-white/5 rounded-xl p-3 text-xs font-mono text-brand-primary focus:border-brand-primary outline-none transition-all resize-none"
-                  />
-                  <p className="text-[9px] text-gray-600 italic">Enter assets as JSON format. These will be visible only to the client once the order is completed.</p>
-                </div>
-              </div>
-
-              <form onSubmit={handleSaveOrder} className="space-y-4 border-t border-white/10 pt-6">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs text-gray-400 mb-1">Status</label>
-                    <select value={editingOrder.status} onChange={e => setEditingOrder({...editingOrder, status: e.target.value})} className="w-full bg-[#0A0A0A] border border-white/20 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-primary">
-                      <option value="pending">Pending</option>
-                      <option value="quoted">Quoted (Awaiting Client)</option>
-                      <option value="accepted">Accepted (In Progress)</option>
-                      <option value="completed">Completed</option>
-                      <option value="rejected">Rejected</option>
-                    </select>
-                  </div>
-                  <div>
-                    <div className="flex justify-between items-end mb-1">
-                      <label className="block text-xs text-gray-400">Custom Quote Price (₹)</label>
-                      {(() => {
-                        const prod = prices?.find(p => p.name === editingOrder.service_name || p.product_key === editingOrder.service_id);
-                        if (!prod) return null;
-                        const floor = parseFloat(prod.min_price || 0);
-                        const hint = prod.show_price_to_admin !== 0 ? parseFloat(prod.price || 0) : 0;
-                        return (
-                          <div className="text-[10px] text-right">
-                            {hint > 0 && <span className="text-brand-primary mr-2">Suggested: ₹{hint}</span>}
-                            {floor > 0 && <span className="text-amber-500 font-bold">Floor: ₹{floor}</span>}
-                          </div>
-                        );
-                      })()}
-                    </div>
-                    <input type="number" value={editingOrder.quoted_price || ''} onChange={e => setEditingOrder({...editingOrder, quoted_price: Number(e.target.value)})} placeholder="e.g. 1500" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-primary" />
-                  </div>
-                </div>
-                
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">Admin Notes (Private)</label>
-                  <textarea value={editingOrder.admin_notes || ''} onChange={e => setEditingOrder({...editingOrder, admin_notes: e.target.value})} rows={2} placeholder="Internal notes..." className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-brand-primary resize-none" />
-                </div>
-
-                <div className="flex gap-3 pt-2">
-                  <button type="button" onClick={() => setEditingOrder(null)} className="flex-1 btn-outline">Cancel</button>
-                  <button type="submit" disabled={saving} className="flex-1 btn-primary flex items-center justify-center gap-2">
-                    {saving ? <Loader2 className="w-4 h-4 animate-spin"/> : <Save className="w-4 h-4"/>} Update Order
-                  </button>
-                </div>
-              </form>
             </motion.div>
           </motion.div>
         )}

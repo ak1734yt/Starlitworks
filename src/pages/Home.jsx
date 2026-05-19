@@ -99,10 +99,10 @@ function Home() {
       <main>
         <Hero settings={siteSettings} />
         {siteSettings.show_stats !== 'false' && <Stats />}
+        {siteSettings.show_pricing !== 'false' && <Pricing />}
         <About settings={siteSettings} />
         <Features />
         {siteSettings.show_portfolio !== 'false' && <Portfolio />}
-        {siteSettings.show_pricing !== 'false' && <Pricing />}
 
         {/* Reviews / Feedback Section */}
         {siteSettings.show_feedbacks !== 'false' && (

@@ -1,10 +1,12 @@
 import { motion } from "framer-motion";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { STATS_DATA } from "../constants/statsData";
 import { getPublicStats } from "../services/api";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 const Stats = () => {
   const [liveStats, setLiveStats] = useState(null);
+  const scrollContainerRef = useRef(null);
 
   useEffect(() => {
     getPublicStats().then(setLiveStats).catch(console.error);
@@ -12,66 +14,80 @@ const Stats = () => {
 
   const getVal = (stat) => {
     if (!liveStats) return stat.value;
-    if (stat.key === 'member_count') {
+    const key = stat.key;
+    if (key === 'member_count') {
       return (liveStats.member_count || 10000).toLocaleString() + "+";
     }
-    if (stat.key === 'completed_projects') {
-      if (stat.label.includes('Bot')) {
-        return (liveStats.completed_projects + 15) + "+";
-      }
-      return (liveStats.completed_projects + 50) + "+";
+    return liveStats[key] !== undefined ? liveStats[key] : stat.value;
+  };
+
+  const scroll = (direction) => {
+    if (scrollContainerRef.current) {
+      const { scrollLeft, clientWidth } = scrollContainerRef.current;
+      const scrollAmount = clientWidth * 0.75;
+      scrollContainerRef.current.scrollTo({
+        left: direction === 'left' ? scrollLeft - scrollAmount : scrollLeft + scrollAmount,
+        behavior: 'smooth'
+      });
     }
-    if (stat.key === 'rating') {
-      return "100%";
-    }
-    return stat.value;
   };
 
   return (
-    <section className="py-28 border-y border-white/5 bg-[#030303] relative overflow-hidden">
-      {/* Dynamic backdrop ambient glows */}
-      <div className="absolute top-10 left-10 w-96 h-96 bg-brand-primary/5 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-10 right-10 w-96 h-96 bg-brand-secondary/5 rounded-full blur-[120px] pointer-events-none" />
+    <section className="py-12 border-y border-white/5 bg-[#030303]/60 relative overflow-hidden">
+      <div className="absolute top-1/2 left-1/4 -translate-y-1/2 w-80 h-80 bg-brand-primary/5 rounded-full blur-[100px] pointer-events-none" />
       
       <div className="max-w-7xl mx-auto px-6 relative z-10">
-        <div className="text-center mb-16 space-y-4">
-          <p className="text-[10px] text-brand-primary font-bold uppercase tracking-[0.3em]">Our Track Record</p>
-          <h2 className="text-3xl md:text-5xl font-black tracking-tight text-white">
-            Empowering Communities at <span className="text-gradient">Scale</span>
-          </h2>
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <p className="text-[10px] text-brand-primary font-bold uppercase tracking-[0.3em] mb-1">Our Track Record</p>
+            <h2 className="text-xl md:text-2xl font-black text-white">
+              Starlit <span className="text-gradient">Performance</span>
+            </h2>
+          </div>
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => scroll('left')}
+              className="p-2 glass rounded-xl text-gray-400 hover:text-white transition-all hover:border-brand-primary/40"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <button 
+              onClick={() => scroll('right')}
+              className="p-2 glass rounded-xl text-gray-400 hover:text-white transition-all hover:border-brand-primary/40"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 lg:gap-8">
+        <div 
+          ref={scrollContainerRef}
+          className="flex gap-6 overflow-x-auto scrollbar-none pb-4 snap-x snap-mandatory touch-pan-x"
+        >
           {STATS_DATA.map((stat, index) => (
             <motion.div
               key={index}
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.05, duration: 0.6 }}
+              initial={{ opacity: 0, x: 20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              transition={{ delay: index * 0.04, duration: 0.5 }}
               viewport={{ once: true }}
-              className="flex flex-col items-center p-8 bg-[#070707]/60 border border-white/5 rounded-3xl hover:border-brand-primary/25 hover:bg-[#0A0A0A] hover:shadow-[0_0_30px_rgba(124,58,237,0.08)] transition-all duration-500 relative overflow-hidden group"
+              className="flex items-center gap-5 p-5 bg-[#070707]/80 border border-white/5 rounded-2xl hover:border-brand-primary/25 hover:bg-[#0A0A0A] transition-all duration-300 min-w-[260px] md:min-w-[280px] shrink-0 snap-start group relative overflow-hidden"
             >
-              {/* Inner card spotlight */}
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(124,58,237,0.04),transparent_65%)] opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(124,58,237,0.03),transparent_70%)] opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
               
-              {/* Floating icon */}
-              <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${stat.color} p-[1px] mb-6 group-hover:scale-110 group-hover:rotate-6 transition-all duration-500`}>
-                <div className="w-full h-full bg-[#050505] rounded-[15px] flex items-center justify-center">
-                  <stat.icon className="w-5 h-5 text-white/80 group-hover:text-white transition-colors" />
+              <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${stat.color} p-[1px] group-hover:scale-105 transition-all duration-300 shrink-0`}>
+                <div className="w-full h-full bg-[#050505] rounded-[11px] flex items-center justify-center">
+                  <stat.icon className="w-7 h-7 text-white/80 group-hover:text-white transition-colors" />
                 </div>
               </div>
               
-              {/* Metric Value */}
-              <h3 className="text-3xl md:text-4xl font-black font-display text-white mb-2.5 tracking-tight drop-shadow-[0_0_15px_rgba(255,255,255,0.05)] group-hover:drop-shadow-[0_0_20px_rgba(124,58,237,0.25)] transition-all duration-300">
-                {getVal(stat)}
-              </h3>
-              
-              {/* Description */}
-              <div className="flex flex-col items-center">
-                <p className="text-gray-500 font-bold uppercase tracking-[0.2em] text-[9px] mb-2 group-hover:text-gray-300 transition-colors">
+              <div>
+                <h3 className="text-2xl font-black font-display text-white mb-0.5 tracking-tight group-hover:text-brand-primary transition-colors">
+                  {getVal(stat)}
+                </h3>
+                <p className="text-gray-500 font-bold uppercase tracking-[0.15em] text-[9px]">
                   {stat.label}
                 </p>
-                <div className="w-6 h-[2px] bg-brand-primary/20 group-hover:w-10 group-hover:bg-brand-primary transition-all duration-500" />
               </div>
             </motion.div>
           ))}
@@ -82,4 +98,3 @@ const Stats = () => {
 };
 
 export default Stats;
-

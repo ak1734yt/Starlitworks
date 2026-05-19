@@ -3,14 +3,14 @@ import { Server, Bot, Users, Code, Wrench, Star, Shield, Clock } from "lucide-re
 export const STATS_DATA = [
   { 
     label: "Bots Developed", 
-    value: "15+", 
+    value: "10", 
     icon: Bot,
     color: "from-violet-500 to-fuchsia-500",
-    key: "completed_projects"
+    key: "bots_developed"
   },
   { 
     label: "Dev Servers", 
-    value: "30+", 
+    value: "20+", 
     icon: Server,
     color: "from-blue-500 to-cyan-500",
     key: "dev_servers"
@@ -24,28 +24,28 @@ export const STATS_DATA = [
   },
   { 
     label: "Commands Written", 
-    value: "500+", 
+    value: "900+", 
     icon: Code,
     color: "from-orange-500 to-amber-500",
     key: "commands_written"
   },
   { 
-    label: "Projects Delivered", 
+    label: "Projects Developed", 
     value: "50+", 
     icon: Wrench,
     color: "from-pink-500 to-rose-500",
-    key: "completed_projects"
+    key: "projects_developed"
   },
   { 
     label: "Client Satisfaction", 
     value: "100%", 
     icon: Star,
     color: "from-yellow-500 to-amber-500",
-    key: "rating"
+    key: "client_satisfaction"
   },
   { 
-    label: "Uptime %", 
-    value: "99.9%", 
+    label: "Uptime", 
+    value: "99%", 
     icon: Shield,
     color: "from-teal-500 to-emerald-500",
     key: "uptime"

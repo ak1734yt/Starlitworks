@@ -17,15 +17,28 @@ export default function ChatBubble() {
   const [sending, setSending] = useState(false);
   const messagesEndRef = useRef(null);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  const [hasScrolledInit, setHasScrolledInit] = useState(false);
+
+  const scrollToBottom = (force = false) => {
+    if (!messagesEndRef.current) return;
+    const container = messagesEndRef.current.parentElement;
+    if (!container) return;
+    const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 120;
+    if (force || isNearBottom) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
   };
 
   useEffect(() => {
     if (isOpen) {
-      scrollToBottom();
+      if (!hasScrolledInit) {
+        scrollToBottom(true);
+        setHasScrolledInit(true);
+      } else {
+        scrollToBottom();
+      }
     }
-  }, [messages, isOpen, isTyping]);
+  }, [messages, isOpen, isTyping, hasScrolledInit]);
 
   // Real-time Chat Sync if user is logged in
   useEffect(() => {

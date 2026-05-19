@@ -29,9 +29,22 @@ export default function UserChat({ userId, onClose }) {
     return () => clearInterval(interval);
   }, [userId]);
 
+  const [hasScrolledInit, setHasScrolledInit] = useState(false);
+
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    setHasScrolledInit(false);
+  }, [userId]);
+
+  useEffect(() => {
+    if (messages.length > 0) {
+      if (!hasScrolledInit) {
+        scrollToBottom(true);
+        setHasScrolledInit(true);
+      } else {
+        scrollToBottom();
+      }
+    }
+  }, [messages, hasScrolledInit]);
 
   useEffect(() => {
     return () => {
@@ -53,8 +66,14 @@ export default function UserChat({ userId, onClose }) {
     }
   };
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  const scrollToBottom = (force = false) => {
+    if (!messagesEndRef.current) return;
+    const container = messagesEndRef.current.parentElement;
+    if (!container) return;
+    const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 120;
+    if (force || isNearBottom) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
   };
 
   const handleSend = async (e) => {

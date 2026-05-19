@@ -312,7 +312,7 @@ def set_user_status(uid: int, body: BanBody, user=Depends(require_manager)):
 @router.get("/manager/prices")
 def manager_prices(user=Depends(require_manager)):
     db = get_db()
-    rows = db.execute("SELECT * FROM products ORDER BY category, sort_order").fetchall()
+    rows = db.execute("SELECT * FROM products WHERE is_deleted = 0 ORDER BY category, sort_order").fetchall()
     db.close()
     return [dict(r) for r in rows]
 
@@ -355,8 +355,13 @@ def update_price(pid: int, body: PriceUpdateBody, user=Depends(require_manager))
 @router.delete("/manager/prices/{pid}")
 def delete_product(pid: int, user=Depends(require_manager)):
     db = get_db()
-    db.execute("DELETE FROM products WHERE id = ?", (pid,))
-    db.commit(); db.close()
+    row = db.execute("SELECT product_key FROM products WHERE id = ?", (pid,)).fetchone()
+    if row:
+        product_key = row["product_key"]
+        db.execute("INSERT OR IGNORE INTO deleted_product_keys (product_key) VALUES (?)", (product_key,))
+        db.execute("DELETE FROM products WHERE id = ?", (pid,))
+        db.commit()
+    db.close()
     log_activity(user["id"], "DELETE_PRODUCT", f"Deleted product {pid}")
     return {"success": True}
 
@@ -406,7 +411,14 @@ def seed_catalog(user=Depends(require_manager)):
         {"category": "subscriptions", "product_key": "sub_bot_12m", "name": "Premium Bot Subscription (12 Months)", "price": 9999, "min_price": 9999, "tag": "12 Months | ₹9999", "description": "High-speed private support ticket and utility bot hosted on our ultra-low latency server for 12 months.", "features": ["Full custom ticketer system", "Active anti-abuse algorithms", "24/7 dedicated hosting uptime", "12 Months Access"], "is_manual_price": 0, "show_price_to_admin": 1}
     ]
     
+    # Check deleted keys to prevent re-adding them
+    db.execute("CREATE TABLE IF NOT EXISTS deleted_product_keys (product_key TEXT UNIQUE NOT NULL)")
+    rows = db.execute("SELECT product_key FROM deleted_product_keys").fetchall()
+    deleted_keys = {r["product_key"] for r in rows}
+
     for p in products:
+        if p["product_key"] in deleted_keys:
+            continue
         db.execute(
             """INSERT OR IGNORE INTO products 
                (category, product_key, name, price, min_price, tag, description, features, is_manual_price, show_price_to_admin) 
@@ -490,7 +502,7 @@ def update_settings(request_body: dict, user=Depends(require_manager)):
 @router.get("/prices")
 def get_prices():
     db = get_db()
-    rows = db.execute("SELECT * FROM products ORDER BY category, sort_order").fetchall()
+    rows = db.execute("SELECT * FROM products WHERE is_deleted = 0 ORDER BY category, sort_order").fetchall()
     db.close()
     result = []
     for r in rows:
@@ -527,17 +539,17 @@ def submit_feedback(body: FeedbackBody, user=Depends(get_current_user)):
 @router.get("/public/stats")
 def public_stats():
     db = get_db()
-    feedbacks = db.execute("SELECT COUNT(*) as c FROM feedbacks WHERE status = 'approved'").fetchone()["c"]
-    orders = db.execute("SELECT COUNT(*) as c FROM orders WHERE status = 'completed'").fetchone()["c"]
-    
-    # Read member count from site_settings
-    member_row = db.execute("SELECT value FROM site_settings WHERE key = 'discord_member_count'").fetchone()
-    member_count = int(member_row["value"]) if member_row else 10000
-    
+    rows = db.execute("SELECT key, value FROM site_settings WHERE key IN ('discord_member_count', 'stat_bots_developed', 'stat_dev_servers', 'stat_projects_developed', 'stat_client_satisfaction', 'stat_commands_written', 'stat_uptime', 'stat_support')").fetchall()
+    settings_dict = {r["key"]: r["value"] for r in rows}
+    member_count = int(settings_dict.get("discord_member_count", "10000"))
     db.close()
     return {
-        "total_clients": 40 + feedbacks,
-        "rating": 4.9,
-        "completed_projects": 50 + orders,
-        "member_count": member_count
+        "member_count": member_count,
+        "bots_developed": settings_dict.get("stat_bots_developed", "10"),
+        "dev_servers": settings_dict.get("stat_dev_servers", "20+"),
+        "projects_developed": settings_dict.get("stat_projects_developed", "50+"),
+        "client_satisfaction": settings_dict.get("stat_client_satisfaction", "100%"),
+        "commands_written": settings_dict.get("stat_commands_written", "900+"),
+        "uptime": settings_dict.get("stat_uptime", "99%"),
+        "support": settings_dict.get("stat_support", "24/7")
     }

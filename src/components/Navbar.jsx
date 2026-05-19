@@ -69,8 +69,9 @@ const Navbar = () => {
 
         {/* Nav links (Desktop) */}
         <div className="hidden lg:flex items-center gap-8 text-sm font-medium text-gray-300">
+          <Link to="/" className="hover:text-brand-primary transition-colors">Home</Link>
           <Link to="/about" className="hover:text-brand-primary transition-colors">About Us</Link>
-          <Link to="/#portfolio" className="hover:text-brand-primary transition-colors">Portfolio</Link>
+          <Link to="/portfolio" className="hover:text-brand-primary transition-colors">Our Work</Link>
           <button onClick={() => handleProtectedLink('/shop')} className="hover:text-brand-primary transition-colors flex items-center gap-1.5">
             <ShoppingBag className="w-3.5 h-3.5" /> Shop
           </button>
@@ -80,7 +81,7 @@ const Navbar = () => {
               {hasInstallments && (
                 <Link to="/tracker" className="hover:text-brand-primary transition-colors flex items-center gap-1.5"><CreditCard className="w-3.5 h-3.5"/>Tracker</Link>
               )}
-              {user.role === 'admin' && (
+              {(user.role === 'admin' || user.role === 'manager') && (
                 <Link to="/admin" className="hover:text-yellow-400 transition-colors flex items-center gap-1.5 text-yellow-500">
                   <Shield className="w-3.5 h-3.5"/>Admin
                 </Link>
@@ -206,7 +207,7 @@ const Navbar = () => {
                       <button onClick={() => { navigate('/profile'); setUserMenuOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/5 rounded-lg transition-all">
                         <Settings className="w-4 h-4" /> Manage Account
                       </button>
-                      {user.role === 'admin' && (
+                      {(user.role === 'admin' || user.role === 'manager') && (
                         <button onClick={() => { navigate('/admin'); setUserMenuOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/5 rounded-lg transition-all">
                           <Shield className="w-4 h-4" /> Admin Panel
                         </button>
@@ -303,11 +304,14 @@ const Navbar = () => {
             )}
 
             <div className="flex flex-col gap-1">
+              <Link to="/" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-3 p-3 text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-all">
+                <Shield className="w-4 h-4" /> Home
+              </Link>
               <Link to="/about" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-3 p-3 text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-all">
                 <Shield className="w-4 h-4" /> About Us
               </Link>
-              <Link to="/#portfolio" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-3 p-3 text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-all">
-                <Activity className="w-4 h-4" /> Portfolio
+              <Link to="/portfolio" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-3 p-3 text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-all">
+                <Activity className="w-4 h-4" /> Our Work
               </Link>
               <button onClick={() => { handleProtectedLink('/shop'); setUserMenuOpen(false); }} className="flex items-center gap-3 p-3 text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-all">
                 <ShoppingBag className="w-4 h-4" /> Shop
@@ -323,7 +327,7 @@ const Navbar = () => {
                       <CreditCard className="w-4 h-4" /> Tracker
                     </Link>
                   )}
-                  {user.role === 'admin' && (
+                  {(user.role === 'admin' || user.role === 'manager') && (
                     <Link to="/admin" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-3 p-3 text-yellow-500/80 hover:text-yellow-400 hover:bg-yellow-500/10 rounded-xl transition-all font-bold">
                       <Shield className="w-4 h-4" /> Admin Panel
                     </Link>

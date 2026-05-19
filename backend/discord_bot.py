@@ -452,7 +452,7 @@ async def bot_pending(ctx):
 async def bot_catalog(ctx):
     try:
         c = db()
-        products = c.execute("SELECT * FROM shop.products ORDER BY category, sort_order").fetchall()
+        products = c.execute("SELECT * FROM shop.products WHERE is_deleted = 0 ORDER BY category, sort_order").fetchall()
         c.close()
         if not products:
             await ctx.send(embed=discord.Embed(title="⚠️ Empty Catalog", color=0xf59e0b)); return
@@ -498,7 +498,7 @@ async def bot_telemetry(ctx):
         c = db()
         ucnt = c.execute("SELECT COUNT(*) FROM auth.users").fetchone()[0]
         ocnt = c.execute("SELECT COUNT(*) FROM orders.orders").fetchone()[0]
-        pcnt = c.execute("SELECT COUNT(*) FROM shop.products").fetchone()[0]
+        pcnt = c.execute("SELECT COUNT(*) FROM shop.products WHERE is_deleted = 0").fetchone()[0]
         c.close()
 
         cpu_st  = "🟢 OK" if cpu<60 else ("🟡 Warn" if cpu<85 else "🔴 CRIT")
@@ -565,7 +565,7 @@ async def build_loggers(ctx):
         pipe_cat = await get_or_create_category(guild, "📂 Order Pipeline")
         # Create channels per product category
         c = db()
-        cats = c.execute("SELECT DISTINCT category FROM shop.products").fetchall()
+        cats = c.execute("SELECT DISTINCT category FROM shop.products WHERE is_deleted = 0").fetchall()
         c.close()
         for cat_row in cats:
             slug = cat_row[0].lower().replace(" ","-").replace("_","-")[:28]

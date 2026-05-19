@@ -4,12 +4,10 @@ import { Users, ArrowUpRight, X, ExternalLink, Filter, Search, Sparkles } from '
 import { getPortfolio } from '../services/api';
 import Navbar from '../components/Navbar';
 
-const CATEGORIES = ['All', 'bot', 'server', 'custom', 'infra', 'scripts', 'events'];
-
 export default function PortfolioPage() {
   const [items, setItems] = useState([]);
   const [filtered, setFiltered] = useState([]);
-  const [activeCategory, setActiveCategory] = useState('All');
+  const [activeTab, setActiveTab] = useState('server'); // 'server' or 'bot'
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -18,7 +16,6 @@ export default function PortfolioPage() {
     getPortfolio()
       .then(data => {
         setItems(data);
-        setFiltered(data);
       })
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -26,9 +23,19 @@ export default function PortfolioPage() {
 
   useEffect(() => {
     let result = items;
-    if (activeCategory !== 'All') {
-      result = result.filter(p => p.category === activeCategory);
+    // Filter by tab
+    if (activeTab === 'server') {
+      result = result.filter(p => {
+        const cat = (p.category || '').toLowerCase();
+        return cat.includes('server') || cat.includes('event');
+      });
+    } else {
+      result = result.filter(p => {
+        const cat = (p.category || '').toLowerCase();
+        return !cat.includes('server') && !cat.includes('event');
+      });
     }
+
     if (search.trim()) {
       const q = search.toLowerCase();
       result = result.filter(p =>
@@ -37,9 +44,7 @@ export default function PortfolioPage() {
       );
     }
     setFiltered(result);
-  }, [activeCategory, search, items]);
-
-  const usedCategories = ['All', ...new Set(items.map(i => i.category).filter(Boolean))];
+  }, [activeTab, search, items]);
 
   return (
     <div className="min-h-screen bg-brand-bg text-white">
@@ -48,33 +53,40 @@ export default function PortfolioPage() {
         {/* Header */}
         <div className="text-center mb-14">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full glass text-brand-primary text-[10px] font-bold uppercase tracking-widest mb-4">
-            <Sparkles className="w-3 h-3 animate-pulse" /> Portfolio
+            <Sparkles className="w-3 h-3 animate-pulse" /> Our Work
           </div>
           <h1 className="font-display text-4xl md:text-5xl font-bold mb-4">
-            Our <span className="text-gradient">Success</span> Stories
+            Our <span className="text-gradient">Portfolio</span>
           </h1>
           <p className="text-gray-500 max-w-lg mx-auto">
-            Explore the communities, bots, and projects we've built for clients worldwide.
+            Explore the premium Discord servers and custom automation bots we've crafted.
           </p>
         </div>
 
         {/* Filters */}
         <div className="flex flex-col md:flex-row gap-4 mb-10 items-center justify-between">
           {/* Category Tabs */}
-          <div className="flex flex-wrap gap-2">
-            {usedCategories.map(cat => (
-              <button
-                key={cat}
-                onClick={() => setActiveCategory(cat)}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all capitalize ${
-                  activeCategory === cat
-                    ? 'bg-brand-primary text-white shadow-md shadow-brand-primary/20'
-                    : 'bg-white/5 text-gray-400 hover:text-white border border-white/5 hover:border-white/10'
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
+          <div className="flex bg-white/5 p-1 rounded-2xl border border-white/10 shrink-0">
+            <button
+              onClick={() => setActiveTab('server')}
+              className={`px-6 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                activeTab === 'server'
+                  ? 'bg-brand-primary text-white shadow-md shadow-brand-primary/20'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              Server Developed
+            </button>
+            <button
+              onClick={() => setActiveTab('bot')}
+              className={`px-6 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                activeTab === 'bot'
+                  ? 'bg-brand-primary text-white shadow-md shadow-brand-primary/20'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              Bot Developed
+            </button>
           </div>
 
           {/* Search */}
