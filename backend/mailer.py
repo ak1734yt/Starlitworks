@@ -9,19 +9,21 @@ FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
 
 def _send_email(to: str, subject: str, html: str) -> bool:
-    if not GMAIL_USER or not GMAIL_PASS:
+    gmail_user = os.getenv("GMAIL_USER", "").strip()
+    gmail_pass = os.getenv("GMAIL_APP_PASSWORD", "").replace(" ", "")
+    if not gmail_user or not gmail_pass:
         print(f"[EMAIL SKIP] No Gmail configured. To: {to} | Subject: {subject}")
         return False
     try:
         msg = MIMEMultipart("alternative")
         msg["Subject"] = subject
-        msg["From"] = f"Starlit Siege Works <{GMAIL_USER}>"
+        msg["From"] = f"Starlit Siege Works <{gmail_user}>"
         msg["To"] = to
         msg.attach(MIMEText(html, "html"))
 
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-            server.login(GMAIL_USER, GMAIL_PASS)
-            server.sendmail(GMAIL_USER, to, msg.as_string())
+            server.login(gmail_user, gmail_pass)
+            server.sendmail(gmail_user, to, msg.as_string())
 
         print(f"[EMAIL SENT] To: {to}")
         return True
@@ -50,8 +52,7 @@ def send_password_reset_email(to: str, reset_link: str) -> bool:
 <body>
   <div class="container">
     <div class="header">
-      <h1>⚔️ Starlit Siege Works</h1>
-      <p>Premium Discord Services</p>
+      <h1>🔑 Reset Your Password — Starlit Siege Works</h1>
     </div>
     <div class="body">
       <p>Hello,</p>
@@ -72,6 +73,7 @@ def send_password_reset_email(to: str, reset_link: str) -> bool:
 
 
 def send_welcome_email(name: str, to: str) -> bool:
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
     html = f"""<!DOCTYPE html>
 <html>
 <head><meta charset="UTF-8"><style>
@@ -93,7 +95,7 @@ def send_welcome_email(name: str, to: str) -> bool:
     <div class="body">
       <p>Hey <strong style="color:#a78bfa">{name}</strong>! 👋</p>
       <p>Your account is ready. You can now browse our premium Discord services, place orders, and track everything from your dashboard.</p>
-      <a href="{FRONTEND_URL}/shop" class="btn">Explore Services →</a>
+      <a href="{frontend_url}/shop" class="btn">Explore Services →</a>
       <p>If you have any questions, just reply to this email or reach out on Discord.</p>
     </div>
     <div class="footer">

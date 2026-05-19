@@ -28,6 +28,12 @@ _ensure_order_updates()
 class RoleBody(BaseModel):
     role: str
 
+class TestEmailBody(BaseModel):
+    user_id: Optional[int] = None
+    custom_email: Optional[str] = None
+    subject: str = "Test Mail Feature"
+    message: str = "This is a test email sent from the manager panel to verify mail functionality."
+
 class ProductBody(BaseModel):
     name: str
     category: str
@@ -587,3 +593,64 @@ def public_stats():
         "uptime": settings_dict.get("stat_uptime", "99%"),
         "support": settings_dict.get("stat_support", "24/7")
     }
+
+@router.post("/manager/send-test-email")
+def manager_send_test_email(body: TestEmailBody, user=Depends(require_manager)):
+    from mailer import _send_email
+    recipient_email = None
+    recipient_name = "User"
+    
+    if body.user_id:
+        db = get_db()
+        row = db.execute("SELECT name, email FROM auth.users WHERE id = ?", (body.user_id,)).fetchone()
+        db.close()
+        if row:
+            recipient_email = row["email"]
+            recipient_name = row["name"]
+    
+    if not recipient_email and body.custom_email:
+        recipient_email = body.custom_email.strip()
+        recipient_name = "Recipient"
+        
+    if not recipient_email:
+        raise HTTPException(400, "Recipient user_id or custom_email must be provided.")
+        
+    html = f"""<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><style>
+  body {{ background: #0a0a0a; color: #e5e7eb; font-family: 'Inter', sans-serif; margin: 0; padding: 0; }}
+  .container {{ max-width: 560px; margin: 40px auto; background: #111; border: 1px solid #ffffff15; border-radius: 20px; overflow: hidden; }}
+  .header {{ background: linear-gradient(135deg, #3b82f6, #8b5cf6); padding: 40px 32px; text-align: center; }}
+  .header h1 {{ margin: 0; font-size: 24px; color: #fff; font-weight: 800; }}
+  .body {{ padding: 36px 32px; }}
+  .body p {{ color: #9ca3af; line-height: 1.7; font-size: 14px; margin: 0 0 16px; }}
+  .footer {{ padding: 20px 32px; border-top: 1px solid #ffffff08; text-align: center; }}
+  .footer p {{ color: #4b5563; font-size: 11px; margin: 0; }}
+</style></head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>✉️ Test Email Connection</h1>
+    </div>
+    <div class="body">
+      <p>Hello <strong>{recipient_name}</strong>,</p>
+      <p>This is a test email sent from the Starlit Siege Works Manager Panel by the Manager to verify the SMTP mail server configurations.</p>
+      <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 20px; margin: 24px 0;">
+        <p style="margin: 0; font-family: monospace; font-size: 13px; color: #60a5fa;"><strong>Subject:</strong> {body.subject}</p>
+        <p style="margin: 10px 0 0 0; font-size: 13px; color: #d1d5db;">{body.message}</p>
+      </div>
+      <p>If you received this message, the email system is fully functional and connected properly.</p>
+    </div>
+    <div class="footer">
+      <p>© 2026 Starlit Siege Works. All rights reserved.</p>
+    </div>
+  </div>
+</body>
+</html>"""
+
+    success = _send_email(recipient_email, body.subject, html)
+    if not success:
+        raise HTTPException(500, "Failed to send email. Check backend logs and SMTP settings.")
+    
+    log_activity(user["id"], "SEND_TEST_EMAIL", f"Sent test email to {recipient_email}")
+    return {"success": True, "message": f"Test email successfully sent to {recipient_email}."}

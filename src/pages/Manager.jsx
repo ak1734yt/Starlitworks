@@ -8,7 +8,7 @@ import {
   Star, MessageSquare, Palette, Globe, Megaphone, 
   Layers, ListOrdered, Share2, TrendingUp, Loader2, Gift,
   Edit, FileText, Download, CreditCard, History, Check, Bell, ExternalLink, DollarSign, X, ShoppingBag, Zap,
-  ArrowLeft, MoreVertical, Layout, PieChart, IndianRupee
+  ArrowLeft, MoreVertical, Layout, PieChart, IndianRupee, Mail, Send
 } from 'lucide-react';
 import { 
   getManagerLogs, getManagerUsers, updateUserRole, 
@@ -22,7 +22,7 @@ import {
   getManagerReferrals, getManagerReferralSettings, updateManagerReferralSettings,
   updateReferralTiers, setUserReferralOverride, grantManualBonus,
   getUserReferralStats, getManagerRevenue, bulkUpdateOrderStatus,
-  deleteInvoice, adminEditInvoice, updateOrderStatus, updateOrderVault
+  deleteInvoice, adminEditInvoice, updateOrderStatus, updateOrderVault, managerSendTestEmail
 } from '../services/api';
 import UserChat from '../components/UserChat';
 
@@ -89,10 +89,18 @@ export default function Manager() {
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [addingCreditTo, setAddingCreditTo] = useState(null);
   const [creditAmount, setCreditAmount] = useState(0);
+  const [creditMode, setCreditMode] = useState('add'); // 'add' or 'deduct'
   const [submittingCredit, setSubmittingCredit] = useState(false);
   
   const [editingInvoice, setEditingInvoice] = useState(null);
   const [editingOrder, setEditingOrder] = useState(null);
+
+  // Test Email states
+  const [sendEmailTo, setSendEmailTo] = useState('');
+  const [subject, setSubject] = useState('');
+  const [mailBody, setMailBody] = useState('');
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState(false);
   const [paymentFilter, setPaymentFilter] = useState('pending');
   const [saving, setSaving] = useState(false);
 
@@ -274,18 +282,38 @@ export default function Manager() {
     }
   };
 
+  const handleSendTestEmail = async (e) => {
+    e.preventDefault();
+    if (!sendEmailTo) return;
+    setSendingEmail(true);
+    try {
+      await managerSendTestEmail(sendEmailTo, subject, mailBody);
+      toast.success(`Test email sent successfully to ${sendEmailTo}!`);
+      setShowEmailModal(false);
+    } catch (err) {
+      toast.error(err.message || 'Failed to send test email');
+    } finally {
+      setSendingEmail(false);
+    }
+  };
+
   const handleAddCredits = async (e) => {
     e.preventDefault();
     if (!addingCreditTo || creditAmount === 0) return;
     setSubmittingCredit(true);
     try {
-      await adminAddUserCredits(addingCreditTo.id, creditAmount);
-      toast.success(`Successfully updated credits for ${addingCreditTo.name}`);
+      const finalAmount = creditMode === 'deduct' ? -Math.abs(creditAmount) : Math.abs(creditAmount);
+      await adminAddUserCredits(addingCreditTo.id, finalAmount);
+      toast.success(finalAmount > 0 
+        ? `Successfully added ₹${Math.abs(finalAmount)} credits to ${addingCreditTo.name}` 
+        : `Successfully deducted ₹${Math.abs(finalAmount)} credits from ${addingCreditTo.name}`
+      );
       setAddingCreditTo(null);
       setCreditAmount(0);
+      setCreditMode('add');
       fetchData();
     } catch (err) {
-      toast.error(err.message);
+      toast.error(err.message || 'Failed to update credits');
     } finally {
       setSubmittingCredit(false);
     }
@@ -900,6 +928,18 @@ export default function Manager() {
                         </td>
                         <td className="px-6 py-4 text-right">
                           <div className="flex items-center justify-end gap-2">
+                            <button 
+                              onClick={() => {
+                                setSendEmailTo(u.email);
+                                setSubject('Starlitworks Mail Connection Test');
+                                setMailBody('Hello, this is a test email sent from the Manager Panel to verify that SMTP mail services are configured correctly. Cheers!');
+                                setShowEmailModal(true);
+                              }}
+                              className="p-2 bg-purple-500/10 text-purple-400 hover:bg-purple-500/20 rounded-lg transition-all"
+                              title="Send Test Email"
+                            >
+                              <Mail className="w-4 h-4" />
+                            </button>
                             <button 
                               onClick={() => { setAddingCreditTo(u); setCreditAmount(0); }}
                               className="p-2 bg-green-500/10 text-green-400 hover:bg-green-500/20 rounded-lg transition-all"
@@ -1655,6 +1695,15 @@ export default function Manager() {
         
         {activeTab === 'invoices' && (
           <motion.div key="invoices" initial={{opacity:0, y:10}} animate={{opacity:1, y:0}} exit={{opacity:0, y:-10}} className="space-y-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <h3 className="text-lg font-bold text-white">Invoice Ledger</h3>
+                <p className="text-xs text-gray-500">View and track all client invoice activities.</p>
+              </div>
+              <button onClick={() => navigate('/tracker')} className="bg-white/5 hover:bg-white/10 border border-white/10 text-white py-2.5 px-6 rounded-2xl text-xs flex items-center gap-2 transition-all">
+                <ExternalLink className="w-4 h-4" /> View Invoice Tracker
+              </button>
+            </div>
             <div className="bg-[#0A0A0A] border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm min-w-[800px]">
@@ -2306,15 +2355,43 @@ export default function Manager() {
               
               <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
                 <IndianRupee className="text-green-400 w-5 h-5" />
-                Add User Credits
+                Manage User Credits
               </h3>
               <p className="text-sm text-gray-400 mb-6">
-                Top up credits for <span className="text-white font-medium">{addingCreditTo.name}</span> ({addingCreditTo.email}).
+                Adjust credit balance for <span className="text-white font-medium">{addingCreditTo.name}</span> ({addingCreditTo.email}).
               </p>
+              
+              {/* Segmented Control / Toggle */}
+              <div className="flex bg-white/5 p-1 rounded-xl mb-6">
+                <button
+                  type="button"
+                  onClick={() => setCreditMode('add')}
+                  className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
+                    creditMode === 'add' 
+                      ? 'bg-green-500 text-white shadow-lg shadow-green-500/20' 
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  Add Credits (+)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCreditMode('deduct')}
+                  className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
+                    creditMode === 'deduct' 
+                      ? 'bg-red-500 text-white shadow-lg shadow-red-500/20' 
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  Deduct Credits (-)
+                </button>
+              </div>
               
               <form onSubmit={handleAddCredits} className="space-y-4">
                 <div>
-                  <label className="text-xs text-gray-500 uppercase tracking-widest font-bold block mb-2">Credit Amount (₹)</label>
+                  <label className="text-xs text-gray-500 uppercase tracking-widest font-bold block mb-2">
+                    {creditMode === 'add' ? 'Amount to Add (₹)' : 'Amount to Deduct (₹)'}
+                  </label>
                   <input 
                     type="number" 
                     min="1" 
@@ -2330,13 +2407,105 @@ export default function Manager() {
                 <button 
                   type="submit" 
                   disabled={submittingCredit}
-                  className="w-full py-3 bg-brand-primary text-white font-bold rounded-xl hover:bg-brand-primary/90 transition-all flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(124,58,237,0.3)] disabled:opacity-50"
+                  className={`w-full py-3 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg disabled:opacity-50 ${
+                    creditMode === 'add'
+                      ? 'bg-green-500 hover:bg-green-600 shadow-green-500/10'
+                      : 'bg-red-500 hover:bg-red-600 shadow-red-500/10'
+                  }`}
                 >
                   {submittingCredit ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
                     <>
-                      <Check className="w-4 h-4" /> Confirm Add Credits
+                      <Check className="w-4 h-4" /> 
+                      {creditMode === 'add' ? 'Confirm Add Credits' : 'Confirm Deduct Credits'}
+                    </>
+                  )}
+                </button>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* --- SEND TEST EMAIL MODAL --- */}
+      <AnimatePresence>
+        {showEmailModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/85 backdrop-blur-md">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="relative w-full max-w-lg bg-[#0F0F0F] border border-white/10 p-6 rounded-3xl shadow-2xl overflow-hidden"
+            >
+              {/* Decorative light reflection */}
+              <div className="absolute -top-12 -right-12 w-32 h-32 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
+              
+              <div className="flex justify-between items-start mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center border border-purple-500/20">
+                    <Mail className="w-5 h-5 text-purple-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-white">Send Connection Test Mail</h3>
+                    <p className="text-xs text-gray-500">Verify SMTP settings by mailing a test message.</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setShowEmailModal(false)}
+                  className="p-1.5 hover:bg-white/5 text-gray-400 hover:text-white rounded-xl transition-all"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <form onSubmit={handleSendTestEmail} className="space-y-4">
+                <div>
+                  <label className="text-xs text-gray-500 uppercase tracking-widest font-bold block mb-1.5">Recipient Address</label>
+                  <input 
+                    type="email" 
+                    required
+                    placeholder="recipient@example.com"
+                    value={sendEmailTo}
+                    onChange={(e) => setSendEmailTo(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-purple-500 transition-all font-medium"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs text-gray-500 uppercase tracking-widest font-bold block mb-1.5">Subject</label>
+                  <input 
+                    type="text" 
+                    required
+                    placeholder="Mail Subject"
+                    value={subject}
+                    onChange={(e) => setSubject(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-purple-500 transition-all font-medium"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs text-gray-500 uppercase tracking-widest font-bold block mb-1.5">Message Body</label>
+                  <textarea 
+                    required
+                    rows={4}
+                    placeholder="Write a message here..."
+                    value={mailBody}
+                    onChange={(e) => setMailBody(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-purple-500 transition-all font-medium resize-none"
+                  />
+                </div>
+                
+                <button 
+                  type="submit" 
+                  disabled={sendingEmail}
+                  className="w-full py-3.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-purple-500/25 disabled:opacity-50"
+                >
+                  {sendingEmail ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4" /> Send Test Email
                     </>
                   )}
                 </button>

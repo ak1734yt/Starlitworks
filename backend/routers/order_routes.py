@@ -28,20 +28,51 @@ def auto_generate_invoice(order_id: int):
     user = db.execute("SELECT name FROM auth.users WHERE id = ?", (order["user_id"],)).fetchone()
     db.close()
     
-    # Check if invoice already exists for this order
-    for fname in os.listdir(INVOICES_DIR):
-        if not fname.endswith(".json"): continue
-        with open(os.path.join(INVOICES_DIR, fname)) as f:
-            existing = json.load(f)
-            if str(existing.get("orderId")) == str(order_id):
-                return # Already generated
-
-    inv_id = f"INV-{order_id}-{int(time.time())}"
-    client_name = user["name"] if user else "Client"
-    
     amount = float(order["quoted_price"] if order["quoted_price"] else order["total_amount"])
     cgst = float(order["cgst"] or 0)
     sgst = float(order["sgst"] or 0)
+    
+    # Check if invoice already exists for this order
+    existing_path = None
+    existing_inv = None
+    for fname in os.listdir(INVOICES_DIR):
+        if not fname.endswith(".json"): continue
+        fpath = os.path.join(INVOICES_DIR, fname)
+        try:
+            with open(fpath) as f:
+                existing = json.load(f)
+                if str(existing.get("orderId")) == str(order_id):
+                    existing_path = fpath
+                    existing_inv = existing
+                    break
+        except:
+            continue
+
+    if existing_inv and existing_path:
+        # Update the existing invoice
+        existing_inv["grandTotal"] = amount
+        existing_inv["subtotal"] = amount - cgst - sgst
+        existing_inv["taxTotal"] = cgst + sgst
+        if existing_inv.get("items"):
+            existing_inv["items"][0]["rate"] = amount / float(order["quantity"] or 1)
+            existing_inv["items"][0]["total"] = amount
+            existing_inv["items"][0]["desc"] = order["service_name"]
+            existing_inv["items"][0]["qty"] = int(order["quantity"] or 1)
+        
+        # If installment plan and has installments, update installment amounts proportionately
+        if existing_inv.get("paymentType") == "installment" and existing_inv.get("installments"):
+            total_inst = len(existing_inv["installments"])
+            if total_inst > 0:
+                for i in range(total_inst):
+                    existing_inv["installments"][i]["amount"] = amount / total_inst
+                    
+        with open(existing_path, "w") as f:
+            json.dump(existing_inv, f, indent=2)
+        return
+
+    # If it doesn't exist, create a new one
+    inv_id = f"INV-{order_id}-{int(time.time())}"
+    client_name = user["name"] if user else "Client"
     
     inv = {
         "id": inv_id,
@@ -68,7 +99,6 @@ def auto_generate_invoice(order_id: int):
     }
 
     if inv["paymentType"] == "installment":
-        # Generate some default installments for manual tracking
         inv["installments"] = [
             {"month": "Payment 1 (Setup)", "amount": amount * 0.5, "paid": False, "status": "pending"},
             {"month": "Payment 2 (Final)", "amount": amount * 0.5, "paid": False, "status": "pending"}
@@ -353,7 +383,7 @@ async def admin_update_order(order_id: int, body: AdminOrderUpdate, user=Depends
     db.commit()
     db.close()
     db_chat = get_db()
-    if body.status == "accepted" and row["status"] != "accepted":
+    if body.status in ("quoted", "accepted"):
         auto_generate_invoice(order_id)
 
     # ── Referral: trigger cashback on completion ──────────────────────────────

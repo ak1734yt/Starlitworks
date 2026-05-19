@@ -129,4 +129,6 @@ export const bulkUpdateOrderStatus = (order_ids, status) => request('/admin/orde
 // Notifications
 export const getNotifications = () => request('/notifications');
 export const markNotificationsRead = () => request('/notifications/read', { method: 'PUT' });
+export const managerSendTestEmail = (data) => request('/manager/send-test-email', { method: 'POST', body: JSON.stringify(data) });
+export const linkReferralCode = (referral_code) => request('/referral/link', { method: 'POST', body: JSON.stringify({ referral_code }) });
 

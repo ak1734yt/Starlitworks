@@ -593,6 +593,7 @@ def get_referral_info(user=Depends(get_current_user)):
         "total_earned": total_earned,
         "referral_balance": float(details.get("referral_balance", 0.0)),
         "ripple_points": int(details.get("ripple_points", 0)),
+        "referred_by": details.get("referred_by", ""),
         "referrals": referral_list,
         "transactions": [dict(t) for t in transactions],
         "withdrawals": [dict(w) for w in withdrawals],
@@ -610,6 +611,44 @@ def get_referral_info(user=Depends(get_current_user)):
             "use_random": settings.get("referral_use_random", "false") == "true",
         }
     }
+
+class LinkReferralBody(BaseModel):
+    referral_code: str
+
+@router.post("/referral/link")
+def link_referral_code(body: LinkReferralBody, user=Depends(get_current_user)):
+    code = body.referral_code.strip().upper()
+    if not code:
+        raise HTTPException(400, "Referral code cannot be empty.")
+        
+    # Check if this user is already referred
+    conn = sqlite3.connect(DB_ORDERS)
+    existing = conn.execute("SELECT id FROM referrals WHERE referred_id = ?", (user["id"],)).fetchone()
+    conn.close()
+    
+    db = get_db()
+    usr_row = db.execute("SELECT details FROM auth.users WHERE id = ?", (user["id"],)).fetchone()
+    db.close()
+    
+    already_referred = False
+    if existing:
+        already_referred = True
+    if usr_row:
+        try:
+            d = json.loads(usr_row["details"] or "{}")
+            if d.get("referred_by"):
+                already_referred = True
+        except:
+            pass
+            
+    if already_referred:
+        raise HTTPException(400, "Your account is already linked to a referrer.")
+        
+    success = process_referral_on_signup(user["id"], code)
+    if not success:
+        raise HTTPException(400, "Invalid or expired referral code, or you cannot refer yourself.")
+        
+    return {"success": True, "message": "Referral code successfully linked!"}
 
 class ConvertPointsBody(BaseModel):
     points: int

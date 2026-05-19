@@ -678,11 +678,13 @@ export default function History() {
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      {currentServices.map(order => (
-                        <div 
-                          key={order.id}
-                          className="p-5 rounded-2xl bg-white/[0.01] border border-white/5 hover:border-white/10 transition-all flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative group overflow-hidden"
-                        >
+                      {currentServices.map(order => {
+                        const matchingInvoice = invoices.find(inv => String(inv.orderId) === String(order.id));
+                        return (
+                          <div 
+                            key={order.id}
+                            className="p-5 rounded-2xl bg-white/[0.01] border border-white/5 hover:border-white/10 transition-all flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative group overflow-hidden"
+                          >
                           {/* Inner glowing accent */}
                           <div className="absolute top-0 left-0 w-[3px] h-full bg-brand-primary opacity-0 group-hover:opacity-100 transition-all" />
 
@@ -767,12 +769,21 @@ export default function History() {
                               </button>
                             )}
 
-                            {order.status === 'accepted' && (
+                            {matchingInvoice && matchingInvoice.paymentStatus !== 'paid' && (
                               <button 
-                                onClick={() => navigate(`/checkout/${order.id}`)}
+                                onClick={() => navigate(`/checkout/invoice/${matchingInvoice.id}`)}
                                 className="flex-1 md:flex-initial px-4 py-2.5 bg-brand-primary hover:bg-brand-primary/95 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-brand-primary/10"
                               >
-                                Pay Now
+                                Pay Invoice
+                              </button>
+                            )}
+
+                            {matchingInvoice && (
+                              <button 
+                                onClick={() => navigate(`/invoice/${matchingInvoice.id}`)}
+                                className="flex-1 md:flex-initial px-4 py-2.5 bg-white/5 border border-white/10 hover:bg-white/10 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5"
+                              >
+                                <Info className="w-3.5 h-3.5" /> View Invoice
                               </button>
                             )}
 
@@ -791,7 +802,8 @@ export default function History() {
                             )}
                           </div>
                         </div>
-                      ))}
+                      );
+                      })}
                     </div>
                   )}
 

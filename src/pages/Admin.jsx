@@ -793,9 +793,12 @@ export default function Admin() {
             {/* --- INVOICES TAB --- */}
             {activeTab === 'invoices' && (
               <motion.div key="invoices" initial={{opacity:0, y:10}} animate={{opacity:1, y:0}} exit={{opacity:0, y:-10}}>
-                <div className="mb-6 flex justify-end">
+                <div className="mb-6 flex justify-end gap-3">
                   <button onClick={() => navigate('/create-invoice')} className="btn-primary py-2.5 px-6 text-xs flex items-center gap-2">
                     <Plus className="w-4 h-4" /> Create Professional Invoice
+                  </button>
+                  <button onClick={() => navigate('/tracker')} className="bg-white/5 hover:bg-white/10 border border-white/10 text-white py-2.5 px-6 rounded-2xl text-xs flex items-center gap-2 transition-all">
+                    <ExternalLink className="w-4 h-4" /> View Invoice Tracker
                   </button>
                 </div>
                 <div className="bg-brand-card border border-brand-border rounded-2xl overflow-hidden">

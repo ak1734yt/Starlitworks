@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import { useAuth } from '../context/AuthContext';
-import { getUserInvoicesByAdmin, submitPaymentProof, request, generateQR } from '../services/api';
+import { getUserInvoicesByAdmin, submitPaymentProof, request, generateQR, updateInstallment } from '../services/api';
 import { toast } from 'react-hot-toast';
 import { useTheme } from '../context/ThemeContext';
 import ORG from '../constants/orgData';
@@ -18,6 +18,7 @@ export default function InvoiceDetail() {
   const { user } = useAuth();
   const { convertPrice } = useTheme();
   const [invoice, setInvoice] = useState(null);
+  const [loading, setLoading] = useState(true);
   const grandTotal = Number(invoice?.grandTotal || 0);
 
   const loadInvoice = async () => {
@@ -216,6 +217,110 @@ export default function InvoiceDetail() {
                   <p className="mt-1 lowercase text-gray-500 tracking-normal font-medium">We highly appreciate your trust in us. If you have any questions, feel free to contact support.</p>
                 </div>
               </div>
+
+              {/* Installment Plan Section */}
+              {invoice.paymentType === 'installment' && invoice.installments && (
+                <div className="bg-[#0b0c14] border border-white/10 rounded-[2.5rem] p-8 shadow-2xl space-y-6">
+                  <div>
+                    <h3 className="text-xl font-bold flex items-center gap-2">
+                      <IndianRupee className="w-5 h-5 text-brand-secondary" />
+                      Installment Payment Plan
+                    </h3>
+                    <p className="text-xs text-gray-500 mt-1">Track monthly payments and outstanding balances for this contract.</p>
+                  </div>
+
+                  {/* Progress Bar & Balances */}
+                  {(() => {
+                    const paidCount = invoice.installments.filter(i => i.paid).length;
+                    const totalCount = invoice.installments.length;
+                    const progress = totalCount > 0 ? (paidCount / totalCount) * 100 : 0;
+                    const paidAmt = invoice.installments.filter(i => i.paid).reduce((s, i) => s + parseFloat(i.amount), 0);
+                    const pendingAmt = grandTotal - paidAmt;
+
+                    return (
+                      <>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-6 bg-white/[0.02] border border-white/5 p-6 rounded-2xl">
+                          <div>
+                            <span className="text-[10px] text-gray-500 uppercase font-black tracking-widest block mb-1">Contract Total</span>
+                            <span className="text-lg font-bold font-mono">{convertPrice(grandTotal)}</span>
+                          </div>
+                          <div>
+                            <span className="text-[10px] text-green-500/60 uppercase font-black tracking-widest block mb-1">Total Paid</span>
+                            <span className="text-lg font-bold font-mono text-green-400">{convertPrice(paidAmt)}</span>
+                          </div>
+                          <div className="col-span-2 md:col-span-1">
+                            <span className="text-[10px] text-red-400/60 uppercase font-black tracking-widest block mb-1">Remaining</span>
+                            <span className="text-lg font-bold font-mono text-red-400">{convertPrice(pendingAmt)}</span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-4 bg-white/[0.01] p-4 rounded-xl">
+                          <div className="flex-grow h-2.5 bg-white/5 rounded-full overflow-hidden">
+                            <div 
+                              style={{ width: `${progress}%` }}
+                              className="h-full bg-brand-secondary shadow-[0_0_15px_rgba(59,130,246,0.5)] transition-all duration-500"
+                            />
+                          </div>
+                          <span className="text-xs font-bold text-brand-secondary shrink-0">
+                            {progress.toFixed(0)}% Complete ({totalCount - paidCount} left)
+                          </span>
+                        </div>
+
+                        {/* Installment Grid */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                          {invoice.installments.map((inst, i) => (
+                            <div 
+                              key={i} 
+                              className={`p-5 rounded-2xl border transition-all ${
+                                inst.paid 
+                                  ? 'bg-green-500/5 border-green-500/20 shadow-[inset_0_0_12px_rgba(34,197,94,0.05)]' 
+                                  : 'bg-white/[0.02] border-white/5 group hover:border-white/20'
+                              }`}
+                            >
+                              <div className="flex justify-between items-start mb-4">
+                                <div>
+                                  <span className="text-[9px] font-bold text-gray-500 uppercase tracking-widest block">Payment #{i+1}</span>
+                                  <h4 className={`font-bold mt-1 text-sm ${inst.paid ? 'text-green-400' : 'text-gray-300'}`}>{inst.month}</h4>
+                                </div>
+                                {inst.paid ? (
+                                  <CheckCircle className="w-5 h-5 text-green-500" />
+                                ) : (
+                                  <div className="w-5 h-5 rounded-full border-2 border-white/10 flex-shrink-0" />
+                                )}
+                              </div>
+                              <div className="flex justify-between items-end mt-4">
+                                <span className="text-sm font-bold font-mono">{convertPrice(Number(inst.amount))}</span>
+                                {(user?.role === 'admin' || user?.role === 'manager') && (
+                                  <button 
+                                    onClick={async () => {
+                                      try {
+                                        const res = await updateInstallment(invoice.id, i, !inst.paid);
+                                        if (res.success) {
+                                          setInvoice(res.invoice);
+                                          toast.success(!inst.paid ? 'Installment marked as paid' : 'Reverted to pending');
+                                        }
+                                      } catch (err) {
+                                        toast.error('Update failed');
+                                      }
+                                    }}
+                                    className={`text-[9px] font-bold uppercase tracking-widest px-3 py-1 rounded-full transition-all ${
+                                      inst.paid 
+                                        ? 'text-gray-500 hover:text-red-400 hover:bg-red-400/10' 
+                                        : 'bg-brand-secondary/15 text-brand-secondary hover:bg-brand-secondary hover:text-white'
+                                    }`}
+                                  >
+                                    {inst.paid ? 'Revert' : 'Mark Paid'}
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+              )}
 
               {/* Action Buttons */}
               <div className="flex gap-4 justify-between">

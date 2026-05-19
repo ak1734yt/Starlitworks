@@ -8,7 +8,7 @@ import {
   Sparkles, X, IndianRupee
 } from 'lucide-react';
 import Navbar from '../components/Navbar';
-import { validateCoupon, getPublicPrices, getOrder, submitPaymentProof, createOrder, generateQR, getUserInvoicesByAdmin } from '../services/api';
+import { validateCoupon, getPublicPrices, getOrder, submitPaymentProof, createOrder, generateQR, getUserInvoicesByAdmin, getReferralInfo, linkReferralCode } from '../services/api';
 import { toast } from 'react-hot-toast';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
@@ -21,7 +21,7 @@ export default function Checkout() {
   const { convertPrice } = useTheme();
   const { user, refreshMe } = useAuth();
   const [data, setData] = useState(null);
-  const [type, setType] = useState('product'); // 'product' or 'order'
+  const [type, setType] = useState('product'); // 'product', 'order', or 'invoice'
   const [loading, setLoading] = useState(true);
   const [couponCode, setCouponCode] = useState('');
   const [coupon, setCoupon] = useState(null);
@@ -33,13 +33,24 @@ export default function Checkout() {
   const [qrData, setQrData] = useState(null);
   const [paymentPlan, setPaymentPlan] = useState('full'); // 'full', 'advance', 'emi'
   const [useCredits, setUseCredits] = useState(false);
+  const [referralInfo, setReferralInfo] = useState(null);
+  const [refCodeInput, setRefCodeInput] = useState('');
+  const [linkingRef, setLinkingRef] = useState(false);
 
   // Form for manual payment
   const [proof, setProof] = useState({ transaction_id: '', screenshot: null, base64: '' });
 
+  const loadReferral = async () => {
+    try {
+      const refData = await getReferralInfo();
+      setReferralInfo(refData);
+    } catch (e) {}
+  };
+
   useEffect(() => {
     load();
-  }, [id]);
+    loadReferral();
+  }, [id, user]);
 
   const load = async () => {
     try {
@@ -48,6 +59,11 @@ export default function Checkout() {
         const res = await getUserInvoicesByAdmin(user.id);
         const inv = res.find(i => i.id === id || i.invoiceNumber === id);
         if (inv) {
+          if (inv.paymentStatus === 'paid') {
+            toast.success('This invoice is already paid.');
+            navigate(`/invoice/${inv.id}`);
+            return;
+          }
           setData({
             ...inv,
             name: `Invoice #${inv.invoiceNumber || inv.id}`,
@@ -65,6 +81,11 @@ export default function Checkout() {
       try {
         const order = await getOrder(id);
         if (order) {
+          if (order.status === 'accepted' || order.status === 'in_progress' || order.status === 'completed') {
+            toast.success('This order has already been paid/accepted.');
+            navigate('/history');
+            return;
+          }
           setData({
             ...order,
             name: order.service_name,
@@ -670,7 +691,7 @@ export default function Checkout() {
               </div>
 
               {/* Coupon Section */}
-              {!coupon && type !== 'invoice' && (
+              {!coupon && (
                 <div className="space-y-4 mb-10 relative">
                   <div className="flex items-center gap-2 mb-2">
                     <Tag className="w-3 h-3 text-brand-primary" />
@@ -692,6 +713,53 @@ export default function Checkout() {
                       {validating ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Apply'}
                     </button>
                   </div>
+                </div>
+              )}
+
+              {/* Referral Code Section */}
+              {referralInfo && !referralInfo.referred_by && (
+                <div className="space-y-4 mb-10 relative">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Tag className="w-3 h-3 text-brand-secondary" />
+                    <label className="text-[10px] text-gray-500 uppercase font-bold tracking-widest block">Referral Code</label>
+                  </div>
+                  <div className="flex gap-2">
+                    <input 
+                      type="text" 
+                      placeholder="ENTER REFERRAL CODE" 
+                      value={refCodeInput}
+                      onChange={(e) => setRefCodeInput(e.target.value.toUpperCase())}
+                      className="flex-1 bg-white/[0.03] border border-white/10 rounded-2xl px-5 py-3.5 text-sm focus:border-brand-secondary outline-none transition-all font-mono placeholder:text-gray-800"
+                    />
+                    <button 
+                      onClick={async () => {
+                        if (!refCodeInput) return;
+                        setLinkingRef(true);
+                        try {
+                          const res = await linkReferralCode(refCodeInput);
+                          if (res.success) {
+                            toast.success('Referral code linked successfully!');
+                            loadReferral();
+                          }
+                        } catch (err) {
+                          toast.error(err.message || 'Failed to link referral code');
+                        } finally {
+                          setLinkingRef(false);
+                        }
+                      }}
+                      disabled={linkingRef || !refCodeInput}
+                      className="px-8 py-3.5 bg-brand-secondary/10 rounded-2xl text-xs font-bold text-brand-secondary hover:bg-brand-secondary hover:text-white transition-all disabled:opacity-30 border border-brand-secondary/20"
+                    >
+                      {linkingRef ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Link'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {referralInfo?.referred_by && (
+                <div className="mb-6 p-4 bg-green-500/5 border border-green-500/10 rounded-2xl flex items-center justify-between text-xs text-green-400">
+                  <span>Linked Referrer Code:</span>
+                  <span className="font-bold font-mono bg-green-500/10 px-2 py-1 rounded">{referralInfo.referred_by}</span>
                 </div>
               )}
 

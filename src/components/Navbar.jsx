@@ -303,7 +303,28 @@ const Navbar = () => {
               </div>
             )}
 
-            <div className="flex flex-col gap-1">
+            <div className="mb-6 p-4 glass rounded-2xl">
+              <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">Theme</p>
+              <div className="grid grid-cols-1 gap-2">
+                {Object.entries(THEMES).map(([key, t]) => (
+                  <button
+                    key={key}
+                    onClick={() => { setTheme(key); }}
+                    className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs transition-all ${
+                      theme === key ? 'bg-brand-primary/20 text-white' : 'text-gray-400 hover:text-white hover:bg-white/5'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-base">{t.icon}</span>
+                      <span className="font-bold">{t.label}</span>
+                    </div>
+                    {theme === key && <span className="w-1.5 h-1.5 rounded-full bg-brand-primary" />}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1 overflow-y-auto pr-2 pb-4 scrollbar-thin scrollbar-thumb-white/10">
               <Link to="/" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-3 p-3 text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-all">
                 <Shield className="w-4 h-4" /> Home
               </Link>
