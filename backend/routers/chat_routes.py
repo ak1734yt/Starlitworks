@@ -2,7 +2,7 @@ import os, json, time, base64, secrets
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import Optional
-from auth import get_current_user, require_admin, send_discord_webhook, log_activity
+from auth import get_current_user, require_admin, send_discord_webhook, send_modular_webhook, log_activity
 from database import get_db
 
 router = APIRouter()
@@ -16,35 +16,54 @@ class ChatBody(BaseModel):
     message_type: str = "text"
     base64Data: Optional[str] = None
 
-@router.get("/chat/{order_id}")
-def get_chat(order_id: int, user=Depends(get_current_user)):
+@router.get("/chat/user/{client_id}")
+def get_chat(client_id: int, user=Depends(get_current_user)):
     db = get_db()
-    order = db.execute("SELECT * FROM orders WHERE id = ?", (order_id,)).fetchone()
-    if not order: db.close(); raise HTTPException(404, "Order not found")
-    if user["role"] == "client" and order["user_id"] != user["id"]:
+    if user["role"] == "client" and client_id != user["id"]:
         db.close(); raise HTTPException(403, "Forbidden")
+    
+    # Verify user exists
+    client = db.execute("SELECT * FROM users WHERE id = ?", (client_id,)).fetchone()
+    if not client:
+        db.close(); raise HTTPException(404, "User not found")
+
     messages = db.execute(
-        "SELECT c.*, u.name, u.role, u.avatar_url FROM chat_messages c JOIN users u ON c.user_id = u.id WHERE c.order_id = ? ORDER BY c.created_at ASC",
-        (order_id,)
+        "SELECT c.*, u.name, u.role, u.avatar_url FROM user_chats c JOIN users u ON c.sender_id = u.id WHERE c.client_id = ? ORDER BY c.created_at ASC",
+        (client_id,)
     ).fetchall()
 
-    # Reset unread counts
-    if user["role"] == "client":
-        db.execute("UPDATE orders SET client_unread_count = 0 WHERE id = ?", (order_id,))
-    else:
-        db.execute("UPDATE orders SET admin_unread_count = 0 WHERE id = ?", (order_id,))
+    # Reset unread counts in user details JSON
+    try:
+        details = json.loads(client["details"] or "{}")
+        needs_update = False
+        if user["role"] == "client":
+            if details.get("client_unread_count", 0) > 0:
+                details["client_unread_count"] = 0
+                needs_update = True
+        else:
+            if details.get("admin_unread_count", 0) > 0:
+                details["admin_unread_count"] = 0
+                needs_update = True
+        
+        if needs_update:
+            db.execute("UPDATE users SET details = ? WHERE id = ?", (json.dumps(details), client_id))
+    except:
+        pass
     
     db.commit()
     db.close()
     return [dict(m) for m in messages]
 
-@router.post("/chat/{order_id}", status_code=201)
-async def send_chat(order_id: int, body: ChatBody, user=Depends(get_current_user)):
+@router.post("/chat/user/{client_id}", status_code=201)
+async def send_chat(client_id: int, body: ChatBody, user=Depends(get_current_user)):
     db = get_db()
-    order = db.execute("SELECT * FROM orders WHERE id = ?", (order_id,)).fetchone()
-    if not order: db.close(); raise HTTPException(404, "Order not found")
-    if user["role"] == "client" and order["user_id"] != user["id"]:
+    
+    if user["role"] == "client" and client_id != user["id"]:
         db.close(); raise HTTPException(403, "Forbidden")
+
+    client = db.execute("SELECT * FROM users WHERE id = ?", (client_id,)).fetchone()
+    if not client:
+        db.close(); raise HTTPException(404, "User not found")
 
     content = body.content
     if body.message_type in ("media", "voice") and body.base64Data:
@@ -58,28 +77,33 @@ async def send_chat(order_id: int, body: ChatBody, user=Depends(get_current_user
             content = f"/uploads/{fname}"
 
     cursor = db.execute(
-        "INSERT INTO chat_messages (order_id, user_id, message_type, content) VALUES (?,?,?,?)",
-        (order_id, user["id"], body.message_type, content)
+        "INSERT INTO user_chats (client_id, sender_id, message_type, content) VALUES (?,?,?,?)",
+        (client_id, user["id"], body.message_type, content)
     )
     last_id = cursor.lastrowid
 
     # Increment unread counts
-    if user["role"] == "client":
-        db.execute("UPDATE orders SET admin_unread_count = admin_unread_count + 1 WHERE id = ?", (order_id,))
-    else:
-        db.execute("UPDATE orders SET client_unread_count = client_unread_count + 1 WHERE id = ?", (order_id,))
+    try:
+        details = json.loads(client["details"] or "{}")
+        if user["role"] == "client":
+            details["admin_unread_count"] = details.get("admin_unread_count", 0) + 1
+        else:
+            details["client_unread_count"] = details.get("client_unread_count", 0) + 1
+        db.execute("UPDATE users SET details = ? WHERE id = ?", (json.dumps(details), client_id))
+    except:
+        pass
 
     db.commit()
     new_msg = dict(db.execute(
-        "SELECT c.*, u.name, u.role, u.avatar_url FROM chat_messages c JOIN users u ON c.user_id = u.id WHERE c.id = ?",
+        "SELECT c.*, u.name, u.role, u.avatar_url FROM user_chats c JOIN users u ON c.sender_id = u.id WHERE c.id = ?",
         (last_id,)
     ).fetchone())
     db.close()
 
     if user["role"] == "client":
-        await send_discord_webhook(os.getenv("DISCORD_WEBHOOK_CHAT"), {"embeds": [{"title": f"New Message (Order #{order_id})", "description": f"**From:** {user['name']} (CLIENT)\n**Message:** {content}", "color": 3447003}]})
+        await send_modular_webhook("CHAT", {"embeds": [{"title": f"New Message (User: {client['name']})", "description": f"**From:** {user['name']} (CLIENT)\n**Message:** {content}", "color": 3447003}]})
     else:
-        await send_discord_webhook(os.getenv("DISCORD_WEBHOOK_CHAT"), {"embeds": [{"title": f"Admin Reply (Order #{order_id})", "description": f"**From:** {user['name']} ({user['role'].upper()})\n**Message:** {content}", "color": 16776960}]})
+        await send_modular_webhook("CHAT", {"embeds": [{"title": f"Admin Reply (User: {client['name']})", "description": f"**From:** {user['name']} ({user['role'].upper()})\n**Message:** {content}", "color": 16776960}]})
 
     # ── Keyword Auto-Responder (client messages only) ──────────────────────────
     if user["role"] == "client" and body.message_type == "text":
@@ -125,9 +149,19 @@ async def send_chat(order_id: int, body: ChatBody, user=Depends(get_current_user
             admin_row = bot_db.execute("SELECT id FROM users WHERE role='admin' LIMIT 1").fetchone()
             bot_user_id = admin_row["id"] if admin_row else user["id"]
             bot_db.execute(
-                "INSERT INTO chat_messages (order_id, user_id, message_type, content) VALUES (?,?,?,?)",
-                (order_id, bot_user_id, "system", bot_reply)
+                "INSERT INTO user_chats (client_id, sender_id, message_type, content) VALUES (?,?,?,?)",
+                (client_id, bot_user_id, "system", bot_reply)
             )
+            
+            try:
+                # Update client unread count for the bot reply
+                client_details = bot_db.execute("SELECT details FROM users WHERE id = ?", (client_id,)).fetchone()
+                details = json.loads(client_details["details"] or "{}")
+                details["client_unread_count"] = details.get("client_unread_count", 0) + 1
+                bot_db.execute("UPDATE users SET details = ? WHERE id = ?", (json.dumps(details), client_id))
+            except:
+                pass
+
             bot_db.commit()
             bot_db.close()
 

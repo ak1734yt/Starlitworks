@@ -12,13 +12,17 @@ const PROVIDERS = [
 ];
 
 export default function Login() {
-  const { login, loginWithOAuth, oauthStatus } = useAuth();
+  const { login, loginWithOAuth, oauthStatus, verify2FA } = useAuth();
   const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [error, setError]       = useState('');
   const [loading, setLoading]   = useState(false);
   const [oauthLoading, setOauthLoading] = useState('');
+  
+  const [needs2FA, setNeeds2FA] = useState(false);
+  const [pendingUserId, setPendingUserId] = useState(null);
+  const [twoFactorCode, setTwoFactorCode] = useState('');
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -27,8 +31,25 @@ export default function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault(); setError(''); setLoading(true);
-    try { await login(email, password); }
-    catch (err) { setError(err.message); setLoading(false); }
+    try { 
+      const res = await login(email, password); 
+      if (res && res.two_factor_required) {
+        setNeeds2FA(true);
+        setPendingUserId(res.user_id);
+      }
+    }
+    catch (err) { setError(err.message); }
+    finally { setLoading(false); }
+  };
+
+  const handle2FASubmit = async (e) => {
+    e.preventDefault(); setError(''); setLoading(true);
+    try {
+      await verify2FA(pendingUserId, twoFactorCode);
+    } catch (err) {
+      setError(err.message);
+      setLoading(false);
+    }
   };
 
   const handleOAuth = (provider) => {
@@ -80,21 +101,43 @@ export default function Login() {
             )}
           </AnimatePresence>
 
-          <form id="login-form" onSubmit={handleSubmit} className="space-y-4">
-            <div className="relative"><Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none"/>
-              <input id="login-email" type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="Email address" required autoComplete="email"
-                className="w-full bg-white/5 border border-brand-border rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder:text-gray-600 focus:outline-none focus:border-brand-primary/60 focus:shadow-[0_0_0_3px_rgba(124,58,237,0.15)] transition-all"/></div>
-            <div className="relative"><Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none"/>
-              <input id="login-password" type={showPass?'text':'password'} value={password} onChange={e=>setPassword(e.target.value)} placeholder="Password" required autoComplete="current-password"
-                className="w-full bg-white/5 border border-brand-border rounded-xl pl-10 pr-11 py-3 text-sm text-white placeholder:text-gray-600 focus:outline-none focus:border-brand-primary/60 focus:shadow-[0_0_0_3px_rgba(124,58,237,0.15)] transition-all"/>
-              <button type="button" onClick={()=>setShowPass(v=>!v)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition-colors">
-                {showPass?<EyeOff className="w-4 h-4"/>:<Eye className="w-4 h-4"/>}</button></div>
-            <div className="text-right"><Link to="/forgot-password" className="text-xs text-brand-primary hover:text-brand-secondary transition-colors">Forgot password?</Link></div>
-            <button id="login-submit" type="submit" disabled={loading}
-              className="w-full btn-primary flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:shadow-none disabled:hover:scale-100">
-              {loading&&<Loader2 className="w-4 h-4 animate-spin"/>}{loading?'Signing in…':'Sign In'}
-            </button>
-          </form>
+          {needs2FA ? (
+            <form id="2fa-form" onSubmit={handle2FASubmit} className="space-y-4 mt-4">
+              <div className="text-center mb-6">
+                <h2 className="text-lg font-bold text-white mb-2">Two-Factor Authentication</h2>
+                <p className="text-sm text-gray-400">Enter the 6-digit code from your authenticator app.</p>
+              </div>
+              <div className="relative">
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none"/>
+                <input id="login-2fa" type="text" value={twoFactorCode} onChange={e=>setTwoFactorCode(e.target.value)} placeholder="000000" required maxLength={6}
+                  className="w-full bg-white/5 border border-brand-border rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder:text-gray-600 focus:outline-none focus:border-brand-primary/60 focus:shadow-[0_0_0_3px_rgba(124,58,237,0.15)] transition-all font-mono tracking-[0.2em] text-center" />
+              </div>
+              <button type="submit" disabled={loading}
+                className="w-full btn-primary flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed">
+                {loading&&<Loader2 className="w-4 h-4 animate-spin"/>}{loading?'Verifying…':'Verify Code'}
+              </button>
+              <button type="button" onClick={() => {setNeeds2FA(false); setTwoFactorCode(''); setPendingUserId(null);}}
+                className="w-full text-xs text-gray-400 hover:text-white mt-2 transition-colors">
+                Back to Login
+              </button>
+            </form>
+          ) : (
+            <form id="login-form" onSubmit={handleSubmit} className="space-y-4 mt-4">
+              <div className="relative"><Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none"/>
+                <input id="login-email" type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="Email address" required autoComplete="email"
+                  className="w-full bg-white/5 border border-brand-border rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder:text-gray-600 focus:outline-none focus:border-brand-primary/60 focus:shadow-[0_0_0_3px_rgba(124,58,237,0.15)] transition-all"/></div>
+              <div className="relative"><Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none"/>
+                <input id="login-password" type={showPass?'text':'password'} value={password} onChange={e=>setPassword(e.target.value)} placeholder="Password" required autoComplete="current-password"
+                  className="w-full bg-white/5 border border-brand-border rounded-xl pl-10 pr-11 py-3 text-sm text-white placeholder:text-gray-600 focus:outline-none focus:border-brand-primary/60 focus:shadow-[0_0_0_3px_rgba(124,58,237,0.15)] transition-all"/>
+                <button type="button" onClick={()=>setShowPass(v=>!v)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition-colors">
+                  {showPass?<EyeOff className="w-4 h-4"/>:<Eye className="w-4 h-4"/>}</button></div>
+              <div className="text-right"><Link to="/forgot-password" className="text-xs text-brand-primary hover:text-brand-secondary transition-colors">Forgot password?</Link></div>
+              <button id="login-submit" type="submit" disabled={loading}
+                className="w-full btn-primary flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:shadow-none disabled:hover:scale-100">
+                {loading&&<Loader2 className="w-4 h-4 animate-spin"/>}{loading?'Signing in…':'Sign In'}
+              </button>
+            </form>
+          )}
 
           <p className="text-center text-sm text-gray-500 mt-6">Don't have an account?{' '}
             <Link id="goto-signup" to="/signup" className="text-brand-primary hover:text-brand-secondary font-medium transition-colors">Create one free</Link>

@@ -48,6 +48,39 @@ export default function Shop() {
   const nitroAccounts = products.filter(p => p.category === 'nitro_accounts');
   const boosters      = products.filter(p => p.category === 'booster');
   const promo         = products.filter(p => p.category === 'promo');
+  const subscriptions = products.filter(p => p.category === 'subscriptions');
+
+  const categoriesList = [
+    { id: 'server', label: 'Server Packages', icon: '💻', count: servers.length },
+    { id: 'addon', label: 'Add-ons', icon: '🔌', count: addons.length },
+    { id: 'bot', label: 'Bot Packages', icon: '🤖', count: bots.length },
+    { id: 'subscriptions', label: 'Bot Subscriptions', icon: '💎', count: subscriptions.length },
+    { id: 'scripts', label: 'Scripts', icon: '📜', count: scripts.length },
+    { id: 'events', label: 'Events', icon: '🎉', count: events.length },
+    { id: 'joins', label: 'Joins & Members', icon: '👥', count: joins.length },
+    { id: 'infra', label: 'Hosting & Infra', icon: '🖧', count: infra.length },
+    { id: 'decorations_gift', label: 'Gift Decorations', icon: '🎁', count: decoGift.length },
+    { id: 'decorations_login', label: 'Login Decorations', icon: '🔐', count: decoLogin.length },
+    { id: 'nitro_accounts', label: 'Nitro Accounts', icon: '✨', count: nitroAccounts.length },
+    { id: 'booster', label: 'Server Boosters', icon: '🚀', count: boosters.length },
+    { id: 'promo', label: 'Server Promotions', icon: '📢', count: promo.length },
+  ].filter(c => c.count > 0);
+
+  const scrollToCategory = (id) => {
+    const el = document.getElementById(id);
+    if (el) {
+      const offset = 150;
+      const bodyRect = document.body.getBoundingClientRect().top;
+      const elementRect = el.getBoundingClientRect().top;
+      const elementPosition = elementRect - bodyRect;
+      const offsetPosition = elementPosition - offset;
+
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: 'smooth'
+      });
+    }
+  };
 
   if (loading) {
     return (
@@ -75,7 +108,7 @@ export default function Shop() {
     <div className="min-h-screen bg-brand-bg text-white pb-32">
       <Navbar />
       
-      <main className="pt-32 max-w-7xl mx-auto px-6 relative">
+      <main className="pt-32 max-w-[90rem] mx-auto px-6 relative">
         <div className="mb-16 text-center max-w-2xl mx-auto">
           <div className="inline-flex items-center gap-2 text-brand-primary font-bold tracking-widest uppercase text-xs mb-3 px-3 py-1 glass rounded-full">
             <Sparkles className="w-3.5 h-3.5" />
@@ -89,9 +122,37 @@ export default function Shop() {
           </p>
         </div>
 
+        <div className="flex flex-col lg:flex-row gap-8 items-start relative">
+          {/* --- SIDEBAR NAV --- */}
+          {categoriesList.length > 0 && (
+            <aside className="w-full lg:w-72 shrink-0 lg:sticky top-[100px] z-30 mb-8 lg:mb-0">
+              <div className="glass rounded-2xl border border-white/10 shadow-xl p-4 flex flex-col">
+                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest px-2 mb-4 border-b border-white/5 pb-2">Categories</h3>
+                <div className="flex lg:flex-col overflow-x-auto scrollbar-none gap-2 pb-2 lg:pb-0">
+                  {categoriesList.map(cat => (
+                    <button
+                      key={cat.id}
+                      onClick={() => scrollToCategory(cat.id)}
+                      className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap bg-white/5 border border-white/5 hover:bg-brand-primary/10 hover:border-brand-primary/30 hover:text-brand-primary transition-all duration-300 active:scale-95 group text-left"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-lg grayscale opacity-70 group-hover:grayscale-0 group-hover:opacity-100 transition-all">{cat.icon}</span>
+                        <span>{cat.label}</span>
+                      </div>
+                      <span className="bg-white/10 text-gray-400 text-[10px] px-2 py-1 rounded-full group-hover:bg-brand-primary/20 group-hover:text-brand-primary transition-colors">{cat.count}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </aside>
+          )}
+
+          {/* --- MAIN CONTENT (PRODUCTS) --- */}
+          <div className="flex-1 w-full min-w-0">
+
         {/* --- SERVER PLANS --- */}
         {servers.length > 0 && (
-          <section className="mb-20">
+          <section className="mb-20" id="server">
             <h2 className="text-2xl font-bold mb-8 flex items-center gap-3">
               <Server className="w-6 h-6 text-brand-primary" />
               Server Packages
@@ -137,7 +198,7 @@ export default function Shop() {
 
         {/* --- ADDONS --- */}
         {addons.length > 0 && (
-          <section className="mb-20">
+          <section className="mb-24 mt-16" id="addon">
             <h2 className="text-2xl font-bold mb-8 flex items-center gap-3">
               <Sparkles className="w-6 h-6 text-brand-secondary" />
               Server Add-ons
@@ -167,7 +228,7 @@ export default function Shop() {
 
         {/* --- BOT PLANS --- */}
         {bots.length > 0 && (
-          <section className="mb-20">
+          <section className="mb-24 mt-16" id="bot">
             <h2 className="text-2xl font-bold mb-8 flex items-center gap-3">
               <Bot className="w-6 h-6 text-green-400" />
               Bot Packages
@@ -206,7 +267,7 @@ export default function Shop() {
 
         {/* --- CUSTOM SCRIPTS --- */}
         {scripts.length > 0 && (
-          <section className="mb-20">
+          <section className="mb-24 mt-16" id="scripts">
             <h2 className="text-2xl font-bold mb-8 flex items-center gap-3">
               <Sparkles className="w-6 h-6 text-teal-400" />
               Custom Scripts
@@ -236,7 +297,7 @@ export default function Shop() {
 
         {/* --- EVENTS --- */}
         {events.length > 0 && (
-          <section className="mb-20">
+          <section className="mb-24 mt-16" id="events">
             <h2 className="text-2xl font-bold mb-8 flex items-center gap-3">
               <Sparkles className="w-6 h-6 text-orange-400" />
               Event Management
@@ -266,7 +327,7 @@ export default function Shop() {
 
         {/* --- JOINS --- */}
         {joins.length > 0 && (
-          <section className="mb-20">
+          <section className="mb-24 mt-16" id="joins">
             <h2 className="text-2xl font-bold mb-2 flex items-center gap-3">
               <Sparkles className="w-6 h-6 text-pink-400" />
               Joins & Members
@@ -343,7 +404,7 @@ export default function Shop() {
 
         {/* --- INFRASTRUCTURE --- */}
         {infra.length > 0 && (
-          <section>
+          <section className="mb-24 mt-16" id="infra">
             <h2 className="text-2xl font-bold mb-8 flex items-center gap-3">
               <Database className="w-6 h-6 text-blue-400" />
               Infrastructure & Hosting
@@ -376,7 +437,7 @@ export default function Shop() {
 
         {/* --- DECORATIONS VIA GIFT LINK --- */}
         {decoGift.length > 0 && (
-          <section className="mb-20">
+          <section className="mb-24 mt-20" id="decorations_gift">
             <h2 className="text-2xl font-bold mb-2 flex items-center gap-3">
               <span className="text-2xl">🎁</span>
               Decorations via Gift Link
@@ -418,7 +479,7 @@ export default function Shop() {
 
         {/* --- DECORATIONS VIA LOGIN --- */}
         {decoLogin.length > 0 && (
-          <section className="mb-20">
+          <section className="mb-24 mt-20" id="decorations_login">
             <h2 className="text-2xl font-bold mb-2 flex items-center gap-3">
               <span className="text-2xl">🔐</span>
               Decorations via Login
@@ -460,7 +521,7 @@ export default function Shop() {
 
         {/* --- NITRO ACCOUNTS --- */}
         {nitroAccounts.length > 0 && (
-          <section className="mb-20">
+          <section className="mb-24 mt-20" id="nitro_accounts">
             <h2 className="text-2xl font-bold mb-2 flex items-center gap-3">
               <span className="text-2xl">✨</span>
               Nitro Accounts
@@ -508,7 +569,7 @@ export default function Shop() {
 
         {/* --- SERVER BOOSTERS --- */}
         {boosters.length > 0 && (
-          <section className="mb-20">
+          <section className="mb-24 mt-20" id="booster">
             <h2 className="text-2xl font-bold mb-2 flex items-center gap-3">
               <span className="text-2xl">🚀</span>
               Server Boosters
@@ -550,7 +611,7 @@ export default function Shop() {
 
         {/* --- SERVER PROMOTIONS --- */}
         {promo.length > 0 && (
-          <section className="mb-20">
+          <section className="mb-24 mt-20" id="promo">
             <h2 className="text-2xl font-bold mb-2 flex items-center gap-3">
               <span className="text-2xl">📢</span>
               Server Promotion Services
@@ -583,7 +644,14 @@ export default function Shop() {
                       {isSelected(key) && <Check className={`w-4 h-4 shrink-0 ${accentClasses.check}`} />}
                     </div>
                     <p className="text-[10px] text-gray-500 mb-3 flex-grow leading-relaxed">{item.description.split('[Admin')[0].trim()}</p>
-                    <p className={`text-xs font-semibold mb-3 ${accentClasses.check}`}>Custom Quote</p>
+                    {item.is_manual_price ? (
+                      <p className={`text-xs font-semibold mb-3 ${accentClasses.check}`}>Custom Quote</p>
+                    ) : (
+                      <div className="flex items-baseline gap-1 mb-3">
+                        <span className="font-bold text-white text-lg font-display">{convertPrice(item.price)}</span>
+                        {item.unit_label && <span className="text-gray-500 text-[10px]">{item.unit_label}</span>}
+                      </div>
+                    )}
                     <ul className="space-y-1 mb-4">
                       {(Array.isArray(item.features) ? item.features : []).map((f, i) => (
                         <li key={i} className="flex items-center gap-1.5 text-[10px] text-gray-400">
@@ -600,6 +668,63 @@ export default function Shop() {
             </div>
           </section>
         )}
+
+        {/* --- BOT SUBSCRIPTIONS --- */}
+        {subscriptions.length > 0 && (
+          <section className="mb-24 mt-20" id="subscriptions">
+            <h2 className="text-2xl font-bold mb-2 flex items-center gap-3">
+              <span className="text-2xl">💎</span>
+              Private Bot Subscriptions
+            </h2>
+            <p className="text-gray-500 text-sm mb-2">Power up your Discord community with private dedicated support and security guards.</p>
+            <div className="mb-6 p-4 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-300 text-xs font-medium">
+              ✨ Subscription Benefit: All private bots run on dedicated infrastructure with monthly renew options or lifetime full access.
+            </div>
+            <div className="grid md:grid-cols-2 lg:grid-cols-2 gap-5">
+              {subscriptions.map(item => {
+                const key = item.product_key || String(item.id);
+                const isLifetime = item.name.toLowerCase().includes('complete') || item.name.toLowerCase().includes('lifetime');
+                const accentClasses = isLifetime
+                  ? { border: 'border-fuchsia-500', bg: 'bg-fuchsia-500/5', hover: 'hover:border-fuchsia-500/30', check: 'text-fuchsia-400', badge: 'text-fuchsia-300 bg-fuchsia-500/10 border-fuchsia-500/20', btn: 'bg-fuchsia-500 text-white' }
+                  : { border: 'border-purple-500', bg: 'bg-purple-500/5', hover: 'hover:border-purple-500/30', check: 'text-purple-400', badge: 'text-purple-300 bg-purple-500/10 border-purple-500/20', btn: 'bg-purple-500 text-white' };
+                return (
+                  <div
+                    key={item.id}
+                    onClick={() => toggleItem(key)}
+                    className={`glass-card border-2 cursor-pointer transition-all flex flex-col p-6 rounded-3xl ${isSelected(key) ? `${accentClasses.border} ${accentClasses.bg}` : `border-white/5 ${accentClasses.hover}`}`}
+                  >
+                    {item.tag && (
+                      <div className={`text-[9px] font-bold px-2 py-1 rounded-full mb-3 inline-block w-fit border ${accentClasses.badge}`}>
+                        {item.tag.split('|')[0].trim()}
+                      </div>
+                    )}
+                    <div className="flex justify-between items-start">
+                      <h3 className="font-bold text-sm mb-1 leading-snug flex-1">{item.name}</h3>
+                      {isSelected(key) && <Check className={`w-4 h-4 shrink-0 ${accentClasses.check}`} />}
+                    </div>
+                    <p className="text-[10px] text-gray-500 mb-3 flex-grow leading-relaxed">{item.description.split('[Admin')[0].trim()}</p>
+                    <div className="flex items-baseline gap-1 mb-3">
+                      <span className="font-bold text-white text-lg font-display">{convertPrice(item.price)}</span>
+                      {isLifetime ? <span className="text-gray-500 text-[10px]">one-time</span> : <span className="text-gray-500 text-[10px]">/ month</span>}
+                    </div>
+                    <ul className="space-y-1 mb-4">
+                      {(Array.isArray(item.features) ? item.features : []).map((f, i) => (
+                        <li key={i} className="flex items-center gap-1.5 text-[10px] text-gray-400">
+                          <Check className={`w-3 h-3 shrink-0 ${accentClasses.check}`} />{f}
+                        </li>
+                      ))}
+                    </ul>
+                    <button className={`w-full py-2.5 rounded-xl text-xs font-bold transition-all ${isSelected(key) ? accentClasses.btn : 'bg-white/5 hover:bg-white/10'}`}>
+                      {isSelected(key) ? 'Selected ✓' : 'Select Subscription'}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+          </div>
+        </div>
       </main>
 
       {/* --- CART BOTTOM BAR --- */}

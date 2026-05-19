@@ -14,11 +14,11 @@ import {
   verifyPayment, updateFeedbackStatus, getCoupons, createCoupon,
   adminUpdateInvoiceStatus, adminNotifyUserInvoice, adminEditInvoice, adminAddUserCredits
 } from '../services/api';
-import OrderChat from '../components/OrderChat';
+import UserChat from '../components/UserChat';
 
 const TABS = [
   { id: 'orders',       label: 'Service Requests', icon: ShoppingBag },
-  { id: 'chats',        label: 'Order Chats',      icon: MessageSquare },
+  { id: 'chats',        label: 'User Chats',      icon: MessageSquare },
   { id: 'payments',     label: 'Payments',         icon: CreditCard },
   { id: 'transactions', label: 'Transactions',     icon: History },
   { id: 'invoices',     label: 'Invoices',         icon: FileText },
@@ -66,7 +66,7 @@ export default function Admin() {
     taxRate: 0,
     items: [{ desc: '', amount: 0 }]
   });
-  const [selectedChatOrderId, setSelectedChatOrderId] = useState(null);
+  const [selectedChatUserId, setSelectedChatUserId] = useState(null);
   const [newCoupon, setNewCoupon] = useState({ code: '', discount_type: 'percentage', discount_value: 10, max_uses: 10 });
   const [creatingCoupon, setCreatingCoupon] = useState(false);
   const [addingCreditTo, setAddingCreditTo] = useState(null);
@@ -75,11 +75,11 @@ export default function Admin() {
 
   const handleAddCredits = async (e) => {
     e.preventDefault();
-    if (!addingCreditTo || creditAmount <= 0) return;
+    if (!addingCreditTo || creditAmount === 0) return;
     setSubmittingCredit(true);
     try {
       await adminAddUserCredits(addingCreditTo.id, creditAmount);
-      toast.success(`Successfully added ₹${creditAmount} credits to ${addingCreditTo.name}`);
+      toast.success(creditAmount > 0 ? `Successfully added ₹${creditAmount} credits to ${addingCreditTo.name}` : `Successfully removed ₹${Math.abs(creditAmount)} credits from ${addingCreditTo.name}`);
       setAddingCreditTo(null);
       setCreditAmount(0);
       fetchData();
@@ -304,7 +304,7 @@ export default function Admin() {
                         {data.orders.filter(o => o.status === 'pending').length}
                       </span>
                     )}
-                    {tab.id === 'chats' && data.orders.reduce((acc, o) => acc + (o.admin_unread_count || 0), 0) > 0 && (
+                    {tab.id === 'chats' && data.clients.reduce((acc, c) => acc + (c.details?.admin_unread_count || 0), 0) > 0 && (
                       <span className="ml-auto bg-brand-primary text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-[0_0_10px_rgba(124,58,237,0.5)]">
                         {data.orders.reduce((acc, o) => acc + (o.admin_unread_count || 0), 0)}
                       </span>
@@ -345,7 +345,7 @@ export default function Admin() {
                     {data.orders.filter(o => o.status === 'pending').length}
                   </span>
                 )}
-                {tab.id === 'chats' && data.orders.reduce((acc, o) => acc + (o.admin_unread_count || 0), 0) > 0 && (
+                {tab.id === 'chats' && data.clients.reduce((acc, c) => acc + (c.details?.admin_unread_count || 0), 0) > 0 && (
                   <span className="bg-brand-primary text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-[0_0_10px_rgba(124,58,237,0.5)]">
                     {data.orders.reduce((acc, o) => acc + (o.admin_unread_count || 0), 0)}
                   </span>
@@ -455,37 +455,40 @@ export default function Admin() {
               <motion.div key="chats" initial={{opacity:0, y:10}} animate={{opacity:1, y:0}} exit={{opacity:0, y:-10}} className="h-[calc(100vh-200px)]">
                 <div className="flex h-full gap-6 flex-col md:flex-row">
                   {/* Chat List */}
-                  <div className={`w-full md:w-80 bg-brand-card border border-brand-border rounded-2xl overflow-hidden flex flex-col ${selectedChatOrderId ? 'hidden md:flex' : 'flex'}`}>
+                  <div className={`w-full md:w-80 bg-brand-card border border-brand-border rounded-2xl overflow-hidden flex flex-col ${selectedChatUserId ? 'hidden md:flex' : 'flex'}`}>
                     <div className="p-4 border-b border-white/5 bg-white/5">
                       <h3 className="font-bold text-sm">Conversations</h3>
                     </div>
                     <div className="flex-1 overflow-y-auto divide-y divide-white/5 scrollbar-thin scrollbar-thumb-white/10">
-                      {data.orders.length === 0 ? (
-                        <div className="p-8 text-center text-gray-500 text-xs italic">No orders yet.</div>
-                      ) : data.orders
-                          .sort((a, b) => (b.admin_unread_count || 0) - (a.admin_unread_count || 0))
-                          .map(order => (
+                      {data.clients.length === 0 ? (
+                        <div className="p-8 text-center text-gray-500 text-xs italic">No users yet.</div>
+                      ) : data.clients
+                          .map(client => {
+                            const details = typeof client.details === 'string' ? JSON.parse(client.details) : client.details || {};
+                            return { ...client, unread: details.admin_unread_count || 0 };
+                          })
+                          .sort((a, b) => b.unread - a.unread)
+                          .map(client => (
                         <button 
-                          key={order.id} 
-                          onClick={() => setSelectedChatOrderId(order.id)}
-                          className={`w-full text-left p-4 hover:bg-white/5 transition-colors flex items-start gap-3 relative ${selectedChatOrderId === order.id ? 'bg-white/5' : ''}`}
+                          key={client.id} 
+                          onClick={() => setSelectedChatUserId(client.id)}
+                          className={`w-full text-left p-4 hover:bg-white/5 transition-colors flex items-start gap-3 relative ${selectedChatUserId === client.id ? 'bg-white/5' : ''}`}
                         >
-                          <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm bg-gradient-to-br ${order.admin_unread_count > 0 ? 'from-brand-primary to-brand-secondary text-white' : 'from-white/10 to-white/5 text-gray-500'}`}>
-                            {order.client_name[0]?.toUpperCase()}
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm bg-gradient-to-br ${client.unread > 0 ? 'from-brand-primary to-brand-secondary text-white' : 'from-white/10 to-white/5 text-gray-500'}`}>
+                            {client.name[0]?.toUpperCase()}
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between gap-2">
-                              <p className="font-bold text-xs truncate text-white">{order.client_name}</p>
-                              {order.admin_unread_count > 0 && (
+                              <p className="font-bold text-xs truncate text-white">{client.name}</p>
+                              {client.unread > 0 && (
                                 <span className="bg-brand-primary text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full ring-2 ring-brand-card">
-                                  {order.admin_unread_count}
+                                  {client.unread}
                                 </span>
                               )}
                             </div>
-                            <p className="text-[10px] text-gray-500 truncate uppercase tracking-widest mt-0.5">{order.service_name}</p>
-                            <p className="text-[9px] text-gray-400 mt-1">Order #{order.id}</p>
+                            <p className="text-[10px] text-gray-500 truncate mt-0.5">{client.email}</p>
                           </div>
-                          {selectedChatOrderId === order.id && (
+                          {selectedChatUserId === client.id && (
                             <div className="absolute left-0 top-0 bottom-0 w-1 bg-brand-primary" />
                           )}
                         </button>
@@ -494,17 +497,17 @@ export default function Admin() {
                   </div>
 
                   {/* Active Chat */}
-                  <div className={`flex-1 bg-brand-card border border-brand-border rounded-2xl overflow-hidden flex flex-col relative ${selectedChatOrderId ? 'flex' : 'hidden md:flex'}`}>
-                    {selectedChatOrderId && (
+                  <div className={`flex-1 bg-brand-card border border-brand-border rounded-2xl overflow-hidden flex flex-col relative ${selectedChatUserId ? 'flex' : 'hidden md:flex'}`}>
+                    {selectedChatUserId && (
                       <button 
-                        onClick={() => setSelectedChatOrderId(null)}
+                        onClick={() => setSelectedChatUserId(null)}
                         className="md:hidden flex items-center gap-2 p-4 border-b border-white/5 bg-white/5 text-xs text-brand-primary font-bold uppercase tracking-wider hover:text-white transition-all"
                       >
                         ← Back to Inbox
                       </button>
                     )}
-                    {selectedChatOrderId ? (
-                      <OrderChat orderId={selectedChatOrderId} />
+                    {selectedChatUserId ? (
+                      <UserChat userId={selectedChatUserId} />
                     ) : (
                       <div className="flex flex-col items-center justify-center h-full text-center p-12 space-y-4">
                         <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center">
@@ -512,7 +515,7 @@ export default function Admin() {
                         </div>
                         <div>
                           <h3 className="font-bold text-lg">Select a conversation</h3>
-                          <p className="text-sm text-gray-500 max-w-xs mx-auto">Choose an order from the list on the left to start discussing with the client.</p>
+                          <p className="text-sm text-gray-500 max-w-xs mx-auto">Choose a user from the list on the left to start discussing with them.</p>
                         </div>
                       </div>
                     )}
@@ -835,12 +838,12 @@ export default function Admin() {
                             <form onSubmit={handleAddCredits} className="flex items-center gap-2">
                               <div className="relative flex-1">
                                 <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-500" />
-                                <input type="number" required min="1" value={creditAmount} onChange={e => setCreditAmount(Number(e.target.value))} className="w-full bg-white/5 rounded-lg pl-6 pr-2 py-1 text-xs text-white outline-none" placeholder="Amount" />
+                                <input type="number" required value={creditAmount} onChange={e => setCreditAmount(Number(e.target.value))} className="w-full bg-white/5 rounded-lg pl-6 pr-2 py-1 text-xs text-white outline-none" placeholder="Amount (+ to add, - to remove)" />
                               </div>
-                              <button type="submit" disabled={submittingCredit} className="p-1.5 bg-green-500/20 text-green-500 hover:bg-green-500 hover:text-white rounded-lg transition-colors">
+                              <button type="submit" disabled={submittingCredit} className="p-1.5 bg-green-500/20 text-green-500 hover:bg-green-500 hover:text-white rounded-lg transition-colors" title="Apply">
                                 <Check className="w-3 h-3" />
                               </button>
-                              <button type="button" onClick={() => setAddingCreditTo(null)} className="p-1.5 bg-red-500/20 text-red-500 hover:bg-red-500 hover:text-white rounded-lg transition-colors">
+                              <button type="button" onClick={() => setAddingCreditTo(null)} className="p-1.5 bg-red-500/20 text-red-500 hover:bg-red-500 hover:text-white rounded-lg transition-colors" title="Cancel">
                                 <X className="w-3 h-3" />
                               </button>
                             </form>
@@ -848,7 +851,7 @@ export default function Admin() {
                         ) : (
                           <div className="mt-3 flex gap-2">
                             <button onClick={() => setAddingCreditTo(client)} className="text-[10px] bg-brand-primary/10 text-brand-primary hover:bg-brand-primary hover:text-white px-3 py-1 rounded-full font-bold transition-colors">
-                              + Add Credits
+                              Manage Credits
                             </button>
                           </div>
                         )}

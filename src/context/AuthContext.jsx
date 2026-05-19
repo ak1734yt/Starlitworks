@@ -92,8 +92,8 @@ export function AuthProvider({ children }) {
     triggerTransition(intendedRoute || '/');
   }, [intendedRoute, triggerTransition]);
 
-  const signup = useCallback(async (name, email, password) => {
-    const { token, user } = await apiSignup(name, email, password);
+  const signup = useCallback(async (name, email, password, referralCode = '') => {
+    const { token, user } = await apiSignup(name, email, password, referralCode);
     localStorage.setItem('ssw_token', token);
     setUser(user);
     triggerTransition(intendedRoute || '/');

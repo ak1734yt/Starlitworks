@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Eye, EyeOff, Mail, Lock, User, AlertCircle, CheckCircle2, Loader2, Sparkles } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, User, AlertCircle, CheckCircle2, Loader2, Sparkles, Gift } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 function getStrength(pw) {
@@ -19,13 +19,21 @@ const STR_LABELS = ['','Very Weak','Weak','Fair','Strong','Very Strong'];
 
 export default function SignUp() {
   const { signup } = useAuth();
+  const [searchParams] = useSearchParams();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
+  const [referralCode, setReferralCode] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Auto-fill referral code from URL: /signup?ref=REFXXXX
+  useEffect(() => {
+    const ref = searchParams.get('ref');
+    if (ref) setReferralCode(ref.toUpperCase());
+  }, [searchParams]);
 
   const strength = getStrength(password);
   const pwMatch = confirm.length > 0 && password === confirm;
@@ -46,7 +54,7 @@ export default function SignUp() {
 
     setLoading(true);
     try {
-      await signup(name, email, password);
+      await signup(name, email, password, referralCode);
     } catch (err) {
       setError(err.message);
       setLoading(false);
@@ -130,6 +138,28 @@ export default function SignUp() {
                 }`}/>
               {pwMatch && <CheckCircle2 className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-green-500" />}
             </div>
+
+            {/* Referral Code (optional) */}
+            <div className="relative">
+              <Gift className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none"/>
+              <input
+                type="text"
+                value={referralCode}
+                onChange={e => setReferralCode(e.target.value.toUpperCase())}
+                placeholder="Referral code (optional)"
+                autoComplete="off"
+                maxLength={12}
+                className="w-full bg-white/5 border border-brand-border rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder:text-gray-600 focus:outline-none focus:border-brand-primary/60 focus:shadow-[0_0_0_3px_rgba(124,58,237,0.15)] transition-all uppercase tracking-widest"
+              />
+              {referralCode && (
+                <div className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-brand-primary">🎁 Bonus</div>
+              )}
+            </div>
+            {referralCode && (
+              <p className="text-[10px] text-brand-primary/80 px-1">
+                ✓ You'll receive a welcome bonus when you sign up with a referral code!
+              </p>
+            )}
 
             <button type="submit" disabled={loading}
               className="w-full btn-primary flex items-center justify-center gap-2 mt-2 py-3 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:shadow-none disabled:hover:scale-100">

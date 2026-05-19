@@ -10,6 +10,28 @@ load_dotenv()
 init_db()
 start_notification_service()
 
+# Start Discord Operations Bot in the background
+def start_discord_bot_background():
+    import threading
+    import asyncio
+    from discord_bot import start_discord_bot
+    
+    def _run():
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            loop.run_until_complete(start_discord_bot())
+        except Exception as e:
+            print(f"[BOT] Startup failed: {e}")
+        finally:
+            loop.close()
+        
+    threading.Thread(target=_run, daemon=True).start()
+
+if os.getenv("DISCORD_BOT_TOKEN"):
+    start_discord_bot_background()
+
+
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
 app = FastAPI(title="Starlit Siege Works API", version="2.0.0", docs_url="/docs")
@@ -73,7 +95,7 @@ async def security_header_check(request: Request, call_next):
     return response
 
 # ── Route Injection ───────────────────────────────────────────────────────────
-from routers import auth_routes, order_routes, chat_routes, admin_routes, analytics_routes, invoice_routes, payment_routes, oauth_routes
+from routers import auth_routes, order_routes, chat_routes, admin_routes, analytics_routes, invoice_routes, payment_routes, oauth_routes, referral_routes
 
 app.include_router(auth_routes.router, prefix="/api")
 app.include_router(oauth_routes.router, prefix="/api")
@@ -83,6 +105,7 @@ app.include_router(admin_routes.router, prefix="/api")
 app.include_router(analytics_routes.router, prefix="/api")
 app.include_router(invoice_routes.router, prefix="/api")
 app.include_router(payment_routes.router, prefix="/api")
+app.include_router(referral_routes.router, prefix="/api")
 
 @app.get("/")
 def root():

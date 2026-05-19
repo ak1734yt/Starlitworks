@@ -79,8 +79,8 @@ export const submitPaymentProof = (id, data) => request(`/orders/${id}/payment-p
 export const generateQR = (data) => request(`/payment/qr`, { method: 'POST', body: JSON.stringify(data) });
 
 // Chat
-export const getChatMessages = (orderId) => request(`/chat/${orderId}`);
-export const sendChatMessage = (orderId, data) => request(`/chat/${orderId}`, { method: 'POST', body: JSON.stringify(data) });
+export const getChatMessages = (userId) => request(`/chat/user/${userId}`);
+export const sendChatMessage = (userId, data) => request(`/chat/user/${userId}`, { method: 'POST', body: JSON.stringify(data) });
 
 // Feedback & Coupons
 export const getFeedbacks = () => request('/feedbacks');
@@ -100,3 +100,33 @@ export const adminNotifyUserInvoice = (id) => request(`/invoices/${id}/notify`, 
 export const adminEditInvoice = (id, data) => request(`/invoices/${id}`, { method: 'PUT', body: JSON.stringify(data) });
 export const adminAddUserCredits = (userId, amount) => request(`/admin/users/${userId}/credits`, { method: 'POST', body: JSON.stringify({ amount }) });
 export const seedCatalog = () => request('/manager/seed-catalog', { method: 'POST' });
+
+// Order Progress Feed
+export const getOrderUpdates = (orderId) => request(`/orders/${orderId}/updates`);
+export const postOrderUpdate = (orderId, message) => request(`/admin/orders/${orderId}/update`, { method: 'POST', body: JSON.stringify({ message }) });
+
+// Referral System
+export const getReferralInfo = () => request('/auth/referral');
+export const getManagerReferrals = () => request('/manager/referrals');
+export const getManagerReferralSettings = () => request('/manager/referral-settings');
+export const updateManagerReferralSettings = (data) => request('/manager/referral-settings', { method: 'PUT', body: JSON.stringify(data) });
+export const updateReferralTiers = (tiers) => request('/manager/referral-tiers', { method: 'PUT', body: JSON.stringify({ tiers }) });
+export const setUserReferralOverride = (uid, custom_reward) => request(`/manager/users/${uid}/referral-override`, { method: 'PUT', body: JSON.stringify({ custom_reward }) });
+export const grantManualBonus = (uid, amount, note) => request(`/manager/users/${uid}/manual-bonus`, { method: 'POST', body: JSON.stringify({ amount, note }) });
+export const getUserReferralStats = (uid) => request(`/manager/users/${uid}/referrals`);
+export const requestWithdrawal = (amount, payment_info) => request('/referral/withdraw', { method: 'POST', body: JSON.stringify({ amount, payment_info }) });
+export const convertReferralPoints = (points) => request('/referral/convert-points', { method: 'POST', body: JSON.stringify({ points }) });
+export const getManagerWithdrawals = () => request('/manager/withdrawals');
+export const updateWithdrawalStatus = (wid, status, note) => request(`/manager/withdrawals/${wid}`, { method: 'PUT', body: JSON.stringify({ status, note }) });
+
+
+// Revenue Stats
+export const getManagerRevenue = () => request('/manager/revenue');
+
+// Bulk Status Update
+export const bulkUpdateOrderStatus = (order_ids, status) => request('/admin/orders/bulk-status', { method: 'PUT', body: JSON.stringify({ order_ids, status }) });
+
+// Notifications
+export const getNotifications = () => request('/notifications');
+export const markNotificationsRead = () => request('/notifications/read', { method: 'PUT' });
+

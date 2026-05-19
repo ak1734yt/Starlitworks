@@ -34,10 +34,10 @@ async function request(path, options = {}) {
 }
 
 // ─── Auth API ─────────────────────────────────────────────────────────────────
-export async function apiSignup(name, email, password) {
+export async function apiSignup(name, email, password, referralCode = '') {
   return request('/signup', {
     method: 'POST',
-    body: JSON.stringify({ name, email, password }),
+    body: JSON.stringify({ name, email, password, referral_code: referralCode }),
   });
 }
 

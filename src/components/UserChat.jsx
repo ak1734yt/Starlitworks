@@ -8,7 +8,7 @@ import { getChatMessages, sendChatMessage } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-hot-toast';
 
-export default function OrderChat({ orderId, onClose }) {
+export default function UserChat({ userId, onClose }) {
   const { user } = useAuth();
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
@@ -27,7 +27,7 @@ export default function OrderChat({ orderId, onClose }) {
     fetchMessages();
     const interval = setInterval(fetchMessages, 5000); // Poll every 5s
     return () => clearInterval(interval);
-  }, [orderId]);
+  }, [userId]);
 
   useEffect(() => {
     scrollToBottom();
@@ -44,7 +44,7 @@ export default function OrderChat({ orderId, onClose }) {
 
   const fetchMessages = async () => {
     try {
-      const data = await getChatMessages(orderId);
+      const data = await getChatMessages(userId);
       setMessages(data);
     } catch (err) {
       console.error(err);
@@ -68,7 +68,7 @@ export default function OrderChat({ orderId, onClose }) {
         message_type: attachment ? attachment.type : 'text',
         base64Data: attachment ? attachment.base64 : null
       };
-      await sendChatMessage(orderId, payload);
+      await sendChatMessage(userId, payload);
       setNewMessage('');
       setAttachment(null);
       fetchMessages();
@@ -164,8 +164,8 @@ export default function OrderChat({ orderId, onClose }) {
             <MessageSquare className="w-5 h-5 text-brand-primary" />
           </div>
           <div>
-            <h3 className="font-bold text-sm">Order Discussion</h3>
-            <p className="text-[10px] text-gray-500 uppercase tracking-widest">#{orderId}</p>
+            <h3 className="font-bold text-sm">Support Chat</h3>
+            <p className="text-[10px] text-gray-500 uppercase tracking-widest">#{userId}</p>
           </div>
         </div>
         {onClose && (
@@ -187,10 +187,10 @@ export default function OrderChat({ orderId, onClose }) {
               <Smile className="w-8 h-8" />
             </div>
             <p className="text-sm">No messages yet.</p>
-            <p className="text-xs">Start the conversation about your order.</p>
+            <p className="text-xs">Start the conversation with us.</p>
           </div>
         ) : messages.map((msg, idx) => {
-          const isMe = msg.user_id === user.id;
+          const isMe = msg.sender_id === user.id;
 
           // System auto-responder messages — centered banner style
           if (msg.message_type === 'system') {
@@ -344,5 +344,3 @@ export default function OrderChat({ orderId, onClose }) {
     </div>
   );
 }
-
-

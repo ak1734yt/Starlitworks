@@ -6,7 +6,7 @@ import {
   Calendar, Clock, CheckCircle2, XCircle,
   BarChart3, Settings, LogOut, Search,
   Star, MessageSquare, Palette, Globe, Megaphone, 
-  Layers, ListOrdered, Share2, TrendingUp, Loader2
+  Layers, ListOrdered, Share2, TrendingUp, Loader2, Gift
 } from 'lucide-react';
 import { 
   getManagerLogs, getManagerUsers, updateUserRole, 
@@ -16,9 +16,12 @@ import {
   getPortfolio, createPortfolio, deletePortfolio,
   getSiteSettings, updateSiteSettings, deleteOrder,
   getAnalyticsLogs, getInvoices, adminUpdateInvoiceStatus,
-  adminNotifyUserInvoice, adminAddUserCredits, seedCatalog
+  adminNotifyUserInvoice, adminAddUserCredits, seedCatalog,
+  getManagerReferrals, getManagerReferralSettings, updateManagerReferralSettings,
+  updateReferralTiers, setUserReferralOverride, grantManualBonus,
+  getUserReferralStats, getManagerRevenue, bulkUpdateOrderStatus
 } from '../services/api';
-import OrderChat from '../components/OrderChat';
+import UserChat from '../components/UserChat';
 
 const getScreenshotUrl = (url) => {
   if (!url) return '';
@@ -59,6 +62,25 @@ export default function Manager() {
   const [searchTerm, setSearchTerm] = useState('');
   const [pulse, setPulse] = useState([]);
 
+  // Referral states
+  const [revenue, setRevenue] = useState({ weekly: 0, monthly: 0, pending: 0 });
+  const [referralSettings, setReferralSettings] = useState({
+    is_random: false,
+    fixed_reward: 50,
+    random_min: 30,
+    random_max: 70,
+    join_bonus: 20,
+    cashback_pct: 5
+  });
+  const [referralsList, setReferralsList] = useState([]);
+  const [referralTiers, setReferralTiers] = useState([]);
+  const [overrideUser, setOverrideUser] = useState(null);
+  const [overrideReward, setOverrideReward] = useState('');
+  const [manualBonusForm, setManualBonusForm] = useState({ userId: '', amount: '', note: '' });
+  const [managerWithdrawals, setManagerWithdrawals] = useState([]);
+  const [updatingWithdrawalId, setUpdatingWithdrawalId] = useState(null);
+  const [rejectNote, setRejectNote] = useState('');
+
   // New Credit and Invoice states
   const [invoices, setInvoices] = useState([]);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
@@ -85,9 +107,16 @@ export default function Manager() {
     setLoading(true);
     try {
       if (activeTab === 'logs') {
-        const [logData, statData] = await Promise.all([getManagerLogs(), getManagerStats()]);
+        const [logData, statData, revData, orderData] = await Promise.all([
+          getManagerLogs(),
+          getManagerStats(),
+          getManagerRevenue().catch(() => ({ weekly: 0, monthly: 0, pending: 0 })),
+          getAdminOrders().catch(() => [])
+        ]);
         setLogs(logData);
         setStats(statData);
+        setRevenue(revData);
+        setOrders(orderData);
       } else if (activeTab === 'users') {
         const data = await getManagerUsers();
         setUsers(data);
@@ -109,6 +138,32 @@ export default function Manager() {
       } else if (activeTab === 'invoices') {
         const data = await getInvoices();
         setInvoices(data);
+      } else if (activeTab === 'referrals') {
+        const [refList, refSet, siteSet, wList] = await Promise.all([
+          getManagerReferrals().catch(() => []),
+          getManagerReferralSettings().catch(() => ({
+            is_random: false,
+            fixed_reward: 50,
+            random_min: 30,
+            random_max: 70,
+            join_bonus: 20,
+            cashback_pct: 5
+          })),
+          getSiteSettings().catch(() => ({})),
+          getManagerWithdrawals().catch(() => [])
+        ]);
+        setReferralsList(refList);
+        setReferralSettings(refSet);
+        setManagerWithdrawals(wList);
+        
+        // Parse tiers from site settings (e.g. referral_tiers key)
+        try {
+          const rawTiers = siteSet.referral_tiers || '[]';
+          const parsed = typeof rawTiers === 'string' ? JSON.parse(rawTiers) : rawTiers;
+          setReferralTiers(Array.isArray(parsed) ? parsed : []);
+        } catch (_) {
+          setReferralTiers([]);
+        }
       }
     } catch (err) {
       toast.error(err.message);
@@ -184,6 +239,18 @@ export default function Manager() {
       fetchData();
     } catch (err) {
       toast.error(err.message);
+    }
+  };
+
+  const handleUpdateWithdrawal = async (wid, status, note = '') => {
+    try {
+      await updateWithdrawalStatus(wid, status, note);
+      toast.success(`Withdrawal request ${status === 'approved' ? 'approved' : 'rejected'} successfully!`);
+      setUpdatingWithdrawalId(null);
+      setRejectNote('');
+      fetchData();
+    } catch (err) {
+      toast.error(err.message || 'Failed to update withdrawal');
     }
   };
 
@@ -321,6 +388,7 @@ export default function Manager() {
             { id: 'portfolio', icon: Layout, label: 'Portfolio Mgr' },
             { id: 'site-editor', icon: Settings, label: 'Site Editor' },
             { id: 'coupons', icon: Star, label: 'Coupons' },
+            { id: 'referrals', icon: Gift, label: 'Referrals & Rewards' },
             { id: 'pulse', icon: BarChart3, label: 'User Pulse' },
           ].map((item) => (
             <button
@@ -387,7 +455,152 @@ export default function Manager() {
         <AnimatePresence mode="wait">
 
         {activeTab === 'logs' && (
-          <motion.div key="logs" initial={{opacity:0, y:10}} animate={{opacity:1, y:0}} exit={{opacity:0, y:-10}} className="space-y-8">
+          <motion.div key="logs" initial={{opacity:0, y:10}} animate={{opacity:1, y:0}} exit={{opacity:0, y:-10}} className="space-y-8 animate-fade-in">
+            {/* Revenue Analytics Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="bg-[#0A0A0A] border border-white/10 p-6 rounded-2xl shadow-xl flex items-center gap-4 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-green-500/5 blur-[30px] rounded-full" />
+                <div className="w-12 h-12 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center justify-center">
+                  <IndianRupee className="w-6 h-6 text-green-400" />
+                </div>
+                <div>
+                  <span className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Weekly Revenue</span>
+                  <h4 className="text-2xl font-black font-display text-white mt-1">₹{revenue?.weekly?.toLocaleString() || 0}</h4>
+                </div>
+              </div>
+
+              <div className="bg-[#0A0A0A] border border-white/10 p-6 rounded-2xl shadow-xl flex items-center gap-4 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-brand-primary/5 blur-[30px] rounded-full" />
+                <div className="w-12 h-12 rounded-xl bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center">
+                  <TrendingUp className="w-6 h-6 text-brand-primary" />
+                </div>
+                <div>
+                  <span className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Monthly Revenue</span>
+                  <h4 className="text-2xl font-black font-display text-white mt-1">₹{revenue?.monthly?.toLocaleString() || 0}</h4>
+                </div>
+              </div>
+
+              <div className="bg-[#0A0A0A] border border-white/10 p-6 rounded-2xl shadow-xl flex items-center gap-4 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-yellow-500/5 blur-[30px] rounded-full" />
+                <div className="w-12 h-12 rounded-xl bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center">
+                  <Clock className="w-6 h-6 text-yellow-400" />
+                </div>
+                <div>
+                  <span className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Pending Valuation</span>
+                  <h4 className="text-2xl font-black font-display text-white mt-1">₹{revenue?.pending?.toLocaleString() || 0}</h4>
+                </div>
+              </div>
+            </div>
+
+            {/* Draggable Kanban Board Pipeline Widget */}
+            <div className="bg-[#0A0A0A] border border-white/10 rounded-2xl p-6 shadow-2xl space-y-6">
+              <div className="flex justify-between items-center border-b border-white/5 pb-4">
+                <div>
+                  <h3 className="text-lg font-bold flex items-center gap-2">
+                    <Layers className="w-5 h-5 text-brand-secondary" />
+                    Interactive Kanban Order Pipeline
+                  </h3>
+                  <p className="text-xs text-gray-500 mt-1">Easily trace, manage, and transition client service flows through active execution stages.</p>
+                </div>
+                <div className="flex gap-2">
+                  <span className="text-[10px] bg-brand-primary/10 text-brand-primary px-3 py-1 rounded-full font-mono font-bold">
+                    Pipeline Load: {orders?.length || 0} active
+                  </span>
+                </div>
+              </div>
+
+              {/* Kanban Columns */}
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-4 overflow-x-auto pb-4">
+                {[
+                  { key: 'pending', label: 'Pending Request', color: 'from-yellow-500/10 to-yellow-500/5', border: 'border-yellow-500/20', text: 'text-yellow-500' },
+                  { key: 'quoted', label: 'Quoted / Negotiating', color: 'from-blue-500/10 to-blue-500/5', border: 'border-blue-500/20', text: 'text-blue-400' },
+                  { key: 'accepted', label: 'Payment Pending', color: 'from-purple-500/10 to-purple-500/5', border: 'border-purple-500/20', text: 'text-purple-400' },
+                  { key: 'in_progress', label: 'In Progress', color: 'from-brand-primary/10 to-brand-primary/5', border: 'border-brand-primary/20', text: 'text-brand-primary' },
+                  { key: 'completed', label: 'Completed Deliverable', color: 'from-green-500/10 to-green-500/5', border: 'border-green-500/20', text: 'text-green-500' },
+                ].map((col) => {
+                  const colOrders = (orders || []).filter(o => {
+                    if (col.key === 'accepted') return o.status === 'accepted' || o.status === 'payment_pending';
+                    return o.status === col.key;
+                  });
+
+                  return (
+                    <div 
+                      key={col.key} 
+                      className={`p-4 rounded-xl bg-gradient-to-b ${col.color} border ${col.border} min-w-[200px] flex flex-col space-y-4 min-h-[350px]`}
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={async (e) => {
+                        e.preventDefault();
+                        const orderId = e.dataTransfer.getData("orderId");
+                        if (!orderId) return;
+                        try {
+                          await updateOrderStatus(orderId, { status: col.key });
+                          toast.success(`Order #${orderId} moved to ${col.label}`);
+                          fetchData();
+                        } catch (err) {
+                          toast.error(err.message || 'Failed to move order');
+                        }
+                      }}
+                    >
+                      <div className="flex justify-between items-center">
+                        <span className={`text-[10px] uppercase font-black tracking-wider ${col.text}`}>{col.label}</span>
+                        <span className="text-[10px] bg-white/5 border border-white/10 px-2 py-0.5 rounded-full text-gray-400 font-bold">{colOrders.length}</span>
+                      </div>
+
+                      <div className="space-y-3 flex-1 overflow-y-auto max-h-[400px] pr-1">
+                        {colOrders.length === 0 ? (
+                          <div className="h-full flex items-center justify-center py-10 border border-dashed border-white/5 rounded-lg">
+                            <span className="text-[9px] text-gray-600 font-bold uppercase tracking-widest">Empty Stage</span>
+                          </div>
+                        ) : (
+                          colOrders.map(order => (
+                            <div 
+                              key={order.id} 
+                              draggable
+                              onDragStart={(e) => {
+                                e.dataTransfer.setData("orderId", order.id);
+                              }}
+                              className="p-3 bg-[#0c0d12] border border-white/10 rounded-lg hover:border-white/20 transition-all cursor-grab active:cursor-grabbing hover:scale-[1.02] shadow-lg relative group text-left"
+                            >
+                              <div className="flex justify-between items-start mb-2">
+                                <span className="text-[8px] font-mono text-gray-500">#{order.id}</span>
+                                <span className="text-[9px] font-bold text-white">₹{order.quoted_price || order.price || 0}</span>
+                              </div>
+                              <h4 className="text-[10px] font-black text-white truncate mb-1">{order.service_name || 'Premium Setup'}</h4>
+                              <p className="text-[9px] text-gray-500 line-clamp-2">{order.description || 'No description'}</p>
+
+                              {/* Interactive controls for quick moving */}
+                              <div className="mt-2 pt-2 border-t border-white/5 flex justify-between items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                <span className="text-[7px] text-gray-600 uppercase font-black font-mono">{order.discord_username || 'No Discord'}</span>
+                                <select 
+                                  value={order.status}
+                                  onChange={async (e) => {
+                                    try {
+                                      await updateOrderStatus(order.id, { status: e.target.value });
+                                      toast.success(`Order #${order.id} updated!`);
+                                      fetchData();
+                                    } catch (err) {
+                                      toast.error(err.message);
+                                    }
+                                  }}
+                                  className="bg-white/5 border border-white/10 rounded px-1 py-0.5 text-[8px] text-gray-400 outline-none"
+                                >
+                                  <option value="pending">Pending</option>
+                                  <option value="quoted">Quoted</option>
+                                  <option value="accepted">Accepted</option>
+                                  <option value="in_progress">In Progress</option>
+                                  <option value="completed">Completed</option>
+                                </select>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
             {/* Graph Pattern */}
             <div className="bg-[#0A0A0A] border border-white/10 rounded-2xl p-6 shadow-2xl">
               <div className="flex items-center justify-between mb-6">
@@ -549,7 +762,7 @@ export default function Manager() {
                 </div>
 
                 <div className="h-[450px] lg:h-full min-h-[400px] border-l border-white/5 pl-8">
-                  <OrderChat orderId={order.id} />
+                  <UserChat userId={order.user_id} />
                 </div>
               </div>
             ))}
@@ -1383,7 +1596,487 @@ export default function Manager() {
             </div>
           </motion.div>
         )}
-        </AnimatePresence>
+        {activeTab === 'referrals' && (
+          <motion.div key="referrals" initial={{opacity:0, y:10}} animate={{opacity:1, y:0}} exit={{opacity:0, y:-10}} className="space-y-8 animate-fade-in text-left">
+            {/* Top row: Global settings & milestone editor */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Global Settings */}
+              <div className="bg-[#0A0A0A] border border-white/10 rounded-2xl p-6 shadow-2xl space-y-6">
+                <h3 className="text-lg font-bold flex items-center gap-2 border-b border-white/5 pb-3">
+                  <Settings className="w-5 h-5 text-brand-primary" />
+                  Referral Rules & Engine Customizer
+                </h3>
+
+                <div className="p-3 bg-purple-500/10 border border-purple-500/20 rounded-xl text-xs space-y-1.5 leading-relaxed text-purple-200">
+                  <div className="font-bold flex items-center gap-1.5 text-white">
+                    <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+                    Ripple Points Engine Enabled
+                  </div>
+                  <p>Promoters (Referrers) automatically receive <strong>25 Ripple Points</strong> for every <strong>₹500</strong> of a referred order total (e.g. ₹1,200 purchase yields 50 pts).</p>
+                  <p className="text-[10px] text-gray-500"><strong>Note:</strong> A minimum order size of <strong>₹500</strong> is strictly required. Below ₹500, no referral points are awarded. Promoters can convert points instantly into credits at <strong>5 Points = ₹1 INR</strong>.</p>
+                </div>
+
+                <form onSubmit={async (e) => {
+                  e.preventDefault();
+                  try {
+                    await updateManagerReferralSettings(referralSettings);
+                    toast.success('Referral configurations saved successfully!');
+                    fetchData();
+                  } catch(err) {
+                    toast.error(err.message || 'Failed to save rules');
+                  }
+                }} className="space-y-4 text-left">
+                  <div className="flex items-center justify-between p-4 bg-white/[0.02] border border-white/5 rounded-xl">
+                    <div>
+                      <h4 className="text-xs font-bold text-white">Random Reward Mode (Auto Referral)</h4>
+                      <p className="text-[10px] text-gray-500">Draw random invite credit rewards from a range bounds instead of a fixed amount.</p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        checked={referralSettings.is_random} 
+                        onChange={(e) => setReferralSettings({...referralSettings, is_random: e.target.checked})}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand-primary" />
+                    </label>
+                  </div>
+
+                  {!referralSettings.is_random ? (
+                    <div>
+                      <label className="text-xs text-gray-500 uppercase tracking-widest font-semibold block mb-2">Base Invite Reward (₹)</label>
+                      <input 
+                        type="number" 
+                        value={referralSettings.fixed_reward}
+                        onChange={(e) => setReferralSettings({...referralSettings, fixed_reward: Number(e.target.value)})}
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-brand-primary transition-all"
+                      />
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-xs text-gray-500 uppercase tracking-widest font-semibold block mb-2">Min Credit Limit (₹)</label>
+                        <input 
+                          type="number" 
+                          value={referralSettings.random_min}
+                          onChange={(e) => setReferralSettings({...referralSettings, random_min: Number(e.target.value)})}
+                          className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-brand-primary transition-all"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-gray-500 uppercase tracking-widest font-semibold block mb-2">Max Credit Limit (₹)</label>
+                        <input 
+                          type="number" 
+                          value={referralSettings.random_max}
+                          onChange={(e) => setReferralSettings({...referralSettings, random_max: Number(e.target.value)})}
+                          className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-brand-primary transition-all"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs text-gray-500 uppercase tracking-widest font-semibold block mb-2">User Welcome Bonus (₹)</label>
+                      <input 
+                        type="number" 
+                        value={referralSettings.join_bonus}
+                        onChange={(e) => setReferralSettings({...referralSettings, join_bonus: Number(e.target.value)})}
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-brand-primary transition-all"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 uppercase tracking-widest font-semibold block mb-2">Subsequent Order Cashback (%)</label>
+                      <input 
+                        type="number" 
+                        value={referralSettings.cashback_pct}
+                        onChange={(e) => setReferralSettings({...referralSettings, cashback_pct: Number(e.target.value)})}
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-brand-primary transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  <button 
+                    type="submit"
+                    className="w-full py-4 bg-brand-primary rounded-xl font-bold text-sm shadow-[0_0_20px_rgba(124,58,237,0.3)] hover:shadow-[0_0_30px_rgba(124,58,237,0.5)] transition-all flex items-center justify-center gap-2 text-white"
+                  >
+                    <Save className="w-4 h-4" /> Save Rules Configurations
+                  </button>
+                </form>
+              </div>
+
+              {/* Milestone Tiers configurator */}
+              <div className="bg-[#0A0A0A] border border-white/10 rounded-2xl p-6 shadow-2xl space-y-6 text-left">
+                <div>
+                  <h3 className="text-lg font-bold flex items-center gap-2">
+                    <Star className="w-5 h-5 text-brand-secondary" />
+                    Milestone Tier Multipliers
+                  </h3>
+                  <p className="text-xs text-gray-500 mt-1">Configure cumulative referral targets that automatically trigger extra credits.</p>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="max-h-[220px] overflow-y-auto pr-1 space-y-2">
+                    {referralTiers.length === 0 ? (
+                      <p className="text-xs text-gray-500 italic py-6 text-center">No milestone tiers defined yet.</p>
+                    ) : (
+                      referralTiers.map((tier, idx) => (
+                        <div key={idx} className="flex gap-4 items-center p-3 bg-white/[0.01] border border-white/5 rounded-xl justify-between">
+                          <span className="text-xs font-bold text-white">Tier {idx + 1}: {tier.count} successful invites</span>
+                          <div className="flex items-center gap-3">
+                            <span className="text-xs font-mono font-bold text-brand-secondary">+₹{tier.bonus} credits</span>
+                            <button
+                              onClick={async () => {
+                                const nextTiers = referralTiers.filter((_, i) => i !== idx);
+                                try {
+                                  await updateReferralTiers(nextTiers);
+                                  toast.success('Tier removed');
+                                  fetchData();
+                                } catch(e) {
+                                  toast.error(e.message);
+                                }
+                              }}
+                              className="p-1 hover:bg-red-500/10 rounded text-red-500 transition-all border-0 bg-transparent"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  {/* Add New Tier */}
+                  <form onSubmit={async (e) => {
+                    e.preventDefault();
+                    const fd = new FormData(e.target);
+                    const count = Number(fd.get('count'));
+                    const bonus = Number(fd.get('bonus'));
+                    if (count <= 0 || bonus <= 0) return;
+                    
+                    const nextTiers = [...referralTiers, { count, bonus }].sort((a, b) => a.count - b.count);
+                    try {
+                      await updateReferralTiers(nextTiers);
+                      toast.success('Milestone tier added!');
+                      e.target.reset();
+                      fetchData();
+                    } catch(e) {
+                      toast.error(e.message);
+                    }
+                  }} className="grid grid-cols-3 gap-2 items-end pt-4 border-t border-white/5 text-left">
+                    <div>
+                      <label className="text-[9px] text-gray-500 uppercase tracking-widest font-black block mb-1">Invites Needed</label>
+                      <input name="count" required type="number" placeholder="3" className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-brand-primary text-white" />
+                    </div>
+                    <div>
+                      <label className="text-[9px] text-gray-500 uppercase tracking-widest font-black block mb-1">Reward Payout (₹)</label>
+                      <input name="bonus" required type="number" placeholder="40" className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-brand-primary text-white" />
+                    </div>
+                    <button type="submit" className="px-4 py-2 bg-brand-secondary text-white font-bold rounded-lg text-xs hover:bg-brand-secondary/90 transition-all h-9 flex items-center justify-center gap-1 border-0">
+                      <Plus className="w-3.5 h-3.5" /> Add Tier
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </div>
+
+            {/* Bottom Row: User credit overrides, manual bonus grant and Referrals ledger logs */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              
+              {/* User Referral Custom Overrides & Manual Grants */}
+              <div className="lg:col-span-1 bg-[#0A0A0A] border border-white/10 rounded-2xl p-6 shadow-2xl space-y-6 text-left">
+                <h3 className="text-sm font-bold flex items-center gap-2 border-b border-white/5 pb-3">
+                  <UserPlus className="w-4 h-4 text-brand-primary" />
+                  Custom Overrides & Grants
+                </h3>
+
+                {/* Search / Selector */}
+                <div className="space-y-4 text-left">
+                  <div>
+                    <label className="text-[9px] text-gray-500 uppercase tracking-widest block mb-2">Search Client for override</label>
+                    <div className="relative">
+                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500" />
+                      <select 
+                        value={overrideUser?.id || ''} 
+                        onChange={(e) => {
+                          const chosen = users.find(u => u.id === e.target.value);
+                          setOverrideUser(chosen || null);
+                          setOverrideReward('');
+                        }}
+                        className="w-full bg-white/5 border border-white/10 rounded-xl pl-8 pr-4 py-2.5 text-xs outline-none focus:border-brand-primary text-gray-300"
+                      >
+                        <option value="" className="bg-[#0A0A0A]">Select a client...</option>
+                        {users.map(u => (
+                          <option key={u.id} value={u.id} className="bg-[#0A0A0A]">{u.name} ({u.email})</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {overrideUser && (
+                    <div className="p-4 bg-white/[0.01] border border-white/5 rounded-xl space-y-4 text-left">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-gray-400">Current override reward:</span>
+                        <span className="font-bold text-brand-primary">
+                          {(() => {
+                            try {
+                              const d = JSON.parse(overrideUser.details || '{}');
+                              return d.custom_referral_reward ? `₹${d.custom_referral_reward}` : 'None';
+                            } catch (_) { return 'None'; }
+                          })()}
+                        </span>
+                      </div>
+
+                      <div className="space-y-2 text-left">
+                        <label className="text-[9px] text-gray-500 uppercase tracking-widest block font-black">Set New Override Value (₹)</label>
+                        <div className="flex gap-2">
+                          <input 
+                            type="number" 
+                            placeholder="e.g. 100"
+                            value={overrideReward} 
+                            onChange={(e) => setOverrideReward(e.target.value)}
+                            className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none focus:border-brand-primary flex-1 text-center text-white"
+                          />
+                          <button
+                            onClick={async () => {
+                              try {
+                                await setUserReferralOverride(overrideUser.id, Number(overrideReward));
+                                toast.success(`Override saved for ${overrideUser.name}!`);
+                                setOverrideReward('');
+                                fetchData();
+                              } catch(e) {
+                                toast.error(e.message);
+                              }
+                            }}
+                            className="px-3 py-2 bg-brand-primary text-white text-xs font-bold rounded-xl hover:bg-brand-primary/90 transition-all shrink-0 border-0"
+                          >
+                            Apply
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Direct Manual Bonus Credit top up with Note description */}
+                  <div className="pt-4 border-t border-white/5 space-y-4 text-left">
+                    <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Direct Manual Bonus Grant</h4>
+                    
+                    <form onSubmit={async (e) => {
+                      e.preventDefault();
+                      if (!manualBonusForm.userId || !manualBonusForm.amount) return;
+                      try {
+                        await grantManualBonus(manualBonusForm.userId, Number(manualBonusForm.amount), manualBonusForm.note);
+                        toast.success('Direct bonus granted and logged!');
+                        setManualBonusForm({ userId: '', amount: '', note: '' });
+                        fetchData();
+                      } catch(err) {
+                        toast.error(err.message || 'Failed to grant bonus');
+                      }
+                    }} className="space-y-3">
+                      <div>
+                        <select 
+                          required
+                          value={manualBonusForm.userId}
+                          onChange={(e) => setManualBonusForm({...manualBonusForm, userId: e.target.value})}
+                          className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-brand-primary text-gray-300"
+                        >
+                          <option value="" className="bg-[#0A0A0A]">Select client to credit...</option>
+                          {users.map(u => (
+                            <option key={u.id} value={u.id} className="bg-[#0A0A0A]">{u.name} (₹{getUserCredits(u)} credits)</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-2 text-left">
+                        <div className="col-span-1">
+                          <input 
+                            required
+                            type="number" 
+                            placeholder="₹ Amt"
+                            value={manualBonusForm.amount}
+                            onChange={(e) => setManualBonusForm({...manualBonusForm, amount: e.target.value})}
+                            className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-xs outline-none focus:border-brand-primary text-center text-white"
+                          />
+                        </div>
+                        <div className="col-span-2">
+                          <input 
+                            type="text" 
+                            placeholder="Reason (e.g. VIP invite)"
+                            value={manualBonusForm.note}
+                            onChange={(e) => setManualBonusForm({...manualBonusForm, note: e.target.value})}
+                            className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-xs outline-none focus:border-brand-primary text-gray-300"
+                          />
+                        </div>
+                      </div>
+
+                      <button 
+                        type="submit"
+                        className="w-full py-2.5 bg-brand-secondary text-white font-bold rounded-xl text-xs hover:bg-brand-secondary/90 transition-all flex items-center justify-center gap-1 shadow-lg shadow-brand-secondary/15 border-0"
+                      >
+                        <Check className="w-3.5 h-3.5" /> Grant Manual Bonus
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              </div>
+
+            {/* Cash Payout Requests Approvals Ledger */}
+            <div className="lg:col-span-3 bg-[#0A0A0A] border border-white/10 rounded-2xl p-6 shadow-2xl space-y-4 text-left">
+              <div className="flex justify-between items-center border-b border-white/5 pb-3">
+                <h3 className="font-display font-bold text-sm flex items-center gap-2 text-white">
+                  <CreditCard className="w-5 h-5 text-emerald-400" />
+                  Referral Cash Payout Requests approvals
+                </h3>
+                <span className="text-[10px] bg-white/5 border border-white/10 px-2 py-0.5 rounded-full text-emerald-400 font-mono font-bold">
+                  {managerWithdrawals.filter(w => w.status === 'pending').length} pending requests
+                </span>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs min-w-[700px]">
+                  <thead className="bg-white/5 border-b border-white/5 text-gray-400">
+                    <tr>
+                      <th className="px-4 py-3 font-semibold uppercase tracking-wider">User</th>
+                      <th className="px-4 py-3 font-semibold uppercase tracking-wider">Amount</th>
+                      <th className="px-4 py-3 font-semibold uppercase tracking-wider">Payment Details</th>
+                      <th className="px-4 py-3 font-semibold uppercase tracking-wider">Date</th>
+                      <th className="px-4 py-3 font-semibold uppercase tracking-wider">Status</th>
+                      <th className="px-4 py-3 text-right font-semibold uppercase tracking-wider">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {managerWithdrawals.length === 0 ? (
+                      <tr><td colSpan="6" className="px-4 py-8 text-center text-gray-500 italic">No payout requests in database.</td></tr>
+                    ) : (
+                      managerWithdrawals.map((w, idx) => (
+                        <tr key={idx} className="hover:bg-white/[0.01] transition-colors">
+                          <td className="px-4 py-3">
+                            <p className="font-bold text-white">{w.user_name}</p>
+                            <p className="text-[9px] text-gray-500 font-mono">{w.user_email}</p>
+                          </td>
+                          <td className="px-4 py-3 font-mono font-bold text-white">₹{w.amount}</td>
+                          <td className="px-4 py-3 font-sans truncate max-w-[200px]" title={w.payment_info}>{w.payment_info}</td>
+                          <td className="px-4 py-3 text-gray-500 font-mono">{new Date(w.created_at * 1000).toLocaleString()}</td>
+                          <td className="px-4 py-3">
+                            <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${
+                              w.status === 'approved' 
+                                ? 'bg-green-500/10 text-green-400 border border-green-500/20' 
+                                : w.status === 'rejected' 
+                                  ? 'bg-red-500/10 text-red-400 border border-red-500/20' 
+                                  : 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'
+                            }`}>
+                              {w.status}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            {w.status === 'pending' ? (
+                              <div className="flex gap-2 justify-end items-center">
+                                {updatingWithdrawalId === w.id ? (
+                                  <div className="flex gap-2 items-center bg-white/5 p-2 rounded-xl border border-white/5">
+                                    <input 
+                                      type="text" 
+                                      placeholder="Reason / Note"
+                                      value={rejectNote}
+                                      onChange={(e) => setRejectNote(e.target.value)}
+                                      className="bg-black border border-white/10 rounded px-2 py-1 text-[10px] text-white focus:outline-none w-32"
+                                    />
+                                    <button 
+                                      onClick={() => handleUpdateWithdrawal(w.id, 'rejected', rejectNote)}
+                                      className="px-2 py-1 bg-red-500 text-white rounded text-[10px] font-bold"
+                                    >
+                                      Reject
+                                    </button>
+                                    <button 
+                                      onClick={() => setUpdatingWithdrawalId(null)}
+                                      className="text-gray-400 hover:text-white"
+                                    >
+                                      Cancel
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <button 
+                                      onClick={() => handleUpdateWithdrawal(w.id, 'approved')}
+                                      className="px-2.5 py-1.5 bg-green-500/10 border border-green-500/20 text-green-400 rounded-lg text-[10px] font-bold hover:bg-green-500 hover:text-white transition-all flex items-center gap-1 shadow-md shadow-green-500/5"
+                                    >
+                                      <Check className="w-3 h-3" /> Approve
+                                    </button>
+                                    <button 
+                                      onClick={() => setUpdatingWithdrawalId(w.id)}
+                                      className="px-2.5 py-1.5 bg-red-500/10 border border-red-500/20 text-red-400 rounded-lg text-[10px] font-bold hover:bg-red-500 hover:text-white transition-all flex items-center gap-1 shadow-md shadow-red-500/5"
+                                    >
+                                      <X className="w-3 h-3" /> Reject
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-[10px] text-gray-500 italic font-mono">{w.note || 'No notes'}</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+              {/* Referrals ledger register tables */}
+              <div className="lg:col-span-2 bg-[#0A0A0A] border border-white/10 rounded-2xl p-6 shadow-2xl space-y-4 text-left">
+                <div className="flex justify-between items-center border-b border-white/5 pb-3">
+                  <h3 className="font-display font-bold text-sm flex items-center gap-2">
+                    <Users className="w-4 h-4 text-brand-primary" />
+                    Double-Sided Referral Ledgers Register
+                  </h3>
+                  <span className="text-[10px] bg-white/5 border border-white/10 px-2 py-0.5 rounded-full text-gray-500 font-mono font-bold">
+                    {referralsList?.length || 0} invitation traces
+                  </span>
+                </div>
+
+                <div className="overflow-x-auto max-h-[360px] overflow-y-auto pr-1">
+                  <table className="w-full text-left text-xs min-w-[500px]">
+                    <thead className="bg-white/5 border-b border-white/5 text-gray-400">
+                      <tr>
+                        <th className="px-4 py-3 font-semibold uppercase tracking-wider">Referrer</th>
+                        <th className="px-4 py-3 font-semibold uppercase tracking-wider">Invited Client</th>
+                        <th className="px-4 py-3 font-semibold uppercase tracking-wider">Registration Date</th>
+                        <th className="px-4 py-3 font-semibold uppercase tracking-wider">Status</th>
+                        <th className="px-4 py-3 text-right font-semibold uppercase tracking-wider">Invite Payout</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {referralsList.length === 0 ? (
+                        <tr><td colSpan="5" className="px-4 py-10 text-center text-gray-500 italic">No referral records exist in database.</td></tr>
+                      ) : (
+                        referralsList.filter(ref => !searchTerm || ref.referrer_name?.toLowerCase().includes(searchTerm.toLowerCase()) || ref.referred_name?.toLowerCase().includes(searchTerm.toLowerCase())).map((ref, idx) => (
+                          <tr key={idx} className="hover:bg-white/[0.01] transition-colors">
+                            <td className="px-4 py-3 font-bold text-white">{ref.referrer_name}</td>
+                            <td className="px-4 py-3 text-gray-300">
+                              <p className="font-bold">{ref.referred_name}</p>
+                              <p className="text-[9px] text-gray-500 font-mono">{ref.referred_email}</p>
+                            </td>
+                            <td className="px-4 py-3 text-gray-500 font-mono">{new Date(ref.created_at * 1000).toLocaleDateString()}</td>
+                            <td className="px-4 py-3">
+                              <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${
+                                ref.status === 'completed' ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'
+                              }`}>
+                                {ref.status}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-right font-mono font-bold text-brand-secondary">+₹{ref.invite_reward}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       </main>
 
       {/* Add Product Modal */}

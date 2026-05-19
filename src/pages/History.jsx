@@ -6,10 +6,10 @@ import {
   ShieldAlert, Send, CreditCard, Zap, FileText, Download, Activity, 
   Globe, Monitor, MapPin, Sparkles, ChevronRight, UserCircle2, ArrowRight,
   Headphones, PlusCircle, HelpCircle, Layers, CreditCard as CardIcon, LayoutDashboard,
-  KeyRound, Lock
+  KeyRound, Lock, Gift, Users, Award, DollarSign, Copy
 } from 'lucide-react';
-import OrderChat from '../components/OrderChat';
-import { negotiateOrder, acceptOrder, getUserInvoicesByAdmin, getMyOrders } from '../services/api';
+import UserChat from '../components/UserChat';
+import { negotiateOrder, acceptOrder, getUserInvoicesByAdmin, getMyOrders, getReferralInfo, getOrderUpdates, requestWithdrawal, convertReferralPoints } from '../services/api';
 import Navbar from '../components/Navbar';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -67,8 +67,90 @@ export default function History() {
 
   // Filters for My Services page
   const [serviceStatusTab, setServiceStatusTab] = useState('all'); // all, active, pending, completed
+  const [serviceSearch, setServiceSearch] = useState('');
   const [servicePage, setServicePage] = useState(1);
   const [servicesPerPage] = useState(8);
+
+  // Referral system
+  const [referralInfo, setReferralInfo] = useState(null);
+  const [referralCopied, setReferralCopied] = useState(false);
+  const [withdrawAmount, setWithdrawAmount] = useState('');
+  const [withdrawPaymentInfo, setWithdrawPaymentInfo] = useState('');
+  const [withdrawing, setWithdrawing] = useState(false);
+  const [withdrawModalOpen, setWithdrawModalOpen] = useState(false);
+  
+  const [pointsToConvert, setPointsToConvert] = useState('');
+  const [convertingPoints, setConvertingPoints] = useState(false);
+
+  const handleConvertPoints = async (e) => {
+    if (e) e.preventDefault();
+    const pts = parseInt(pointsToConvert);
+    if (!pointsToConvert || isNaN(pts) || pts <= 0) {
+      toast.error('Please enter a valid amount of points');
+      return;
+    }
+    if (pts % 5 !== 0) {
+      toast.error('Points must be converted in multiples of 5 (5 pts = ₹1)');
+      return;
+    }
+    if (pts > (referralInfo?.ripple_points || 0)) {
+      toast.error('Insufficient Ripple Points');
+      return;
+    }
+
+    setConvertingPoints(true);
+    try {
+      const res = await convertReferralPoints(pts);
+      toast.success(res.message || `Successfully converted ${pts} points into credits!`);
+      setPointsToConvert('');
+      
+      // Reload referral info
+      const ref = await getReferralInfo();
+      setReferralInfo(ref);
+      load(); // Refresh other stats
+    } catch (err) {
+      toast.error(err.message || 'Points conversion failed');
+    } finally {
+      setConvertingPoints(false);
+    }
+  };
+
+  const handleRequestWithdrawal = async (e) => {
+    e.preventDefault();
+    const amount = Number(withdrawAmount);
+    if (!withdrawAmount || isNaN(amount) || amount < 1000) {
+      toast.error('Minimum withdrawal amount is ₹1,000');
+      return;
+    }
+    if (amount > (referralInfo?.referral_balance || 0)) {
+      toast.error('Insufficient referral balance');
+      return;
+    }
+    if (!withdrawPaymentInfo.trim()) {
+      toast.error('Please enter valid payment details (UPI ID or Bank Details)');
+      return;
+    }
+
+    setWithdrawing(true);
+    try {
+      await requestWithdrawal(amount, withdrawPaymentInfo);
+      toast.success(`Withdrawal request of ₹${amount} submitted!`);
+      setWithdrawAmount('');
+      setWithdrawPaymentInfo('');
+      setWithdrawModalOpen(false);
+      // Reload referral info
+      const ref = await getReferralInfo();
+      setReferralInfo(ref);
+    } catch (err) {
+      toast.error(err.message || 'Withdrawal request failed');
+    } finally {
+      setWithdrawing(false);
+    }
+  };
+
+  // Order progress feed
+  const [expandedOrderUpdates, setExpandedOrderUpdates] = useState(null);
+  const [orderUpdates, setOrderUpdates] = useState({});
 
   const load = async () => {
     setLoading(true);
@@ -86,6 +168,11 @@ export default function History() {
         if (invRes && !invRes.error) {
           setInvoices(invRes);
         }
+        // Load referral info
+        try {
+          const ref = await getReferralInfo();
+          setReferralInfo(ref);
+        } catch (_) {}
       }
     } catch {
       toast.error('Failed to load history');
@@ -93,6 +180,22 @@ export default function History() {
       setLoading(false);
     }
   };
+
+  const fetchOrderUpdates = async (orderId) => {
+    if (orderUpdates[orderId]) {
+      setExpandedOrderUpdates(expandedOrderUpdates === orderId ? null : orderId);
+      return;
+    }
+    try {
+      const updates = await getOrderUpdates(orderId);
+      setOrderUpdates(prev => ({ ...prev, [orderId]: updates }));
+      setExpandedOrderUpdates(orderId);
+    } catch (_) {
+      setExpandedOrderUpdates(expandedOrderUpdates === orderId ? null : orderId);
+    }
+  };
+
+
 
   const handleNegotiate = async (e) => {
     e.preventDefault();
@@ -162,10 +265,9 @@ export default function History() {
 
   // Services filtering & pagination
   const filteredOrders = orders.filter(o => {
-    const q = search.toLowerCase();
-    const matchesSearch = o.service_name?.toLowerCase().includes(q) || o.description?.toLowerCase().includes(q);
+    const q = serviceSearch.toLowerCase();
+    const matchesSearch = !q || o.service_name?.toLowerCase().includes(q) || o.description?.toLowerCase().includes(q);
     if (!matchesSearch) return false;
-
     if (serviceStatusTab === 'pending') return o.status === 'pending' || o.status === 'quoted';
     if (serviceStatusTab === 'active') return o.status === 'accepted' || o.status === 'in_progress';
     if (serviceStatusTab === 'completed') return o.status === 'completed';
@@ -180,8 +282,9 @@ export default function History() {
   // Invoices filtering
   const filteredInvoices = invoices.filter(i => {
     const q = search.toLowerCase();
-    return i.id?.toLowerCase().includes(q) || i.invoiceNumber?.toLowerCase().includes(q);
+    return !q || i.id?.toLowerCase().includes(q) || i.invoiceNumber?.toLowerCase().includes(q);
   });
+
 
   // Handle Vault Passcode Entry
   const handlePinInput = (index, value) => {
@@ -255,6 +358,24 @@ export default function History() {
             >
               <CardIcon className="w-3.5 h-3.5" />
               Billing & Invoices
+            </button>
+            <button
+              onClick={() => { setPortalTab('referrals'); setSearch(''); }}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+                portalTab === 'referrals' ? 'bg-brand-primary text-white shadow-md' : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              <Gift className="w-3.5 h-3.5" />
+              Referrals & Rewards
+            </button>
+            <button
+              onClick={() => { setPortalTab('subscriptions'); setSearch(''); }}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+                portalTab === 'subscriptions' ? 'bg-brand-primary text-white shadow-md' : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              Subscriptions Hub
             </button>
           </div>
         </div>
@@ -794,6 +915,584 @@ export default function History() {
               </motion.div>
             )}
 
+            {/* ================= TAB 4: REFERRALS & REWARDS ================= */}
+            {portalTab === 'referrals' && (
+              <motion.div
+                key="referrals"
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -15 }}
+                className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start"
+              >
+                {/* Left Side: Stats and Share */}
+                <div className="lg:col-span-4 space-y-6">
+                  {/* Share Card */}
+                  <div className="bg-[#0b0c14] border border-white/10 rounded-[2rem] p-6 shadow-xl relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-brand-primary/5 blur-[50px] -mr-16 -mt-16" />
+                    
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="w-10 h-10 rounded-xl bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center">
+                        <Gift className="w-5 h-5 text-brand-primary" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-sm tracking-tight text-white">Invite Friends</h3>
+                        <p className="text-[10px] text-gray-500">Share your custom code & earn</p>
+                      </div>
+                    </div>
+
+                    <p className="text-xs text-gray-400 leading-relaxed mb-6">
+                      Invite your community members or developers to Starlit Siege Works! They get a welcome join bonus of <span className="text-white font-bold">₹{referralInfo?.settings?.join_bonus || 20}</span>, and you get up to <span className="text-brand-primary font-bold">₹{referralInfo?.settings?.invite_reward || 50}</span> credited instantly upon signup, plus <span className="text-brand-secondary font-bold">{referralInfo?.settings?.cashback_pct || 5}% cashback</span> on their orders!
+                    </p>
+
+                    <div className="space-y-4">
+                      <div>
+                        <span className="text-[9px] text-gray-500 uppercase font-black tracking-widest block mb-1.5">Referral Code</span>
+                        <div className="flex gap-2">
+                          <input 
+                            readOnly 
+                            type="text" 
+                            value={referralInfo?.referral_code || ''} 
+                            className="bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-xs font-mono font-bold text-white tracking-widest select-all outline-none flex-1 text-center"
+                          />
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(referralInfo?.referral_code || '');
+                              toast.success('Referral code copied!');
+                            }}
+                            className="px-4 py-2.5 bg-brand-primary text-white rounded-xl text-xs font-bold hover:bg-brand-primary/90 transition-all shrink-0"
+                          >
+                            Copy
+                          </button>
+                        </div>
+                      </div>
+
+                      <div>
+                        <span className="text-[9px] text-gray-500 uppercase font-black tracking-widest block mb-1.5">Referral Link</span>
+                        <div className="flex gap-2">
+                          <input 
+                            readOnly 
+                            type="text" 
+                            value={referralInfo?.referral_link || ''} 
+                            className="bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-xs font-mono text-gray-400 truncate select-all outline-none flex-1"
+                          />
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(referralInfo?.referral_link || '');
+                              toast.success('Referral link copied!');
+                            }}
+                            className="px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-xs font-bold hover:bg-white/10 transition-all shrink-0"
+                          >
+                            Copy Link
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Summary Stats Grid */}
+                  <div className="bg-[#0b0c14] border border-white/10 rounded-[2rem] p-6 space-y-4 relative overflow-hidden">
+                    <h4 className="text-[10px] text-gray-500 uppercase font-black tracking-widest border-b border-white/5 pb-2">Referral Wallet & Stats</h4>
+                    <div className="grid grid-cols-4 gap-2">
+                      <div className="bg-white/[0.01] p-2.5 rounded-xl border border-white/5 text-center">
+                        <span className="text-lg font-bold font-display text-brand-primary">{referralInfo?.referral_count || 0}</span>
+                        <p className="text-[7px] text-gray-500 uppercase mt-1">Invites</p>
+                      </div>
+                      <div className="bg-white/[0.01] p-2.5 rounded-xl border border-white/5 text-center">
+                        <span className="text-lg font-bold font-display text-emerald-400">₹{referralInfo?.referral_balance || 0}</span>
+                        <p className="text-[7px] text-gray-500 uppercase mt-1">Balance</p>
+                      </div>
+                      <div className="bg-white/[0.01] p-2.5 rounded-xl border border-white/5 text-center">
+                        <span className="text-lg font-bold font-display text-purple-400">{referralInfo?.ripple_points || 0}</span>
+                        <p className="text-[7px] text-gray-500 uppercase mt-1">Ripple Pts</p>
+                      </div>
+                      <div className="bg-white/[0.01] p-2.5 rounded-xl border border-white/5 text-center">
+                        <span className="text-lg font-bold font-display text-brand-secondary">₹{getUserCredits()}</span>
+                        <p className="text-[7px] text-gray-500 uppercase mt-1">Credits</p>
+                      </div>
+                    </div>
+
+                    {/* Cash Payout Card */}
+                    <div className="p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/10 space-y-3">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <p className="text-[10px] font-black uppercase text-emerald-400 tracking-wider">Withdrawable Cash</p>
+                          <p className="text-[8px] text-gray-500 mt-0.5">Referral earnings ledger</p>
+                        </div>
+                        <span className="text-lg font-mono font-black text-white">₹{referralInfo?.referral_balance || 0}</span>
+                      </div>
+                      
+                      <button
+                        onClick={() => setWithdrawModalOpen(true)}
+                        disabled={(referralInfo?.referral_balance || 0) < 1000}
+                        className={`w-full py-2.5 rounded-lg text-xs font-bold transition-all text-center uppercase tracking-wider ${
+                          (referralInfo?.referral_balance || 0) >= 1000
+                            ? 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/10'
+                            : 'bg-white/5 text-gray-500 border border-white/5 cursor-not-allowed'
+                        }`}
+                      >
+                        {(referralInfo?.referral_balance || 0) >= 1000 ? 'Request Cash Payout' : 'Payout (Min ₹1,000)'}
+                      </button>
+                    </div>
+
+                    {/* Ripple Points Converter Card */}
+                    <div className="p-4 rounded-xl bg-purple-500/5 border border-purple-500/10 space-y-3">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <p className="text-[10px] font-black uppercase text-purple-400 tracking-wider">Ripple Points Hub</p>
+                          <p className="text-[8px] text-gray-500 mt-0.5">Earned from referred orders ≥ ₹500</p>
+                        </div>
+                        <div className="flex flex-col items-end">
+                          <span className="text-base font-mono font-black text-white">{referralInfo?.ripple_points || 0} pts</span>
+                          <span className="text-[8px] text-purple-400 font-mono font-bold">₹{((referralInfo?.ripple_points || 0) / 5).toFixed(2)} value</span>
+                        </div>
+                      </div>
+
+                      {/* Convert Points form */}
+                      {(referralInfo?.ripple_points || 0) >= 5 ? (
+                        <div className="flex gap-2 pt-1">
+                          <input 
+                            type="number"
+                            placeholder="Points to convert (Min 5)"
+                            min="5"
+                            max={referralInfo?.ripple_points || 0}
+                            step="5"
+                            value={pointsToConvert}
+                            onChange={(e) => setPointsToConvert(e.target.value)}
+                            className="bg-black/40 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-brand-primary w-full text-center font-mono"
+                          />
+                          <button
+                            onClick={handleConvertPoints}
+                            disabled={convertingPoints}
+                            className="px-4 py-1.5 bg-brand-primary hover:bg-brand-primary/90 text-white rounded-lg text-[10px] font-black transition-all shrink-0 uppercase tracking-widest"
+                          >
+                            {convertingPoints ? 'Converting...' : 'Convert'}
+                          </button>
+                        </div>
+                      ) : (
+                        <p className="text-[8px] text-gray-500 text-center italic">Need at least 5 points to convert to store credits (5 pts = ₹1)</p>
+                      )}
+                    </div>
+
+                    {/* Withdrawal Request Modal */}
+                    <AnimatePresence>
+                      {withdrawModalOpen && (
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm">
+                          <motion.div 
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            className="bg-brand-card border border-brand-border rounded-[2rem] p-8 w-full max-w-md bg-[#0b0c14] relative overflow-hidden"
+                          >
+                            <div className="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-emerald-500 to-teal-400" />
+                            <div className="flex justify-between items-center mb-6">
+                              <h3 className="text-xl font-bold flex items-center gap-2 text-white">
+                                <DollarSign className="w-5 h-5 text-emerald-400" />
+                                Request Payout
+                              </h3>
+                              <button type="button" onClick={() => setWithdrawModalOpen(false)} className="text-gray-500 hover:text-white transition-all">
+                                <X className="w-5 h-5" />
+                              </button>
+                            </div>
+
+                            <form onSubmit={handleRequestWithdrawal} className="space-y-5">
+                              <div>
+                                <label className="block text-[10px] text-gray-500 uppercase font-black tracking-widest mb-1">Available Balance</label>
+                                <p className="text-2xl font-mono font-black text-emerald-400">₹{referralInfo?.referral_balance || 0}</p>
+                              </div>
+
+                              <div className="space-y-2">
+                                <label className="block text-[10px] text-gray-400 uppercase font-black tracking-widest">Withdrawal Amount (₹)</label>
+                                <input 
+                                  type="number" 
+                                  required
+                                  min="1000"
+                                  max={referralInfo?.referral_balance || 0}
+                                  placeholder="e.g. 1000"
+                                  value={withdrawAmount}
+                                  onChange={e => setWithdrawAmount(e.target.value)}
+                                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 transition-all font-mono"
+                                />
+                                <span className="text-[9px] text-gray-500 block">Note: Minimal payout amount is ₹1,000</span>
+                              </div>
+
+                              <div className="space-y-2">
+                                <label className="block text-[10px] text-gray-400 uppercase font-black tracking-widest">Payment Info (UPI ID / Bank Details)</label>
+                                <textarea
+                                  required
+                                  rows="3"
+                                  placeholder="Enter your UPI ID (e.g., yourname@upi) or Bank Name, Account Number & IFSC code"
+                                  value={withdrawPaymentInfo}
+                                  onChange={e => setWithdrawPaymentInfo(e.target.value)}
+                                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 transition-all"
+                                />
+                              </div>
+
+                              <button
+                                type="submit"
+                                disabled={withdrawing}
+                                className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 disabled:bg-white/5 disabled:text-gray-500 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all"
+                              >
+                                {withdrawing ? 'Submitting Request...' : 'Submit Payout Request'}
+                              </button>
+                            </form>
+                          </motion.div>
+                        </div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </div>
+
+                {/* Right Side: Milestone tiers and histories */}
+                <div className="lg:col-span-8 space-y-8">
+                  {/* Promoter Rank Card */}
+                  {referralInfo?.active_rank && (
+                    <div className="p-8 rounded-[2rem] bg-gradient-to-r from-purple-900/20 via-pink-900/10 to-transparent border border-purple-500/20 relative overflow-hidden shadow-2xl">
+                      <div className="absolute top-0 right-0 w-80 h-80 bg-purple-500/10 blur-[100px] -mr-32 -mt-32 animate-pulse" />
+                      
+                      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                        <div>
+                          <div className="flex items-center gap-2 text-purple-400 font-bold uppercase text-[9px] tracking-widest mb-1.5">
+                            <Award className="w-3.5 h-3.5" /> Promoter Achievement Rank
+                          </div>
+                          <h3 className="text-2xl font-display font-black text-white flex items-center gap-2.5">
+                            {referralInfo.active_rank}
+                            <span className="text-xs bg-purple-500/20 text-purple-300 px-3 py-1 rounded-full border border-purple-500/30">
+                              {referralInfo.cashback_pct}% Points Power
+                            </span>
+                          </h3>
+                          <p className="text-xs text-gray-400 mt-2 max-w-xl">
+                            Your active rank scales your Ripple Points payout from referred purchases! Base is 5%. Void Overlords earn 20% cashback points power (a massive 4x points multiplier!).
+                          </p>
+                        </div>
+                      </div>
+
+                      {referralInfo.next_rank && (
+                        <div className="mt-6 pt-6 border-t border-white/5 space-y-3">
+                          <div className="flex justify-between text-xs font-bold">
+                            <span className="text-purple-300">Next Rank: {referralInfo.next_rank}</span>
+                            <span className="text-gray-400">{referralInfo.referral_count} / {referralInfo.next_milestone} Invites</span>
+                          </div>
+                          <div className="relative h-2 bg-white/5 rounded-full overflow-hidden">
+                            <div 
+                              className="absolute left-0 top-0 h-full rounded-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-1000"
+                              style={{ width: `${Math.min(100, (referralInfo.referral_count / referralInfo.next_milestone) * 100)}%` }}
+                            />
+                          </div>
+                          <p className="text-[10px] text-gray-500">
+                            Invite {referralInfo.next_milestone - referralInfo.referral_count} more friend(s) to ascend to the <span className="text-purple-300 font-bold">{referralInfo.next_rank}</span> tier!
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Milestone tier progress card */}
+                  {referralInfo?.tiers && (
+                    <div className="p-8 rounded-[2rem] bg-gradient-to-r from-brand-primary/10 via-brand-secondary/5 to-transparent border border-white/10 relative overflow-hidden">
+                      <div className="absolute top-0 right-0 w-80 h-80 bg-brand-primary/5 blur-[100px] -mr-32 -mt-32" />
+                      
+                      <div className="flex justify-between items-start gap-4 mb-6">
+                        <div>
+                          <div className="flex items-center gap-2 text-brand-primary font-bold uppercase text-[9px] tracking-widest mb-1.5">
+                            <Sparkles className="w-3.5 h-3.5" /> Milestone Incentives
+                          </div>
+                          <h3 className="text-xl font-display font-black text-white">Community Growth Milestones</h3>
+                          <p className="text-xs text-gray-400 mt-1">Unlock high-value flat credit bonuses as your referral counts reach new milestone thresholds!</p>
+                        </div>
+                      </div>
+
+                      {/* Milestone visual progress tracker */}
+                      <div className="space-y-6">
+                        {referralInfo?.next_tier ? (
+                          <div className="space-y-2">
+                            <div className="flex justify-between text-xs font-bold">
+                              <span className="text-gray-400">Next Milestone: {referralInfo.next_tier.count} Invites</span>
+                              <span className="text-brand-primary">+{referralInfo.next_tier.bonus} Credits</span>
+                            </div>
+                            
+                            {/* Visual Progress Bar */}
+                            <div className="relative h-2.5 bg-white/5 rounded-full overflow-hidden">
+                              <div 
+                                className="absolute left-0 top-0 h-full rounded-full bg-brand-primary animate-pulse transition-all duration-1000"
+                                style={{ width: `${Math.min(100, ((referralInfo.referral_count || 0) / referralInfo.next_tier.count) * 100)}%` }}
+                              />
+                            </div>
+                            
+                            <p className="text-[10px] text-gray-500">
+                              You need <span className="text-white font-bold">{referralInfo.next_tier.count - (referralInfo.referral_count || 0)}</span> more successful referral signups to unlock the <span className="text-brand-primary font-bold">₹{referralInfo.next_tier.bonus}</span> bonus.
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-2xl flex items-center gap-3">
+                            <Check className="w-5 h-5 text-green-500 shrink-0" />
+                            <p className="text-xs text-green-400 font-bold">🎉 Outstanding! You have successfully completed all milestones!</p>
+                          </div>
+                        )}
+
+                        {/* List of Tiers */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-white/5">
+                          {referralInfo.tiers.map((tier, idx) => {
+                            const reached = (referralInfo.referral_count || 0) >= tier.count;
+                            return (
+                              <div key={idx} className={`p-4 rounded-xl border transition-all ${reached ? 'bg-brand-primary/5 border-brand-primary/20' : 'bg-white/[0.01] border-white/5'}`}>
+                                <div className="flex justify-between items-center mb-1">
+                                  <span className="text-xs font-bold text-gray-400">{tier.count} Invites</span>
+                                  {reached && <Check className="w-3.5 h-3.5 text-brand-primary" />}
+                                </div>
+                                <span className={`text-base font-black ${reached ? 'text-white' : 'text-gray-600'}`}>₹{tier.bonus} Bonus</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Joined users & transaction cards side-by-side or stacked */}
+                  <div className="grid md:grid-cols-2 gap-8">
+                    {/* Invited Friends Table */}
+                    <div className="bg-[#0b0c14] border border-white/10 rounded-[2rem] p-6 shadow-xl space-y-4">
+                      <h3 className="font-display font-bold text-sm flex items-center gap-2 border-b border-white/5 pb-3">
+                        <Users className="w-4 h-4 text-brand-primary" />
+                        Invited Friends ({referralInfo?.referrals?.length || 0})
+                      </h3>
+
+                      {!referralInfo?.referrals || referralInfo.referrals.length === 0 ? (
+                        <p className="text-xs text-gray-600 py-10 text-center">No friends referred yet. Send your referral link to get started!</p>
+                      ) : (
+                        <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
+                          {referralInfo.referrals.map((ref, idx) => (
+                            <div key={idx} className="p-3 bg-white/[0.01] border border-white/5 rounded-xl flex justify-between items-center">
+                              <div>
+                                <h4 className="font-bold text-xs text-white">{ref.referred_name}</h4>
+                                <p className="text-[8px] text-gray-500 font-mono mt-0.5">Joined {new Date(ref.created_at * 1000).toLocaleDateString()}</p>
+                              </div>
+                              <span className="text-[8px] font-black px-2 py-0.5 rounded-full uppercase bg-green-500/10 text-green-500 border border-green-500/20">
+                                {ref.status}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Reward Transactions Table */}
+                    <div className="bg-[#0b0c14] border border-white/10 rounded-[2rem] p-6 shadow-xl space-y-4">
+                      <h3 className="font-display font-bold text-sm flex items-center gap-2 border-b border-white/5 pb-3">
+                        <DollarSign className="w-4 h-4 text-brand-secondary" />
+                        Earnings History
+                      </h3>
+
+                      {!referralInfo?.transactions || referralInfo.transactions.length === 0 ? (
+                        <p className="text-xs text-gray-600 py-10 text-center">No earnings recorded yet. Payouts will appear here instantly.</p>
+                      ) : (
+                        <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
+                          {referralInfo.transactions.map((tx, idx) => (
+                            <div key={idx} className="p-3 bg-white/[0.01] border border-white/5 rounded-xl flex justify-between items-center">
+                              <div>
+                                <h4 className="font-bold text-xs text-white">{tx.description || 'Referral Bonus'}</h4>
+                                <p className="text-[8px] text-gray-500 font-mono mt-0.5">{new Date(tx.created_at * 1000).toLocaleDateString()}</p>
+                              </div>
+                              <span className="text-xs font-mono font-bold text-brand-secondary">
+                                +₹{tx.amount}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Payout / Withdrawal Requests History Ledger */}
+                  <div className="bg-[#0b0c14] border border-white/10 rounded-[2rem] p-6 shadow-xl space-y-4">
+                    <h3 className="font-display font-bold text-sm flex items-center gap-2 border-b border-white/5 pb-3">
+                      <CreditCard className="w-4 h-4 text-emerald-400" />
+                      Cash Payout Requests Ledger
+                    </h3>
+
+                    {!referralInfo?.withdrawals || referralInfo.withdrawals.length === 0 ? (
+                      <p className="text-xs text-gray-600 py-8 text-center">No cash payout requests submitted yet.</p>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left text-xs text-gray-400">
+                          <thead>
+                            <tr className="border-b border-white/5 text-[10px] text-gray-500 uppercase tracking-widest">
+                              <th className="py-2.5">Date</th>
+                              <th className="py-2.5">Amount</th>
+                              <th className="py-2.5">Payment Details</th>
+                              <th className="py-2.5">Status</th>
+                              <th className="py-2.5">Note</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {referralInfo.withdrawals.map((w, idx) => (
+                              <tr key={idx} className="border-b border-white/[0.02] last:border-0 hover:bg-white/[0.01] transition-colors">
+                                <td className="py-3 font-mono text-[10px]">
+                                  {new Date(w.created_at * 1000).toLocaleString()}
+                                </td>
+                                <td className="py-3 font-bold text-white font-mono">
+                                  ₹{w.amount}
+                                </td>
+                                <td className="py-3 font-sans truncate max-w-[200px]" title={w.payment_info}>
+                                  {w.payment_info}
+                                </td>
+                                <td className="py-3">
+                                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${
+                                    w.status === 'approved' 
+                                      ? 'bg-green-500/10 text-green-500 border border-green-500/20' 
+                                      : w.status === 'rejected' 
+                                        ? 'bg-red-500/10 text-red-500 border border-red-500/20' 
+                                        : 'bg-yellow-500/10 text-yellow-500 border border-yellow-500/20'
+                                  }`}>
+                                    {w.status}
+                                  </span>
+                                </td>
+                                <td className="py-3 text-gray-500 italic truncate max-w-[150px]" title={w.note}>
+                                  {w.note || '—'}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* ================= TAB 5: ACTIVE SUBSCRIPTIONS HUB ================= */}
+            {portalTab === 'subscriptions' && (() => {
+              const activeSubs = orders.filter(o => 
+                (o.status === 'completed' || o.status === 'in_progress') && 
+                (String(o.service_name || '').toLowerCase().includes('bot') && 
+                 (String(o.service_name || '').toLowerCase().includes('monthly') || String(o.service_name || '').toLowerCase().includes('lifetime') || String(o.service_name || '').toLowerCase().includes('complete')))
+              );
+              return (
+                <motion.div
+                  key="subscriptions"
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -15 }}
+                  className="bg-[#0b0c14] border border-white/10 rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden"
+                >
+                  <div className="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-purple-500 via-fuchsia-500 to-pink-500" />
+                  
+                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8">
+                    <div>
+                      <h2 className="font-display text-2xl font-black text-white flex items-center gap-2">
+                        <Sparkles className="w-6 h-6 text-purple-400" />
+                        Private Subscription Management Hub
+                      </h2>
+                      <p className="text-xs text-gray-500 mt-1">Track dedicated instances, service statuses, renewal dates, and lifetime access bot logs.</p>
+                    </div>
+                    <button 
+                      onClick={() => navigate('/shop')} 
+                      className="px-4 py-2 bg-purple-500 text-white rounded-xl text-xs font-bold hover:bg-purple-600 transition-all flex items-center gap-1 shadow-lg shadow-purple-500/10"
+                    >
+                      <PlusCircle className="w-4 h-4" /> Order New Bot
+                    </button>
+                  </div>
+
+                  {activeSubs.length === 0 ? (
+                    <div className="py-20 text-center border border-dashed border-white/5 rounded-[2rem] bg-white/[0.01]">
+                      <Sparkles className="w-10 h-10 text-gray-700 mx-auto mb-3 animate-pulse" />
+                      <p className="text-sm font-semibold text-gray-400">No active bot subscriptions found</p>
+                      <p className="text-xs text-gray-600 mt-1.5 max-w-sm mx-auto">Purchase Private support ticketers or Premium security guard bot licenses inside our catalog to launch your dedicated instances.</p>
+                    </div>
+                  ) : (
+                    <div className="grid md:grid-cols-2 gap-6">
+                      {activeSubs.map(sub => {
+                        const isLifetime = String(sub.service_name || '').toLowerCase().includes('complete') || String(sub.service_name || '').toLowerCase().includes('lifetime');
+                        
+                        // Dynamic timeline countdown calculator
+                        let daysRemaining = 'Lifetime';
+                        let progressPct = 100;
+                        if (!isLifetime) {
+                          const orderTimeMs = sub.created_at ? sub.created_at * 1000 : Date.now();
+                          const elapsedMs = Date.now() - orderTimeMs;
+                          const totalMs = 30 * 24 * 60 * 60 * 1000; // 30 days
+                          const remainingMs = totalMs - elapsedMs;
+                          const remainingDays = Math.ceil(remainingMs / (24 * 60 * 60 * 1000));
+                          daysRemaining = remainingDays > 0 ? `${remainingDays} days remaining` : 'Expired';
+                          progressPct = Math.max(0, Math.min(100, (remainingMs / totalMs) * 100));
+                        }
+
+                        return (
+                          <div 
+                            key={sub.id} 
+                            className="p-6 rounded-[2rem] bg-white/[0.01] border border-white/5 hover:border-purple-500/20 transition-all relative overflow-hidden group"
+                          >
+                            <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/5 blur-[30px] -mr-12 -mt-12 group-hover:bg-purple-500/10 transition-colors" />
+                            
+                            <div className="flex justify-between items-start gap-4 mb-4">
+                              <div>
+                                <span className={`text-[8px] font-black px-2 py-0.5 rounded-full uppercase border ${
+                                  isLifetime 
+                                    ? 'bg-fuchsia-500/10 text-fuchsia-400 border-fuchsia-500/20' 
+                                    : 'bg-purple-500/10 text-purple-400 border-purple-500/20'
+                                }`}>
+                                  {isLifetime ? 'Complete Access' : 'Monthly Subscription'}
+                                </span>
+                                <h3 className="font-bold text-white text-base mt-2 leading-tight">{getFriendlyServiceName(sub.service_name)}</h3>
+                                <p className="text-[9px] text-gray-500 font-mono mt-0.5">Instance ID: #BOT-{sub.id}</p>
+                              </div>
+                              <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-lg border border-emerald-500/20">
+                                Dedicated Active
+                              </span>
+                            </div>
+
+                            {/* Timeline Visualizer */}
+                            <div className="space-y-2 mt-6">
+                              <div className="flex justify-between text-xs font-bold">
+                                <span className="text-gray-400">Subscription Timeline</span>
+                                <span className={isLifetime ? 'text-fuchsia-400' : 'text-purple-400 font-mono'}>{daysRemaining}</span>
+                              </div>
+                              <div className="h-2.5 bg-white/5 rounded-full overflow-hidden relative">
+                                <div 
+                                  className={`absolute left-0 top-0 h-full rounded-full transition-all duration-1000 ${
+                                    isLifetime 
+                                      ? 'bg-gradient-to-r from-fuchsia-500 to-purple-500' 
+                                      : progressPct < 15 
+                                        ? 'bg-red-500' 
+                                        : 'bg-purple-500'
+                                  }`}
+                                  style={{ width: `${progressPct}%` }}
+                                />
+                              </div>
+                              <div className="flex justify-between text-[8px] text-gray-600 font-mono">
+                                <span>Deployed: {new Date(sub.created_at * 1000).toLocaleDateString()}</span>
+                                <span>{!isLifetime && `Renew by: ${new Date((sub.created_at * 1000) + (30 * 24 * 60 * 60 * 1000)).toLocaleDateString()}`}</span>
+                              </div>
+                            </div>
+
+                            {!isLifetime && (
+                              <div className="mt-6 pt-5 border-t border-white/5 flex gap-3">
+                                <button
+                                  onClick={() => navigate('/shop')}
+                                  className="w-full py-2 bg-white/5 hover:bg-white/10 text-white rounded-xl text-xs font-bold transition-all border border-white/5 uppercase tracking-wider"
+                                >
+                                  Renew Instance
+                                </button>
+                                <a 
+                                  href="https://discord.gg/starlit" 
+                                  target="_blank" 
+                                  rel="noreferrer"
+                                  className="w-full py-2 bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 rounded-xl text-xs font-bold transition-all text-center uppercase tracking-wider border border-purple-500/20"
+                                >
+                                  Configure Keys
+                                </a>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </motion.div>
+              );
+            })()}
+
           </AnimatePresence>
         )}
       </main>
@@ -808,7 +1507,7 @@ export default function History() {
               exit={{ x: 400, opacity: 0 }}
               className="w-full max-w-md h-[80vh] pointer-events-auto"
             >
-              <OrderChat orderId={chatOrder.id} onClose={() => setChatOrder(null)} />
+              <UserChat userId={user.id} onClose={() => setChatOrder(null)} />
             </motion.div>
           </div>
         )}

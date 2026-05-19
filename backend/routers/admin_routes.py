@@ -3,9 +3,27 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import Optional
 from auth import get_current_user, require_admin, require_manager, log_activity, create_notification
-from database import get_db
+from database import get_db, DB_ORDERS
+import sqlite3
 
 router = APIRouter()
+
+# ── Ensure order_updates table exists ─────────────────────────────────────────
+def _ensure_order_updates():
+    conn = sqlite3.connect(DB_ORDERS)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS order_updates (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            order_id   INTEGER NOT NULL,
+            message    TEXT    NOT NULL,
+            posted_by  TEXT    DEFAULT 'Manager',
+            created_at INTEGER DEFAULT (strftime('%s','now'))
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+_ensure_order_updates()
 
 class RoleBody(BaseModel):
     role: str
@@ -97,8 +115,137 @@ def update_feedback(fid: int, body: FeedbackStatusBody, user=Depends(require_adm
     db.commit(); db.close()
     return {"success": True}
 
+# ── Order Progress Feed ────────────────────────────────────────────────────────
+class OrderUpdateBody(BaseModel):
+    message: str
+
+@router.get("/admin/orders/{oid}/updates")
+def get_order_updates(oid: int, user=Depends(require_manager)):
+    db = sqlite3.connect(DB_ORDERS)
+    db.row_factory = sqlite3.Row
+    rows = db.execute("SELECT * FROM order_updates WHERE order_id = ? ORDER BY created_at ASC", (oid,)).fetchall()
+    db.close()
+    return [dict(r) for r in rows]
+
+@router.post("/admin/orders/{oid}/update", status_code=201)
+def post_order_update(oid: int, body: OrderUpdateBody, user=Depends(require_manager)):
+    db_o = sqlite3.connect(DB_ORDERS)
+    db_o.execute(
+        "INSERT INTO order_updates (order_id, message, posted_by) VALUES (?, ?, ?)",
+        (oid, body.message, user.get("name", "Manager"))
+    )
+    db_o.commit()
+    db_o.close()
+    # Notify client
+    main_db = get_db()
+    order = main_db.execute("SELECT user_id, service_name FROM orders WHERE id = ?", (oid,)).fetchone()
+    main_db.close()
+    if order:
+        create_notification(
+            order["user_id"],
+            "Project Update",
+            f"New progress update on your order: {body.message[:80]}",
+            "info"
+        )
+    log_activity(user["id"], "ORDER_UPDATE", f"Posted update on order {oid}: {body.message[:50]}")
+    return {"success": True}
+
+@router.get("/orders/{oid}/updates")
+def get_order_updates_client(oid: int, user=Depends(get_current_user)):
+    db = sqlite3.connect(DB_ORDERS)
+    db.row_factory = sqlite3.Row
+    rows = db.execute("SELECT * FROM order_updates WHERE order_id = ? ORDER BY created_at ASC", (oid,)).fetchall()
+    db.close()
+    return [dict(r) for r in rows]
+
+# ── Referral System ────────────────────────────────────────────────────────────
+@router.get("/auth/referral")
+def get_referral_info(user=Depends(get_current_user)):
+    db = get_db()
+    row = db.execute("SELECT details FROM users WHERE id = ?", (user["id"],)).fetchone()
+    setting = db.execute("SELECT value FROM site_settings WHERE key = 'referral_credit_amount'").fetchone()
+    db.close()
+    try:
+        details = json.loads(row["details"] or "{}")
+    except:
+        details = {}
+    referral_code = details.get("referral_code", "")
+    if not referral_code:
+        # Generate and save referral code
+        referral_code = "REF" + secrets.token_hex(4).upper()
+        details["referral_code"] = referral_code
+        db2 = get_db()
+        db2.execute("UPDATE users SET details = ? WHERE id = ?", (json.dumps(details), user["id"]))
+        db2.commit(); db2.close()
+    reward = float(setting["value"]) if setting else 50.0
+    return {
+        "referral_code": referral_code,
+        "referral_link": f"https://starlitsiege.works/signup?ref={referral_code}",
+        "reward_amount": reward,
+        "referral_count": details.get("referral_count", 0)
+    }
+
+# ── Revenue Stats (Manager Panel Widget) ────────────────────────────────────
+@router.get("/manager/revenue")
+def manager_revenue(user=Depends(require_manager)):
+    db = get_db()
+    now = int(time.time())
+    week_ago = now - 7 * 86400
+    month_ago = now - 30 * 86400
+    week_rev = db.execute(
+        "SELECT COALESCE(SUM(total_amount),0) as total FROM orders WHERE payment_status='verified' AND created_at >= ?", (week_ago,)
+    ).fetchone()["total"]
+    month_rev = db.execute(
+        "SELECT COALESCE(SUM(total_amount),0) as total FROM orders WHERE payment_status='verified' AND created_at >= ?", (month_ago,)
+    ).fetchone()["total"]
+    pending = db.execute(
+        "SELECT COALESCE(SUM(quoted_price),0) as total FROM orders WHERE payment_status='pending' AND status NOT IN ('rejected','completed')"
+    ).fetchone()["total"]
+    total_orders = db.execute("SELECT COUNT(*) as c FROM orders").fetchone()["c"]
+    completed = db.execute("SELECT COUNT(*) as c FROM orders WHERE status='completed'").fetchone()["c"]
+    db.close()
+    return {
+        "week_revenue": week_rev,
+        "month_revenue": month_rev,
+        "pending_revenue": pending,
+        "total_orders": total_orders,
+        "completed_orders": completed
+    }
+
+# ── Bulk Order Status Update ───────────────────────────────────────────────────
+class BulkStatusBody(BaseModel):
+    order_ids: list
+    status: str
+
+@router.put("/admin/orders/bulk-status")
+def bulk_update_status(body: BulkStatusBody, user=Depends(require_manager)):
+    valid_statuses = ["pending", "quoted", "accepted", "in_progress", "completed", "rejected"]
+    if body.status not in valid_statuses:
+        raise HTTPException(400, "Invalid status")
+    db = get_db()
+    updated_user_ids = []
+    for oid in body.order_ids:
+        order = db.execute("SELECT user_id FROM orders WHERE id = ?", (oid,)).fetchone()
+        if order:
+            updated_user_ids.append((oid, order["user_id"]))
+    for oid, uid in updated_user_ids:
+        db.execute("UPDATE orders SET status = ?, updated_at = ? WHERE id = ?", (body.status, int(time.time()), oid))
+        status_labels = {
+            "quoted": ("Quote Ready", "Your quote has been prepared. Please review it in your portal.", "success"),
+            "in_progress": ("Work Started", "Our team has started working on your project.", "info"),
+            "completed": ("Order Completed", "Your project has been completed! Check your vault for delivery.", "success"),
+            "rejected": ("Order Rejected", "Your order has been rejected. Contact support for details.", "error"),
+        }
+        if body.status in status_labels:
+            title, msg, ntype = status_labels[body.status]
+            create_notification(uid, title, msg, ntype)
+    db.commit(); db.close()
+    log_activity(user["id"], "BULK_STATUS_UPDATE", f"Updated {len(body.order_ids)} orders to '{body.status}'")
+    return {"success": True, "updated": len(body.order_ids)}
+
 class CreditBody(BaseModel):
     amount: float
+
 
 @router.post("/admin/users/{uid}/credits")
 def add_user_credits(uid: int, body: CreditBody, user=Depends(require_manager)):
@@ -237,7 +384,26 @@ def seed_catalog(user=Depends(require_manager)):
         
         {"category": "booster", "product_key": "boost_login_1", "name": "14x Server Boosts (1 Month) via Login", "price": 100, "min_price": 100, "tag": "$1.19 | ₹100", "description": "14 Server Boosts for 1 month applied directly via login. [Admin hint: Recommended $1.19 or ₹100]", "features": ["Revoke warranty", "Requires login", "Fast processing"], "is_manual_price": 1, "show_price_to_admin": 1},
         {"category": "booster", "product_key": "boost_vcc_1", "name": "14x Server Boosts (1 Month) via VCC", "price": 130, "min_price": 130, "tag": "$1.55 | ₹130", "description": "14 Server Boosts for 1 month applied safely using a virtual card. [Admin hint: Recommended $1.55 or ₹130]", "features": ["No login required", "Revoke warranty", "Secure payment method"], "is_manual_price": 1, "show_price_to_admin": 1},
-        {"category": "booster", "product_key": "boost_vcc_3", "name": "14x Server Boosts (3 Months) via VCC", "price": 320, "min_price": 320, "tag": "$3.81 | ₹320", "description": "14 Server Boosts for 3 months applied safely using a virtual card. [Admin hint: Recommended $3.81 or ₹320]", "features": ["No login required", "Long term boosts", "Revoke warranty"], "is_manual_price": 1, "show_price_to_admin": 1}
+        {"category": "booster", "product_key": "boost_vcc_3", "name": "14x Server Boosts (3 Months) via VCC", "price": 320, "min_price": 320, "tag": "$3.81 | ₹320", "description": "14 Server Boosts for 3 months applied safely using a virtual card. [Admin hint: Recommended $3.81 or ₹320]", "features": ["No login required", "Long term boosts", "Revoke warranty"], "is_manual_price": 1, "show_price_to_admin": 1},
+        
+        {"category": "promo", "product_key": "promo_std_5_35", "name": "5 Members Standard (35 Servers)", "price": 250, "min_price": 250, "tag": "4-6 Days | ₹250", "description": "Standard Discord server promotion across 35 servers with 5 members.", "features": ["Delivery: 4 – 6 Days", "₹7.14 / server equivalent", "Server Icon & Logo required", "Description & Text required"], "is_manual_price": 0, "show_price_to_admin": 1},
+        {"category": "promo", "product_key": "promo_std_5_70", "name": "5 Members Standard (70 Servers)", "price": 450, "min_price": 450, "tag": "4-6 Days | ₹450", "description": "Standard Discord server promotion across 70 servers with 5 members.", "features": ["Delivery: 4 – 6 Days", "₹6.42 / server equivalent", "Server Icon & Logo required", "Description & Text required"], "is_manual_price": 0, "show_price_to_admin": 1},
+        {"category": "promo", "product_key": "promo_std_5_100", "name": "5 Members Standard (100 Servers)", "price": 700, "min_price": 700, "tag": "4-6 Days | ₹700", "description": "Standard Discord server promotion across 100 servers with 5 members.", "features": ["Delivery: 4 – 6 Days", "₹7.0 / server equivalent", "Server Icon & Logo required", "Description & Text required"], "is_manual_price": 0, "show_price_to_admin": 1},
+        {"category": "promo", "product_key": "promo_std_10_35", "name": "10 Members Standard (35 Servers)", "price": 350, "min_price": 350, "tag": "4-6 Days | ₹350", "description": "Standard Discord server promotion across 35 servers with 10 members.", "features": ["Delivery: 4 – 6 Days", "₹10.0 / server equivalent", "Server Icon & Logo required", "Description & Text required"], "is_manual_price": 0, "show_price_to_admin": 1},
+        {"category": "promo", "product_key": "promo_std_10_70", "name": "10 Members Standard (70 Servers)", "price": 550, "min_price": 550, "tag": "4-6 Days | ₹550", "description": "Standard Discord server promotion across 70 servers with 10 members.", "features": ["Delivery: 4 – 6 Days", "₹7.85 / server equivalent", "Server Icon & Logo required", "Description & Text required"], "is_manual_price": 0, "show_price_to_admin": 1},
+        {"category": "promo", "product_key": "promo_std_10_100", "name": "10 Members Standard (100 Servers)", "price": 800, "min_price": 800, "tag": "4-6 Days | ₹800", "description": "Standard Discord server promotion across 100 servers with 10 members.", "features": ["Delivery: 4 – 6 Days", "₹8.0 / server equivalent", "Server Icon & Logo required", "Description & Text required"], "is_manual_price": 0, "show_price_to_admin": 1},
+        
+        {"category": "promo", "product_key": "promo_exp_5_35", "name": "5 Members Express (35 Servers)", "price": 350, "min_price": 350, "tag": "1-2 Days | ₹350", "description": "Express priority Discord server promotion across 35 servers with 5 members.", "features": ["Delivery: 1 – 2 Days", "₹10.0 / server equivalent", "Server Icon & Logo required", "Description & Text required"], "is_manual_price": 0, "show_price_to_admin": 1},
+        {"category": "promo", "product_key": "promo_exp_5_70", "name": "5 Members Express (70 Servers)", "price": 700, "min_price": 700, "tag": "1-2 Days | ₹700", "description": "Express priority Discord server promotion across 70 servers with 5 members.", "features": ["Delivery: 1 – 2 Days", "₹10.0 / server equivalent", "Server Icon & Logo required", "Description & Text required"], "is_manual_price": 0, "show_price_to_admin": 1},
+        {"category": "promo", "product_key": "promo_exp_5_100", "name": "5 Members Express (100 Servers)", "price": 1150, "min_price": 1150, "tag": "1-2 Days | ₹1150", "description": "Express priority Discord server promotion across 100 servers with 5 members.", "features": ["Delivery: 1 – 2 Days", "₹11.5 / server equivalent", "Server Icon & Logo required", "Description & Text required"], "is_manual_price": 0, "show_price_to_admin": 1},
+        {"category": "promo", "product_key": "promo_exp_10_35", "name": "10 Members Express (35 Servers)", "price": 450, "min_price": 450, "tag": "1-2 Days | ₹450", "description": "Express priority Discord server promotion across 35 servers with 10 members.", "features": ["Delivery: 1 – 2 Days", "₹12.85 / server equivalent", "Server Icon & Logo required", "Description & Text required"], "is_manual_price": 0, "show_price_to_admin": 1},
+        {"category": "promo", "product_key": "promo_exp_10_70", "name": "10 Members Express (70 Servers)", "price": 800, "min_price": 800, "tag": "1-2 Days | ₹800", "description": "Express priority Discord server promotion across 70 servers with 10 members.", "features": ["Delivery: 1 – 2 Days", "₹11.42 / server equivalent", "Server Icon & Logo required", "Description & Text required"], "is_manual_price": 0, "show_price_to_admin": 1},
+        {"category": "promo", "product_key": "promo_exp_10_100", "name": "10 Members Express (100 Servers)", "price": 1200, "min_price": 1200, "tag": "1-2 Days | ₹1200", "description": "Express priority Discord server promotion across 100 servers with 10 members.", "features": ["Delivery: 1 – 2 Days", "₹12.0 / server equivalent", "Server Icon & Logo required", "Description & Text required"], "is_manual_price": 0, "show_price_to_admin": 1},
+        
+        {"category": "subscriptions", "product_key": "sub_support_monthly", "name": "Private Support Bot (Monthly Access)", "price": 999, "min_price": 999, "tag": "Monthly | ₹999", "description": "High-speed private support ticket and utility bot hosted on our ultra-low latency server. Renewable monthly access.", "features": ["Full custom ticketer system", "Sensible customer server design", "Active anti-abuse algorithms", "24/7 dedicated hosting uptime"], "is_manual_price": 0, "show_price_to_admin": 1},
+        {"category": "subscriptions", "product_key": "sub_support_lifetime", "name": "Private Support Bot (Complete Access)", "price": 9999, "min_price": 9999, "tag": "Lifetime | ₹9999", "description": "Lifetime complete access and ownership of your premium private support bot. Full server design and zero hosting fees.", "features": ["Lifetime support bot license", "Includes complete server design", "Priority custom bot feature updates", "No renewal fees forever"], "is_manual_price": 0, "show_price_to_admin": 1},
+        {"category": "subscriptions", "product_key": "sub_guard_monthly", "name": "Premium Guard Bot (Monthly Access)", "price": 1499, "min_price": 1499, "tag": "Monthly | ₹1499", "description": "High security anti-nuke defense bot hosted monthly on your server. Protects your community from rogue actions.", "features": ["Full anti-nuke defense shield", "24/7 priority hosting protection", "Automated threat response triggers", "Custom security rules configurator"], "is_manual_price": 0, "show_price_to_admin": 1},
+        {"category": "subscriptions", "product_key": "sub_guard_lifetime", "name": "Premium Guard Bot (Complete Access)", "price": 14999, "min_price": 14999, "tag": "Lifetime | ₹14999", "description": "Complete lifetime security anti-nuke defense shield bot. High impact protection with zero ongoing subscription costs.", "features": ["Lifetime high security bot license", "Anti-nuke dedicated defense", "Priority security patch releases", "Ultimate shield protection levels"], "is_manual_price": 0, "show_price_to_admin": 1}
     ]
     
     for p in products:
@@ -364,4 +530,4 @@ def public_stats():
     feedbacks = db.execute("SELECT COUNT(*) as c FROM feedbacks WHERE status = 'approved'").fetchone()["c"]
     orders = db.execute("SELECT COUNT(*) as c FROM orders WHERE status = 'completed'").fetchone()["c"]
     db.close()
-    return {"total_clients": 20 + feedbacks, "rating": 4.9, "completed_projects": 50 + orders}
+    return {"total_clients": 40 + feedbacks, "rating": 4.9, "completed_projects": 50 + orders}

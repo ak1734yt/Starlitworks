@@ -2,10 +2,18 @@ import os, json, time, base64, secrets, datetime
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from typing import Optional
-from auth import get_current_user, require_admin, send_discord_webhook, log_activity, create_notification, calculate_risk_score
+from auth import get_current_user, require_admin, send_discord_webhook, send_modular_webhook, log_activity, create_notification, calculate_risk_score
 from database import get_db
 
 router = APIRouter()
+
+# Import referral processing (lazy to avoid circular imports)
+def _trigger_referral_completion(order_id, user_id, order_amount):
+    try:
+        from routers.referral_routes import process_referral_on_order_complete
+        process_referral_on_order_complete(order_id, user_id, order_amount)
+    except Exception as e:
+        print(f"Referral processing error: {e}")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
 UPLOADS_DIR = os.path.join(DATA_DIR, "uploads")
@@ -130,7 +138,7 @@ async def create_order(body: OrderBody, user=Depends(get_current_user)):
     db.commit()
     order_id = result.lastrowid
     db.close()
-    await send_discord_webhook(os.getenv("DISCORD_WEBHOOK_ORDERS"), {"embeds": [{"title": f"New Service Request: #{order_id}", "description": f"**Client:** {user['name']}\n**Service:** {body.service_name}\n**Timeline:** {body.timeline or 'Flexible'}", "color": 3447003, "timestamp": __import__("datetime").datetime.utcnow().isoformat()}]})
+    await send_modular_webhook("ORDERS", {"embeds": [{"title": f"New Service Request: #{order_id}", "description": f"**Client:** {user['name']}\n**Service:** {body.service_name}\n**Timeline:** {body.timeline or 'Flexible'}", "color": 3447003, "timestamp": __import__("datetime").datetime.utcnow().isoformat()}]})
     return {"success": True, "order_id": order_id}
 
 @router.get("/orders/mine")
@@ -260,7 +268,7 @@ async def submit_payment_proof(order_id: str, body: PaymentProofBody, user=Depen
             db.commit()
             
         db.close()
-        await send_discord_webhook(os.getenv("DISCORD_WEBHOOK_PAYMENT"), {"embeds": [{"title": f"Payment Proof Submitted: Order #{numeric_order_id}", "description": f"**Method:** {body.payment_method}\n**Credits Applied:** ₹{applied}\n**TxID:** {body.transaction_id or 'N/A'}", "color": 65280}]})
+        await send_modular_webhook("PAYMENTS", {"embeds": [{"title": f"Payment Proof Submitted: Order #{numeric_order_id}", "description": f"**Method:** {body.payment_method}\n**Credits Applied:** ₹{applied}\n**TxID:** {body.transaction_id or 'N/A'}", "color": 65280}]})
         return {"success": True}
     else:
         p = os.path.join(INVOICES_DIR, f"{order_id}.json")
@@ -307,7 +315,7 @@ async def submit_payment_proof(order_id: str, body: PaymentProofBody, user=Depen
             print("Error re-formatting txt invoice:", e)
             
         db.close()
-        await send_discord_webhook(os.getenv("DISCORD_WEBHOOK_PAYMENT"), {"embeds": [{"title": f"Payment Proof Submitted: Invoice {order_id}", "description": f"**Method:** {body.payment_method}\n**Credits Applied:** ₹{applied}\n**TxID:** {body.transaction_id or 'N/A'}", "color": 65280}]})
+        await send_modular_webhook("PAYMENTS", {"embeds": [{"title": f"Payment Proof Submitted: Invoice {order_id}", "description": f"**Method:** {body.payment_method}\n**Credits Applied:** ₹{applied}\n**TxID:** {body.transaction_id or 'N/A'}", "color": 65280}]})
         return {"success": True}
 
 # ── Admin Order Routes ────────────────────────────────────────────────────────
@@ -347,7 +355,17 @@ async def admin_update_order(order_id: int, body: AdminOrderUpdate, user=Depends
     db_chat = get_db()
     if body.status == "accepted" and row["status"] != "accepted":
         auto_generate_invoice(order_id)
-        
+
+    # ── Referral: trigger cashback on completion ──────────────────────────────
+    if body.status == "completed" and row["status"] != "completed":
+        order_amount = float(row["total_amount"] or row["quoted_price"] or 0)
+        import threading
+        threading.Thread(
+            target=_trigger_referral_completion,
+            args=(order_id, row["user_id"], order_amount),
+            daemon=True
+        ).start()
+
     if body.status != row["status"]:
         auto_responses = {
             "quoted":          "📋 Your service request has been reviewed and a quote has been prepared. Please check the quoted price and click 'Proceed to Payment' when ready.",
@@ -366,7 +384,7 @@ async def admin_update_order(order_id: int, body: AdminOrderUpdate, user=Depends
     db_chat.close()
 
     log_activity(user["id"], "UPDATE_ORDER", f"Order {order_id} -> {body.status}")
-    await send_discord_webhook(os.getenv("DISCORD_WEBHOOK_ORDERS"), {"embeds": [{"title": f"Order Updated #{order_id}", "description": f"Status: **{body.status}**", "color": 16776960}]})
+    await send_modular_webhook("ORDERS", {"embeds": [{"title": f"Order Updated #{order_id}", "description": f"Status: **{body.status}**", "color": 16776960}]})
     return {"success": True}
 
 @router.post("/admin/orders/{order_id}/negotiation")

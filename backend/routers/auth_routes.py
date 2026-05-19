@@ -4,7 +4,7 @@ from pydantic import BaseModel, EmailStr
 from auth import (hash_password, verify_password, make_token, safe_user,
                   get_current_user, require_admin, require_manager,
                   generate_2fa_secret, verify_totp, log_activity,
-                  send_discord_webhook)
+                  send_discord_webhook, send_modular_webhook)
 from database import get_db
 from mailer import send_welcome_email, send_password_reset_email
 
@@ -20,6 +20,7 @@ class SignupBody(BaseModel):
     name: str
     email: EmailStr
     password: str
+    referral_code: str = ""
 
 class LoginBody(BaseModel):
     email: EmailStr
@@ -69,6 +70,35 @@ def signup(body: SignupBody):
     # Send welcome email in background (non-blocking)
     import threading
     threading.Thread(target=send_welcome_email, args=(body.name, body.email), daemon=True).start()
+    # Process referral if code provided
+    if body.referral_code and body.referral_code.strip():
+        def _do_referral(uid, code):
+            try:
+                from routers.referral_routes import process_referral_on_signup
+                process_referral_on_signup(uid, code.strip().upper())
+            except Exception as e:
+                print(f"Referral signup error: {e}")
+        threading.Thread(target=_do_referral, args=(user["id"], body.referral_code), daemon=True).start()
+
+    # Modular Webhook Notification
+    def _do_signup_webhook():
+        try:
+            import asyncio
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(send_modular_webhook("LOGINS", {
+                "embeds": [{
+                    "title": "🆕 New User Signup!",
+                    "description": f"**Name:** {body.name}\n**Email:** {body.email}\n**Referral Code:** {body.referral_code or 'None'}",
+                    "color": 65280,
+                    "timestamp": __import__("datetime").datetime.utcnow().isoformat()
+                }]
+            }))
+            loop.close()
+        except Exception as e:
+            print(f"Signup webhook error: {e}")
+    threading.Thread(target=_do_signup_webhook, daemon=True).start()
+
     return {"token": make_token(user), "user": safe_user(user)}
 
 @router.post("/auth/login")
@@ -98,6 +128,27 @@ def login(body: LoginBody, request: Request):
     if user.get("is_banned"): raise HTTPException(403, "Your account has been banned.")
     if user.get("two_factor_enabled"):
         return {"two_factor_required": True, "userId": user["id"]}
+
+    # Modular Webhook Notification
+    def _do_login_webhook():
+        try:
+            import asyncio
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(send_modular_webhook("LOGINS", {
+                "embeds": [{
+                    "title": "🔐 Account Login Event",
+                    "description": f"**User:** {user['name']}\n**Email:** {user['email']}\n**IP:** {client_ip}",
+                    "color": 3447003,
+                    "timestamp": __import__("datetime").datetime.utcnow().isoformat()
+                }]
+            }))
+            loop.close()
+        except Exception as e:
+            print(f"Login webhook error: {e}")
+    import threading
+    threading.Thread(target=_do_login_webhook, daemon=True).start()
+
     return {"token": make_token(user), "user": safe_user(user)}
 
 @router.post("/auth/login/2fa")

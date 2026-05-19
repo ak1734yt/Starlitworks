@@ -108,6 +108,32 @@ async def send_discord_webhook(url: Optional[str], payload: dict):
     except Exception as e:
         print(f"Webhook failed: {e}")
 
+async def send_modular_webhook(alert_type: str, payload: dict):
+    config_path = os.path.join(os.path.dirname(__file__), "data", "webhooks_config.json")
+    custom_url = None
+    if os.path.exists(config_path):
+        try:
+            with open(config_path, "r", encoding="utf-8") as f:
+                config = json.load(f)
+                custom_url = config.get(alert_type.upper())
+        except Exception:
+            pass
+
+    if not custom_url:
+        env_map = {
+            "ORDERS": os.getenv("DISCORD_WEBHOOK_ORDERS"),
+            "CHAT": os.getenv("DISCORD_WEBHOOK_CHAT"),
+            "PAYMENTS": os.getenv("DISCORD_WEBHOOK_PAYMENT"),
+            "LOGS": os.getenv("DISCORD_WEBHOOK_LOGS"),
+            "REFERRALS": os.getenv("DISCORD_WEBHOOK_LOGS"),
+            "LOGINS": os.getenv("DISCORD_WEBHOOK_LOGS"),
+            "TELEMETRY": os.getenv("DISCORD_WEBHOOK_LOGS")
+        }
+        custom_url = env_map.get(alert_type.upper())
+
+    if custom_url:
+        await send_discord_webhook(custom_url, payload)
+
 # ── Activity Logging ──────────────────────────────────────────────────────────
 def log_activity(user_id: int, action: str, details: str = ""):
     try:
@@ -118,6 +144,31 @@ def log_activity(user_id: int, action: str, details: str = ""):
         db.execute("INSERT INTO activity_logs (user_id, action, details) VALUES (?, ?, ?)", (user_id, action, log_str))
         db.commit()
         db.close()
+        
+        # Structured Logging to files
+        log_dir = os.path.join(os.path.dirname(__file__), "data")
+        os.makedirs(log_dir, exist_ok=True)
+        
+        # Append to NDJSON log file
+        json_log_path = os.path.join(log_dir, "activity_logs.json")
+        json_entry = {
+            "timestamp": int(time.time()),
+            "datetime": datetime.utcnow().isoformat() + "Z",
+            "user_id": user_id,
+            "user_name": admin_name,
+            "action": action,
+            "details": details,
+            "message": log_str
+        }
+        with open(json_log_path, "a", encoding="utf-8") as f:
+            f.write(json.dumps(json_entry, ensure_ascii=False) + "\n")
+            
+        # Append to plaintext log file
+        txt_log_path = os.path.join(log_dir, "activity_logs.txt")
+        time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        txt_entry = f"[{time_str}] Action: {action} | User: {admin_name} (ID: {user_id}) | Details: {details}\n"
+        with open(txt_log_path, "a", encoding="utf-8") as f:
+            f.write(txt_entry)
         
         color_map = {
             "BAN_USER": 16711680, "UNBAN_USER": 65280, "CREATE_PRODUCT": 3447003,

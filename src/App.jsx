@@ -25,6 +25,9 @@ import Profile        from "./pages/Profile";
 import ToS            from "./pages/ToS";
 import InvoiceDetail  from "./pages/InvoiceDetail";
 import OAuthCallback  from "./pages/OAuthCallback";
+import Status        from "./pages/Status";
+import PortfolioPage from "./pages/PortfolioPage";
+import Help          from "./pages/Help";
 
 // Silent analytics tracker for returning users
 function PulseTracker() {
@@ -106,6 +109,9 @@ function AppInner() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/oauth-callback"  element={<OAuthCallback />} />
         <Route path="/tos"            element={<ToS />} />
+        <Route path="/status"         element={<Status />} />
+        <Route path="/portfolio"      element={<PortfolioPage />} />
+        <Route path="/help"           element={<Help />} />
 
         {/* Protected — client */}
         <Route path="/shop"           element={<ProtectedRoute><Shop /></ProtectedRoute>} />
