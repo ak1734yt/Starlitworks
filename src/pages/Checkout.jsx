@@ -8,7 +8,7 @@ import {
   Sparkles, X, IndianRupee
 } from 'lucide-react';
 import Navbar from '../components/Navbar';
-import { validateCoupon, getPublicPrices, getOrder, submitPaymentProof, createOrder, generateQR, getUserInvoicesByAdmin, getReferralInfo, linkReferralCode } from '../services/api';
+import { validateCoupon, getPublicPrices, getOrder, submitPaymentProof, createOrder, generateQR, getUserInvoicesByAdmin, getReferralInfo, linkReferralCode, lookupReferralCode } from '../services/api';
 import { toast } from 'react-hot-toast';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
@@ -36,7 +36,8 @@ export default function Checkout() {
   const [referralInfo, setReferralInfo] = useState(null);
   const [refCodeInput, setRefCodeInput] = useState('');
   const [linkingRef, setLinkingRef] = useState(false);
-
+  const [referrerName, setReferrerName] = useState('');
+  
   // Form for manual payment
   const [proof, setProof] = useState({ transaction_id: '', screenshot: null, base64: '' });
 
@@ -46,6 +47,26 @@ export default function Checkout() {
       setReferralInfo(refData);
     } catch (e) {}
   };
+
+  useEffect(() => {
+    if (!refCodeInput || refCodeInput.length < 5) {
+      setReferrerName('');
+      return;
+    }
+    const delayDebounce = setTimeout(async () => {
+      try {
+        const res = await lookupReferralCode(refCodeInput);
+        if (res.success) {
+          setReferrerName(res.name);
+        } else {
+          setReferrerName('');
+        }
+      } catch (err) {
+        setReferrerName('');
+      }
+    }, 400); // 400ms debounce
+    return () => clearTimeout(delayDebounce);
+  }, [refCodeInput]);
 
   useEffect(() => {
     load();
@@ -734,7 +755,7 @@ export default function Checkout() {
               )}
 
               {/* Referral Code Section */}
-              {referralInfo && !referralInfo.referred_by && (
+              {referralInfo && (
                 <div className="space-y-4 mb-10 relative">
                   <div className="flex items-center gap-2 mb-2">
                     <Tag className="w-3 h-3 text-brand-secondary" />
@@ -744,9 +765,10 @@ export default function Checkout() {
                     <input 
                       type="text" 
                       placeholder="ENTER REFERRAL CODE" 
-                      value={refCodeInput}
+                      value={referralInfo.referred_by || refCodeInput}
+                      disabled={!!referralInfo.referred_by}
                       onChange={(e) => setRefCodeInput(e.target.value.toUpperCase())}
-                      className="flex-1 bg-white/[0.03] border border-white/10 rounded-2xl px-5 py-3.5 text-sm focus:border-brand-secondary outline-none transition-all font-mono placeholder:text-gray-800"
+                      className="flex-1 bg-white/[0.03] border border-white/10 rounded-2xl px-5 py-3.5 text-sm focus:border-brand-secondary outline-none transition-all font-mono placeholder:text-gray-800 disabled:opacity-50 disabled:cursor-not-allowed disabled:text-gray-400"
                     />
                     <button 
                       onClick={async () => {
@@ -764,19 +786,24 @@ export default function Checkout() {
                           setLinkingRef(false);
                         }
                       }}
-                      disabled={linkingRef || !refCodeInput}
-                      className="px-8 py-3.5 bg-brand-secondary/10 rounded-2xl text-xs font-bold text-brand-secondary hover:bg-brand-secondary hover:text-white transition-all disabled:opacity-30 border border-brand-secondary/20"
+                      disabled={!!referralInfo.referred_by || linkingRef || !refCodeInput}
+                      className="px-8 py-3.5 bg-brand-secondary/10 rounded-2xl text-xs font-bold text-brand-secondary hover:bg-brand-secondary hover:text-white transition-all disabled:opacity-30 disabled:hover:bg-brand-secondary/10 disabled:hover:text-brand-secondary border border-brand-secondary/20 disabled:cursor-not-allowed"
                     >
-                      {linkingRef ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Link'}
+                      {linkingRef ? <Loader2 className="w-4 h-4 animate-spin" /> : (referralInfo.referred_by ? 'Linked' : 'Link')}
                     </button>
                   </div>
-                </div>
-              )}
-
-              {referralInfo?.referred_by && (
-                <div className="mb-6 p-4 bg-green-500/5 border border-green-500/10 rounded-2xl flex items-center justify-between text-xs text-green-400">
-                  <span>Linked Referrer Code:</span>
-                  <span className="font-bold font-mono bg-green-500/10 px-2 py-1 rounded">{referralInfo.referred_by}</span>
+                  {referralInfo.referred_by && (
+                    <p className="text-xs text-green-400 mt-2 flex items-center gap-1.5 font-medium">
+                      <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
+                      Referred by: <strong className="text-white font-bold">{referralInfo.referred_by_name || 'System User'}</strong>
+                    </p>
+                  )}
+                  {!referralInfo.referred_by && referrerName && (
+                    <p className="text-xs text-brand-secondary mt-2 flex items-center gap-1.5 font-medium">
+                      <span className="w-1.5 h-1.5 rounded-full bg-brand-secondary animate-pulse"></span>
+                      Will refer: <strong className="text-white font-bold">{referrerName}</strong>
+                    </p>
+                  )}
                 </div>
               )}
 

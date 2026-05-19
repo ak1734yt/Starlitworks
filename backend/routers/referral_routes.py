@@ -345,6 +345,15 @@ def process_referral_on_order_complete(order_id: int, user_id: int, order_amount
                 "success"
             )
 
+        # Pay first purchase bonus to referrer
+        first_purchase_bonus = float(settings.get("referral_first_purchase_bonus", 25.0))
+        if first_purchase_bonus > 0:
+            _add_credits(referrer_id, first_purchase_bonus, f"First purchase bonus (referred user order #{order_id})")
+            _add_referral_balance(referrer_id, first_purchase_bonus, f"First purchase bonus from order #{order_id}")
+            _log_referral_transaction(referrer_id, "first_purchase_bonus", order_id, first_purchase_bonus,
+                                      f"First purchase bonus on referred user order #{order_id}")
+            create_notification(referrer_id, "🎁 First Purchase Bonus!", f"+₹{first_purchase_bonus} first purchase bonus credited.", "success")
+
         # Also give referred user a cashback on their first order
         referred_cashback = round(order_amount * referred_cashback_pct, 2)
         if referred_cashback > 0:
@@ -369,6 +378,15 @@ def process_referral_on_order_complete(order_id: int, user_id: int, order_amount
             _add_credits(user_id, referred_cashback, f"Cashback benefit (referred user)")
             _log_referral_transaction(user_id, "referred_cashback", order_id, referred_cashback,
                                       f"Referral cashback on order #{order_id}")
+
+    # Pay promoter rank tier cashback (e.g. 5% - 20%) to referrer
+    referrer_cashback = round(order_amount * (active_cashback_pct / 100), 2)
+    if referrer_cashback > 0:
+        _add_credits(referrer_id, referrer_cashback, f"Referral cashback ({active_cashback_pct}% rank cashback on order #{order_id})")
+        _add_referral_balance(referrer_id, referrer_cashback, f"Cashback from referred user order #{order_id}")
+        _log_referral_transaction(referrer_id, "cashback", order_id, referrer_cashback,
+                                  f"Referrer cashback on order #{order_id}")
+        create_notification(referrer_id, "💰 Referral Cashback!", f"+₹{referrer_cashback} cashback credited from referred user's purchase.", "success")
 
     # Webhook Notification for points awarded
     if points_to_award > 0:
@@ -444,8 +462,9 @@ def process_referral_on_signup(new_user_id: int, referral_code: str) -> bool:
     except:
         pass
 
-    # Pay invite reward to referrer
+    # Pay invite reward to referrer (both referral balance and spendable wallet credits)
     _add_referral_balance(referrer_id, invite_reward, f"Invite bonus: new user signed up with your referral code")
+    _add_credits(referrer_id, invite_reward, f"Referral invite reward (cashback)")
     _log_referral_transaction(referrer_id, "invite", new_user_id, invite_reward,
                               f"Invited user #{new_user_id} successfully joined")
     
@@ -470,6 +489,11 @@ def process_referral_on_signup(new_user_id: int, referral_code: str) -> bool:
     new_details["referred_by"] = referral_code
     db.execute("UPDATE auth.users SET details = ? WHERE id = ?", (json.dumps(new_details), new_user_id))
     conn.execute("UPDATE referrals SET join_rewarded = 1 WHERE referred_id = ?", (new_user_id,))
+
+    # Pay join bonus config amount to new user as direct spendable credits
+    join_bonus = float(settings.get("referral_join_bonus", 20.0))
+    if join_bonus > 0:
+        _add_credits(new_user_id, join_bonus, f"Welcome join bonus (referral benefit)")
     
     # 2500 Ripple Points logged as the joining welcome bonus transaction
     conn.execute(
@@ -528,6 +552,21 @@ def get_referral_info(user=Depends(get_current_user)):
         details = json.loads(row["details"] or "{}")
     except:
         details = {}
+
+    referred_by = details.get("referred_by", "")
+    referred_by_name = ""
+    if referred_by:
+        db_ref = get_db()
+        all_users = db_ref.execute("SELECT name, details FROM auth.users WHERE details LIKE ?", (f'%{referred_by}%',)).fetchall()
+        db_ref.close()
+        for u in all_users:
+            try:
+                ud = json.loads(u["details"] or "{}")
+                if ud.get("referral_code") == referred_by:
+                    referred_by_name = u["name"]
+                    break
+            except:
+                continue
 
     # Generate referral code if not set
     referral_code = details.get("referral_code", "")
@@ -593,7 +632,8 @@ def get_referral_info(user=Depends(get_current_user)):
         "total_earned": total_earned,
         "referral_balance": float(details.get("referral_balance", 0.0)),
         "ripple_points": int(details.get("ripple_points", 0)),
-        "referred_by": details.get("referred_by", ""),
+        "referred_by": referred_by,
+        "referred_by_name": referred_by_name,
         "referrals": referral_list,
         "transactions": [dict(t) for t in transactions],
         "withdrawals": [dict(w) for w in withdrawals],
@@ -649,6 +689,38 @@ def link_referral_code(body: LinkReferralBody, user=Depends(get_current_user)):
         raise HTTPException(400, "Invalid or expired referral code, or you cannot refer yourself.")
         
     return {"success": True, "message": "Referral code successfully linked!"}
+
+@router.get("/referral/lookup/{code}")
+def lookup_referral_code(code: str, user=Depends(get_current_user)):
+    code = code.strip().upper()
+    if not code:
+        raise HTTPException(400, "Referral code cannot be empty.")
+        
+    db = get_db()
+    all_users = db.execute("SELECT id, name, details FROM auth.users WHERE details LIKE ?", (f'%{code}%',)).fetchall()
+    db.close()
+    
+    referrer = None
+    for u in all_users:
+        try:
+            d = json.loads(u["details"] or "{}")
+            if d.get("referral_code") == code:
+                referrer = u
+                break
+        except:
+            continue
+            
+    if not referrer:
+        raise HTTPException(404, "Invalid referral code.")
+        
+    if referrer["id"] == user["id"]:
+        raise HTTPException(400, "You cannot refer yourself.")
+        
+    return {
+        "success": True,
+        "name": referrer["name"],
+        "code": code
+    }
 
 class ConvertPointsBody(BaseModel):
     points: int
