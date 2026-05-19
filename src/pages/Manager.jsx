@@ -8,7 +8,7 @@ import {
   Star, MessageSquare, Palette, Globe, Megaphone, 
   Layers, ListOrdered, Share2, TrendingUp, Loader2, Gift,
   Edit, FileText, Download, CreditCard, History, Check, Bell, ExternalLink, DollarSign, X, ShoppingBag, Zap,
-  ArrowLeft, MoreVertical, Layout, PieChart, IndianRupee, Mail, Send
+  ArrowLeft, MoreVertical, Layout, PieChart, IndianRupee, Mail, Send, Sparkles
 } from 'lucide-react';
 import { 
   getManagerLogs, getManagerUsers, updateUserRole, 
