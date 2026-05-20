@@ -116,7 +116,6 @@ function AppInner() {
   }, [pathname, hash]);
   return (
     <>
-      <div className="viewport-frame" />
       <ParticlesBg />
       <TransitionScreen show={showTransition} />
       <AuthModal />
