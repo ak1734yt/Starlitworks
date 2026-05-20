@@ -1,0 +1,12 @@
+# Starlit Siege Works - Robots.txt
+# https://starlitworks.vercel.app
+
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /manager
+Disallow: /admin
+Disallow: /checkout/
+
+# Sitemap
+Sitemap: https://starlitworks.vercel.app/sitemap.xml

@@ -1,0 +1,21 @@
+{
+  "name": "Starlit Siege Works",
+  "short_name": "StarlitWorks",
+  "description": "Premium Discord services — custom bot development, server architecture, community growth, and professional automation solutions for businesses and creators worldwide.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#050505",
+  "theme_color": "#7C3AED",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "productivity", "utilities"],
+  "lang": "en",
+  "dir": "ltr"
+}
