@@ -60,6 +60,25 @@ async def create_user_invoice(body: dict, user=Depends(require_admin)):
     pubsub.publish("invoices_update")
     return {"success": True, "id": inv["id"]}
 
+@router.post("/invoices", status_code=201)
+async def create_invoice(body: dict, user=Depends(require_admin)):
+    inv = dict(body)
+    import time, datetime
+    if not inv.get("id"): inv["id"] = f"INV-{int(time.time())}"
+    if not inv.get("invoiceNumber"): inv["invoiceNumber"] = inv["id"]
+    if not inv.get("savedAt"): inv["savedAt"] = datetime.datetime.utcnow().isoformat()
+    inv["assignedByAdmin"] = True
+    if not inv.get("org"):
+        inv["org"] = {"name": "Starlit Siege Works", "emails": ["support@starlitsiegeworks.com"], "phone": "+91 9876543210"}
+    with open(os.path.join(INVOICES_DIR, f"{inv['id']}.json"), "w") as f:
+        json.dump(inv, f, indent=2)
+    with open(os.path.join(INVOICES_DIR, f"{inv['id']}.txt"), "w", encoding="utf-8") as f:
+        f.write(format_invoice_txt(inv))
+    log_activity(user["id"], "CREATE_INVOICE", f"Invoice {inv['id']} created")
+    pubsub.publish("invoices_update")
+    return {"success": True, "id": inv["id"]}
+
+
 @router.get("/invoices")
 def get_all_invoices(user=Depends(require_admin)):
     invoices = []
@@ -108,6 +127,18 @@ def delete_invoice(inv_id: str, user=Depends(require_admin)):
     log_activity(user["id"], "DELETE_INVOICE", f"Invoice {inv_id}")
     pubsub.publish("invoices_update")
     return {"success": True}
+
+@router.delete("/invoices")
+def clear_all_invoices(user=Depends(require_admin)):
+    count = 0
+    for fname in os.listdir(INVOICES_DIR):
+        p = os.path.join(INVOICES_DIR, fname)
+        if os.path.isfile(p):
+            os.remove(p)
+            count += 1
+    log_activity(user["id"], "CLEAR_ALL_INVOICES", f"Deleted {count} files")
+    pubsub.publish("invoices_update")
+    return {"success": True, "deleted": count}
 
 class InvoiceStatusBody(BaseModel):
     status: str
