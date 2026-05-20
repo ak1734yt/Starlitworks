@@ -129,54 +129,147 @@ export default function Admin() {
 
   const token = localStorage.getItem('ssw_token');
 
-  const fetchData = async (silent = false) => {
+  const loadOrders = async (silent = false) => {
     if (!silent) setLoading(true);
     try {
-      const isManagerOrAdmin = user?.role === 'manager' || user?.role === 'admin';
-      const [orders, invoices, feedbacks, prices] = await Promise.all([
-        getAdminOrders(),
-        getInvoices(),
-        getAdminFeedbacks(),
-        getPublicPrices()
-      ]);
-      
-      let clients = [];
-      let pulse = [];
-      let coupons = [];
-      
-      if (isManagerOrAdmin) {
-        try {
-          const [clientsData, pulseData, couponsData] = await Promise.all([
-            request('/admin/clients'),
-            getAnalyticsLogs(),
-            getCoupons()
-          ]);
-          clients = clientsData;
-          pulse = pulseData;
-          coupons = couponsData;
-        } catch (err) {
-          console.error("Error fetching manager-level datasets:", err);
-        }
-      }
-      
-      setData({ orders, invoices, feedbacks, clients, prices, pulse, coupons });
+      const orders = await getAdminOrders();
+      setData(prev => ({ ...prev, orders: orders || [] }));
     } catch (err) {
-      if (!silent) toast.error('Failed to fetch data');
-      console.error(err);
+      if (!silent) toast.error('Failed to load orders');
     } finally {
       if (!silent) setLoading(false);
+    }
+  };
+
+  const loadInvoices = async (silent = false) => {
+    if (!silent) setLoading(true);
+    try {
+      const invoices = await getInvoices();
+      setData(prev => ({ ...prev, invoices: invoices || [] }));
+    } catch (err) {
+      if (!silent) toast.error('Failed to load invoices');
+    } finally {
+      if (!silent) setLoading(false);
+    }
+  };
+
+  const loadFeedbacks = async (silent = false) => {
+    if (!silent) setLoading(true);
+    try {
+      const feedbacks = await getAdminFeedbacks();
+      setData(prev => ({ ...prev, feedbacks: feedbacks || [] }));
+    } catch (err) {
+      if (!silent) toast.error('Failed to load feedbacks');
+    } finally {
+      if (!silent) setLoading(false);
+    }
+  };
+
+  const loadClients = async (silent = false) => {
+    if (!silent) setLoading(true);
+    try {
+      const clients = await request('/admin/clients');
+      setData(prev => ({ ...prev, clients: clients || [] }));
+    } catch (err) {
+      if (!silent) toast.error('Failed to load clients');
+    } finally {
+      if (!silent) setLoading(false);
+    }
+  };
+
+  const loadCoupons = async (silent = false) => {
+    if (!silent) setLoading(true);
+    try {
+      const coupons = await getCoupons();
+      setData(prev => ({ ...prev, coupons: coupons || [] }));
+    } catch (err) {
+      if (!silent) toast.error('Failed to load coupons');
+    } finally {
+      if (!silent) setLoading(false);
+    }
+  };
+
+  const loadPulse = async (silent = false) => {
+    if (!silent) setLoading(true);
+    try {
+      const pulse = await getAnalyticsLogs();
+      setData(prev => ({ ...prev, pulse: pulse || [] }));
+    } catch (err) {
+      if (!silent) toast.error('Failed to load system activity logs');
+    } finally {
+      if (!silent) setLoading(false);
+    }
+  };
+
+  const loadPrices = async (silent = false) => {
+    if (!silent) setLoading(true);
+    try {
+      const prices = await getPublicPrices();
+      setData(prev => ({ ...prev, prices: prices || [] }));
+    } catch (err) {
+      if (!silent) toast.error('Failed to load prices');
+    } finally {
+      if (!silent) setLoading(false);
+    }
+  };
+
+  const fetchData = async (silent = false) => {
+    if (activeTab === 'orders' || activeTab === 'payments') {
+      await loadOrders(silent);
+    } else if (activeTab === 'transactions' || activeTab === 'invoices') {
+      await loadInvoices(silent);
+    } else if (activeTab === 'feedbacks') {
+      await loadFeedbacks(silent);
+    } else if (activeTab === 'clients') {
+      await loadClients(silent);
+    } else if (activeTab === 'coupons') {
+      await loadCoupons(silent);
+    } else if (activeTab === 'pulse') {
+      await loadPulse(silent);
+    }
+    
+    if (!data.prices || data.prices.length === 0) {
+      await loadPrices(true);
     }
   };
 
   useEffect(() => {
     if (user?.role === 'admin' || user?.role === 'manager') {
       fetchData();
-      const interval = setInterval(() => fetchData(true), 30000);
-      return () => clearInterval(interval);
     } else {
       navigate('/');
     }
-  }, [user, navigate]);
+  }, [user, navigate, activeTab]);
+
+  useEffect(() => {
+    if (!user || (user.role !== 'admin' && user.role !== 'manager')) return;
+    
+    const token = localStorage.getItem('ssw_token');
+    if (!token) return;
+
+    const eventSource = new EventSource(`/api/realtime/events?token=${encodeURIComponent(token)}`);
+    
+    eventSource.onmessage = (event) => {
+      try {
+        const payload = JSON.parse(event.data);
+        if (payload.type === 'orders_update') {
+          if (activeTab === 'orders' || activeTab === 'payments') {
+            loadOrders(true);
+          }
+        } else if (payload.type === 'invoices_update') {
+          if (activeTab === 'transactions' || activeTab === 'invoices') {
+            loadInvoices(true);
+          }
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    };
+
+    return () => {
+      eventSource.close();
+    };
+  }, [activeTab, user]);
 
   // --- Handlers ---
   const handleSaveOrder = async (e) => {

@@ -1,6 +1,8 @@
 import os
+import re
 import time
 import json
+import hashlib
 import secrets
 import httpx
 import pyotp
@@ -17,20 +19,45 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 from database import get_db
 
-JWT_SECRET = os.getenv("JWT_SECRET", "b3b985dfebb6061ef6c960d20dbf0cfea3e56a2f34675a0755f32204a37491ca7c69faec1605e42bcafc7d90f91bab7160ce3291bbeef94449155427f695457c")
+JWT_SECRET = os.getenv("JWT_SECRET")
+if not JWT_SECRET:
+    raise RuntimeError("FATAL: JWT_SECRET environment variable is not set.")
 JWT_ALGORITHM = "HS256"
-JWT_EXPIRE_DAYS = 7
+JWT_EXPIRE_MINUTES = 30
+STARLIT_API_KEY = os.getenv("STARLIT_API_KEY", "")
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
 # ── Password Helpers ──────────────────────────────────────────────────────────
+def sanitize_password(password: str) -> str:
+    # Strip leading/trailing whitespaces and control characters
+    return password.strip()
+
+def get_peppered_password(password: str) -> bytes:
+    sanitized = sanitize_password(password)
+    # Concatenate the password and the system-wide JWT_SECRET as a pepper
+    pepper = JWT_SECRET or "default_starlit_pepper_constant"
+    hasher = hashlib.sha256()
+    hasher.update(sanitized.encode('utf-8'))
+    hasher.update(pepper.encode('utf-8'))
+    return hasher.hexdigest().encode('utf-8')
+
 def hash_password(password: str) -> str:
+    peppered = get_peppered_password(password)
     salt = bcrypt.gensalt()
-    return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
+    return bcrypt.hashpw(peppered, salt).decode('utf-8')
 
 def verify_password(plain: str, hashed: str) -> bool:
     try:
-        return bcrypt.checkpw(plain.encode('utf-8'), hashed.encode('utf-8'))
+        # Try new peppered verification
+        peppered = get_peppered_password(plain)
+        if bcrypt.checkpw(peppered, hashed.encode('utf-8')):
+            return True
+        # Fallback to legacy plain-text verification
+        sanitized = sanitize_password(plain)
+        if bcrypt.checkpw(sanitized.encode('utf-8'), hashed.encode('utf-8')):
+            return True
+        return False
     except Exception:
         return False
 
@@ -41,9 +68,20 @@ def make_token(user: dict) -> str:
         "name": user["name"],
         "email": user["email"],
         "role": user["role"],
-        "avatar": user["avatar_url"],
+        "avatar": user.get("avatar_url", ""),
         "two_factor_enabled": bool(user.get("two_factor_enabled")),
-        "exp": datetime.utcnow() + timedelta(days=JWT_EXPIRE_DAYS)
+        "ver": user.get("token_version", 0),
+        "exp": datetime.utcnow() + timedelta(minutes=JWT_EXPIRE_MINUTES),
+        "iat": datetime.utcnow(),
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+def make_refresh_token(user: dict) -> str:
+    payload = {
+        "id": user["id"],
+        "type": "refresh",
+        "ver": user.get("token_version", 0),
+        "exp": datetime.utcnow() + timedelta(days=7),
     }
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
@@ -61,13 +99,30 @@ def decode_token(token: str) -> dict:
 async def get_current_user(credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme)):
     if not credentials:
         raise HTTPException(status_code=401, detail="Unauthorized")
-    return decode_token(credentials.credentials)
+    payload = decode_token(credentials.credentials)
+    # Verify user exists, is not banned, and token version matches
+    db = get_db()
+    row = db.execute("SELECT is_banned, token_version FROM auth.users WHERE id = ?", (payload["id"],)).fetchone()
+    db.close()
+    if not row:
+        raise HTTPException(status_code=401, detail="User no longer exists")
+    if row["is_banned"]:
+        raise HTTPException(status_code=403, detail="Account has been banned")
+    if row["token_version"] != payload.get("ver", 0):
+        raise HTTPException(status_code=401, detail="Session expired. Please log in again.")
+    return payload
 
 async def get_optional_user(credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme)):
     if not credentials:
         return None
     try:
-        return decode_token(credentials.credentials)
+        payload = decode_token(credentials.credentials)
+        db = get_db()
+        row = db.execute("SELECT is_banned, token_version FROM auth.users WHERE id = ?", (payload["id"],)).fetchone()
+        db.close()
+        if not row or row["is_banned"] or row["token_version"] != payload.get("ver", 0):
+            return None
+        return payload
     except:
         return None
 
@@ -80,6 +135,22 @@ async def require_manager(user: dict = Depends(get_current_user)):
     if user.get("role") != "manager":
         raise HTTPException(status_code=403, detail="Manager access required.")
     return user
+
+# ── Password Strength ─────────────────────────────────────────────────────────
+def validate_password_strength(password: str):
+    """Enforce password complexity: 8+ chars, upper, lower, digit."""
+    if len(password) < 8:
+        raise HTTPException(400, "Password must be at least 8 characters.")
+    if not re.search(r'[A-Z]', password):
+        raise HTTPException(400, "Password must contain at least one uppercase letter.")
+    if not re.search(r'[a-z]', password):
+        raise HTTPException(400, "Password must contain at least one lowercase letter.")
+    if not re.search(r'[0-9]', password):
+        raise HTTPException(400, "Password must contain at least one number.")
+
+# ── Reset Token Hashing ───────────────────────────────────────────────────────
+def hash_reset_token(token: str) -> str:
+    return hashlib.sha256(token.encode()).hexdigest()
 
 # ── 2FA ───────────────────────────────────────────────────────────────────────
 def generate_2fa_secret(email: str):
@@ -190,6 +261,9 @@ def create_notification(user_id: int, title: str, message: str, type_: str = "in
                    (user_id, title, message, type_))
         db.commit()
         db.close()
+        
+        from realtime import pubsub
+        pubsub.publish(f"notifications_{user_id}", {"title": title, "message": message, "type": type_})
     except Exception as e:
         print(f"Failed to create notification: {e}")
 

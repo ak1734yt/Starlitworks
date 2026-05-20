@@ -40,7 +40,9 @@ def generate_generic_qr(body: QRRequest, user=Depends(get_current_user)):
     
     qr_base64 = base64.b64encode(img_bytes).decode()
     
-    secret = os.getenv("JWT_SECRET", "b3b985dfebb6061ef6c960d20dbf0cfea3e56a2f34675a0755f32204a37491ca7c69faec1605e42bcafc7d90f91bab7160ce3291bbeef94449155427f695457c")
+    secret = os.getenv("JWT_SECRET")
+    if not secret:
+        raise HTTPException(500, "Server configuration error: JWT_SECRET not set")
     checksum_input = f"{qr_base64}{secret}{body.amount}".encode()
     checksum = hashlib.sha256(checksum_input).hexdigest()
 
@@ -101,7 +103,9 @@ def generate_secure_qr(order_id: int, user=Depends(get_current_user)):
     qr_base64 = base64.b64encode(img_bytes).decode()
     
     # Generate Integrity Checksum
-    secret = os.getenv("JWT_SECRET", "b3b985dfebb6061ef6c960d20dbf0cfea3e56a2f34675a0755f32204a37491ca7c69faec1605e42bcafc7d90f91bab7160ce3291bbeef94449155427f695457c")
+    secret = os.getenv("JWT_SECRET")
+    if not secret:
+        raise HTTPException(500, "Server configuration error: JWT_SECRET not set")
     checksum_input = f"{qr_base64}{secret}{amount}".encode()
     checksum = hashlib.sha256(checksum_input).hexdigest()
 

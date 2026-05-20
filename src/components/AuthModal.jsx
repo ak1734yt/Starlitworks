@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Eye, EyeOff, Mail, Lock, User, AlertCircle, CheckCircle2, Loader2, Sparkles } from 'lucide-react';
+import { X, Eye, EyeOff, Mail, Lock, User, AlertCircle, CheckCircle2, Loader2, Sparkles, ShieldCheck } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
@@ -23,7 +23,7 @@ const STR_LABELS = ['','Very Weak','Weak','Fair','Strong','Very Strong'];
 const inputCls = "w-full bg-white/5 border border-white/10 rounded-xl py-2.5 text-sm text-white placeholder:text-gray-600 focus:outline-none focus:border-brand-primary/60 focus:shadow-[0_0_0_3px_rgba(124,58,237,0.15)] transition-all duration-200";
 
 export default function AuthModal() {
-  const { modalOpen, modalTab, closeAuthModal, login, signup, loginWithOAuth, oauthStatus } = useAuth();
+  const { modalOpen, modalTab, closeAuthModal, login, signup, verifySignupOTP, resendOTP, loginWithOAuth, oauthStatus } = useAuth();
   const [tab, setTab]         = useState(modalTab);
   const [name, setName]       = useState('');
   const [email, setEmail]     = useState('');
@@ -36,6 +36,10 @@ export default function AuthModal() {
   const [twoFactorStep, setTwoFactorStep] = useState(false);
   const [twoFactorCode, setTwoFactorCode] = useState('');
   const [userIdFor2FA, setUserIdFor2FA] = useState(null);
+  const [otpStep, setOtpStep] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
+  const [otpEmail, setOtpEmail] = useState('');
+  const [resendCooldown, setResendCooldown] = useState(0);
 
   const { verify2FA } = useAuth();
 
@@ -43,6 +47,9 @@ export default function AuthModal() {
     setTab(modalTab); 
     setError(''); 
     setTwoFactorStep(false);
+    setOtpStep(false);
+    setOtpCode('');
+    setResendCooldown(0);
   }, [modalTab, modalOpen]);
 
   const strength   = getStrength(password);
@@ -76,11 +83,42 @@ export default function AuthModal() {
   const handleSignup = async (e) => {
     e.preventDefault(); setError('');
     if (password !== confirm) { setError('Passwords do not match.'); return; }
-    if (strength < 2) { setError('Choose a stronger password (min 8 chars).'); return; }
+    if (strength < 2) { setError('Choose a stronger password (min 8 chars, upper, lower, number).'); return; }
     setLoading(true);
-    try { await signup(name, email, password); }
+    try {
+      const result = await signup(name, email, password);
+      if (result && result.requires_otp) {
+        setOtpStep(true);
+        setOtpEmail(email);
+        setLoading(false);
+        setResendCooldown(60);
+      }
+    }
     catch (err) { setError(err.message); setLoading(false); }
   };
+
+  const handleVerifyOTP = async (e) => {
+    e.preventDefault(); setError(''); setLoading(true);
+    try {
+      await verifySignupOTP(otpEmail, otpCode);
+      setOtpStep(false);
+    } catch (err) { setError(err.message); setLoading(false); }
+  };
+
+  const handleResendOTP = async () => {
+    if (resendCooldown > 0) return;
+    try {
+      await resendOTP(otpEmail);
+      setResendCooldown(60);
+      setError('');
+    } catch (err) { setError(err.message); }
+  };
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setTimeout(() => setResendCooldown(c => c - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [resendCooldown]);
 
   const handleOAuth = (p) => {
     if (!oauthStatus[p]) { setError(`${p} sign-in is not yet configured.`); return; }
@@ -166,7 +204,37 @@ export default function AuthModal() {
 
                 {/* Login Form */}
                 <AnimatePresence mode="wait">
-                  {twoFactorStep ? (
+                  {otpStep ? (
+                    <motion.form key="otp-form" initial={{opacity:0, scale:0.95}} animate={{opacity:1, scale:1}} exit={{opacity:0, scale:0.95}} onSubmit={handleVerifyOTP} className="space-y-4">
+                      <div className="text-center space-y-2 mb-2">
+                        <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center mx-auto mb-3">
+                          <ShieldCheck className="w-6 h-6 text-emerald-400" />
+                        </div>
+                        <h3 className="font-bold text-white">Verify Your Email</h3>
+                        <p className="text-[11px] text-gray-500">We sent a 6-digit code to <strong className="text-gray-300">{otpEmail}</strong></p>
+                      </div>
+                      
+                      <input 
+                        type="text" 
+                        value={otpCode} 
+                        onChange={e => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        placeholder="000000" 
+                        className="w-full bg-white/5 border border-white/10 rounded-xl py-3 text-2xl text-center font-mono tracking-[0.5em] text-white focus:border-emerald-400 outline-none transition-all"
+                        required
+                        autoFocus
+                      />
+
+                      <button type="submit" disabled={loading || otpCode.length < 6} className="w-full btn-primary flex items-center justify-center gap-2 py-2.5 disabled:opacity-60">
+                        {loading && <Loader2 className="w-4 h-4 animate-spin"/>} Verify & Create Account
+                      </button>
+                      <div className="flex items-center justify-between">
+                        <button type="button" onClick={() => { setOtpStep(false); setOtpCode(''); }} className="text-xs text-gray-500 hover:text-white transition-colors">← Back</button>
+                        <button type="button" onClick={handleResendOTP} disabled={resendCooldown > 0} className="text-xs text-brand-primary hover:text-brand-secondary transition-colors disabled:text-gray-600">
+                          {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend Code'}
+                        </button>
+                      </div>
+                    </motion.form>
+                  ) : twoFactorStep ? (
                     <motion.form key="2fa-form" initial={{opacity:0, scale:0.95}} animate={{opacity:1, scale:1}} exit={{opacity:0, scale:0.95}} onSubmit={handle2FAVerify} className="space-y-4">
                       <div className="text-center space-y-2 mb-2">
                         <div className="w-12 h-12 rounded-2xl bg-brand-primary/10 flex items-center justify-center mx-auto mb-3">

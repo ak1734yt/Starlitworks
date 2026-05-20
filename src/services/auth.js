@@ -7,7 +7,7 @@ async function request(path, options = {}) {
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      'X-Starlit-Key': import.meta.env.VITE_STARLIT_KEY || 'b3b985dfebb6061ef6c960d20dbf0cfea3e56a2f34675a0755f32204a37491ca7c69faec1605e42bcafc7d90f91bab7160ce3291bbeef94449155427f695457c',
+      'X-Starlit-Key': import.meta.env.VITE_STARLIT_KEY,
       ...options.headers,
     },
     ...options,
@@ -40,6 +40,21 @@ export async function apiSignup(name, email, password, referralCode = '') {
     body: JSON.stringify({ name, email, password, referral_code: referralCode }),
   });
 }
+
+export async function apiVerifySignup(email, otp, referralCode = '') {
+  return request('/verify-signup', {
+    method: 'POST',
+    body: JSON.stringify({ email, otp, referral_code: referralCode }),
+  });
+}
+
+export async function apiResendOTP(email) {
+  return request('/resend-otp', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  });
+}
+
 
 export async function apiLogin(email, password) {
   return request('/login', {

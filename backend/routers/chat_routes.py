@@ -100,6 +100,10 @@ async def send_chat(client_id: int, body: ChatBody, user=Depends(get_current_use
     ).fetchone())
     db.close()
 
+    from realtime import pubsub
+    pubsub.publish(f"chat_{client_id}", new_msg)
+    pubsub.publish("chat_admin", new_msg)
+
     if user["role"] == "client":
         await send_modular_webhook("CHAT", {"embeds": [{"title": f"New Message (User: {client['name']})", "description": f"**From:** {user['name']} (CLIENT)\n**Message:** {content}", "color": 3447003}]})
     else:
@@ -148,10 +152,11 @@ async def send_chat(client_id: int, body: ChatBody, user=Depends(get_current_use
             # Use admin user ID if available, otherwise use a system fallback
             admin_row = bot_db.execute("SELECT id FROM auth.users WHERE role='admin' LIMIT 1").fetchone()
             bot_user_id = admin_row["id"] if admin_row else user["id"]
-            bot_db.execute(
+            cursor_bot = bot_db.execute(
                 "INSERT INTO orders.user_chats (client_id, sender_id, message_type, content) VALUES (?,?,?,?)",
                 (client_id, bot_user_id, "system", bot_reply)
             )
+            bot_msg_id = cursor_bot.lastrowid
             
             try:
                 # Update client unread count for the bot reply
@@ -163,6 +168,15 @@ async def send_chat(client_id: int, body: ChatBody, user=Depends(get_current_use
                 pass
 
             bot_db.commit()
+            # Retrieve complete bot message dict
+            bot_msg = dict(bot_db.execute(
+                "SELECT c.*, u.name, u.role, u.avatar_url FROM orders.user_chats c JOIN auth.users u ON c.sender_id = u.id WHERE c.id = ?",
+                (bot_msg_id,)
+            ).fetchone())
             bot_db.close()
+
+            from realtime import pubsub
+            pubsub.publish(f"chat_{client_id}", bot_msg)
+            pubsub.publish("chat_admin", bot_msg)
 
     return new_msg

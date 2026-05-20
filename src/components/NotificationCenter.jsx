@@ -38,8 +38,26 @@ export default function NotificationCenter() {
 
   useEffect(() => {
     fetchNotifications();
-    const timer = setInterval(fetchNotifications, 30000); // Poll every 30s
-    return () => clearInterval(timer);
+    
+    const token = localStorage.getItem('ssw_token');
+    if (!token) return;
+
+    const eventSource = new EventSource(`/api/realtime/events?token=${encodeURIComponent(token)}`);
+    
+    eventSource.onmessage = (event) => {
+      try {
+        const payload = JSON.parse(event.data);
+        if (payload.type === 'notifications_update' || payload.type.startsWith('notifications_')) {
+          fetchNotifications();
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    };
+
+    return () => {
+      eventSource.close();
+    };
   }, []);
 
   const handleNotificationClick = (n) => {

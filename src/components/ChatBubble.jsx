@@ -45,8 +45,26 @@ export default function ChatBubble() {
     if (!user || !isOpen) return;
 
     fetchRealMessages();
-    const interval = setInterval(fetchRealMessages, 5000); // poll every 5s
-    return () => clearInterval(interval);
+    
+    const token = localStorage.getItem('ssw_token');
+    if (!token) return;
+
+    const eventSource = new EventSource(`/api/realtime/events?token=${encodeURIComponent(token)}`);
+    
+    eventSource.onmessage = (event) => {
+      try {
+        const payload = JSON.parse(event.data);
+        if (payload.type === 'chat_update' || payload.type === `chat_${user.id}`) {
+          fetchRealMessages();
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    };
+
+    return () => {
+      eventSource.close();
+    };
   }, [user, isOpen]);
 
   const fetchRealMessages = async () => {

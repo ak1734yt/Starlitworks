@@ -16,8 +16,23 @@ export default function SystemHealth() {
 
   useEffect(() => {
     checkHealth();
-    const timer = setInterval(checkHealth, 60000); // Check every minute
-    return () => clearInterval(timer);
+    
+    const token = localStorage.getItem('ssw_token');
+    if (!token) return;
+
+    const eventSource = new EventSource(`/api/realtime/events?token=${encodeURIComponent(token)}`);
+    
+    eventSource.onopen = () => {
+      setStatus('online');
+    };
+    
+    eventSource.onerror = () => {
+      setStatus('offline');
+    };
+    
+    return () => {
+      eventSource.close();
+    };
   }, []);
 
   return (

@@ -209,3 +209,47 @@ def send_payment_approval_email(name: str, to: str, order_id: int) -> bool:
 </body>
 </html>"""
     return _send_email(to, f"✅ Payment Approved for Order #{order_id}", html)
+
+
+def send_otp_email(name: str, to: str, otp: str) -> bool:
+    html = f"""<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><style>
+  body {{ background: #0a0a0a; color: #e5e7eb; font-family: 'Inter', sans-serif; margin: 0; padding: 0; }}
+  .container {{ max-width: 560px; margin: 40px auto; background: #111; border: 1px solid #ffffff15; border-radius: 20px; overflow: hidden; }}
+  .header {{ background: linear-gradient(135deg, #7c3aed, #4f46e5); padding: 40px 32px; text-align: center; }}
+  .header h1 {{ margin: 0; font-size: 24px; color: #fff; font-weight: 800; }}
+  .body {{ padding: 36px 32px; }}
+  .body p {{ color: #9ca3af; line-height: 1.7; font-size: 14px; margin: 0 0 16px; }}
+  .otp-box {{ background: rgba(124,58,237,0.1); border: 2px dashed rgba(124,58,237,0.4); border-radius: 16px; padding: 24px; text-align: center; margin: 24px 0; }}
+  .otp-code {{ font-size: 36px; font-weight: 800; letter-spacing: 8px; color: #a78bfa; font-family: monospace; }}
+  .warning {{ background: #7c3aed10; border: 1px solid #7c3aed30; border-radius: 10px; padding: 14px 18px; margin-top: 24px; }}
+  .warning p {{ color: #a78bfa; font-size: 12px; margin: 0; }}
+  .footer {{ padding: 20px 32px; border-top: 1px solid #ffffff08; text-align: center; }}
+  .footer p {{ color: #4b5563; font-size: 11px; margin: 0; }}
+</style></head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Verify Your Email — Starlit Siege Works</h1>
+    </div>
+    <div class="body">
+      <p>Hey <strong style="color:#a78bfa">{name}</strong>!</p>
+      <p>Thank you for signing up. Please enter the verification code below to confirm your email address:</p>
+      <div class="otp-box">
+        <div class="otp-code">{otp}</div>
+      </div>
+      <p>This code is valid for <strong>10 minutes</strong>. Do not share it with anyone.</p>
+      <div class="warning">
+        <p>If you did not create an account on Starlit Siege Works, please ignore this email.</p>
+      </div>
+    </div>
+    <div class="footer">
+      <p>© 2026 Starlit Siege Works. All rights reserved.</p>
+      <p style="margin-top:6px;">This is an automated message, please do not reply.</p>
+    </div>
+  </div>
+</body>
+</html>"""
+    return _send_email(to, "Email Verification Code — Starlit Siege Works", html)
+

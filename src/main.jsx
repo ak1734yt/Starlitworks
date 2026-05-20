@@ -7,6 +7,101 @@ import { ToastProvider } from './context/ToastContext'
 import { ThemeProvider } from './context/ThemeContext'
 import { Toaster } from 'react-hot-toast'
 
+// ── Browser Session Key Management & Transparent Encryption/Decryption ──────
+(function() {
+  const getSessionKey = () => {
+    let key = sessionStorage.getItem('ssw_session_key');
+    if (!key) {
+      key = Math.random().toString(36).substring(2) + Date.now().toString(36);
+      sessionStorage.setItem('ssw_session_key', key);
+    }
+    return key;
+  };
+
+  const encryptData = (text, key) => {
+    if (!text) return '';
+    const keyStr = String(key);
+    let result = '';
+    for (let i = 0; i < text.length; i++) {
+      const charCode = text.charCodeAt(i);
+      const keyChar = keyStr.charCodeAt(i % keyStr.length);
+      result += String.fromCharCode(charCode ^ keyChar);
+    }
+    try {
+      return btoa(unescape(encodeURIComponent(result)));
+    } catch (e) {
+      return '';
+    }
+  };
+
+  const decryptData = (encoded, key) => {
+    if (!encoded) return '';
+    try {
+      const keyStr = String(key);
+      const text = decodeURIComponent(escape(atob(encoded)));
+      let result = '';
+      for (let i = 0; i < text.length; i++) {
+        const charCode = text.charCodeAt(i);
+        const keyChar = keyStr.charCodeAt(i % keyStr.length);
+        result += String.fromCharCode(charCode ^ keyChar);
+      }
+      return result;
+    } catch (e) {
+      return '';
+    }
+  };
+
+  const originalGetItem = localStorage.getItem;
+  const originalSetItem = localStorage.setItem;
+  const originalRemoveItem = localStorage.removeItem;
+
+  const targetKeys = ['ssw_token', 'ssw_user_email', 'ssw_user'];
+
+  localStorage.getItem = function(key) {
+    if (targetKeys.includes(key)) {
+      const encVal = originalGetItem.call(localStorage, key + '_enc');
+      if (encVal) {
+        return decryptData(encVal, getSessionKey());
+      }
+      const plainVal = originalGetItem.call(localStorage, key);
+      if (plainVal) {
+        // Automatically migrate plain value to encrypted
+        const sessionKey = getSessionKey();
+        originalSetItem.call(localStorage, key + '_enc', encryptData(plainVal, sessionKey));
+        originalRemoveItem.call(localStorage, key);
+        return plainVal;
+      }
+      return null;
+    }
+    return originalGetItem.apply(this, arguments);
+  };
+
+  localStorage.setItem = function(key, value) {
+    if (targetKeys.includes(key)) {
+      if (value === null || value === undefined) {
+        originalRemoveItem.call(localStorage, key + '_enc');
+        originalRemoveItem.call(localStorage, key);
+        return;
+      }
+      const sessionKey = getSessionKey();
+      const encrypted = encryptData(value, sessionKey);
+      originalSetItem.call(localStorage, key + '_enc', encrypted);
+      originalRemoveItem.call(localStorage, key);
+      return;
+    }
+    return originalSetItem.apply(this, arguments);
+  };
+
+  localStorage.removeItem = function(key) {
+    if (targetKeys.includes(key)) {
+      originalRemoveItem.call(localStorage, key + '_enc');
+      originalRemoveItem.call(localStorage, key);
+      return;
+    }
+    return originalRemoveItem.apply(this, arguments);
+  };
+})();
+
 // ── Global Fetch Interceptor for X-Starlit-Key Hardening ─────────────────────
 const originalFetch = window.fetch;
 window.fetch = async function (url, options = {}) {
@@ -17,7 +112,7 @@ window.fetch = async function (url, options = {}) {
   ) {
     const headers = {
       ...options.headers,
-      'X-Starlit-Key': import.meta.env.VITE_STARLIT_KEY || 'b3b985dfebb6061ef6c960d20dbf0cfea3e56a2f34675a0755f32204a37491ca7c69faec1605e42bcafc7d90f91bab7160ce3291bbeef94449155427f695457c'
+      'X-Starlit-Key': import.meta.env.VITE_STARLIT_KEY || ''
     };
     return originalFetch(url, { ...options, headers });
   }

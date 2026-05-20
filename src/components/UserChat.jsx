@@ -25,8 +25,26 @@ export default function UserChat({ userId, onClose }) {
 
   useEffect(() => {
     fetchMessages();
-    const interval = setInterval(fetchMessages, 5000); // Poll every 5s
-    return () => clearInterval(interval);
+
+    const token = localStorage.getItem('ssw_token');
+    if (!token) return;
+
+    const eventSource = new EventSource(`/api/realtime/events?token=${encodeURIComponent(token)}`);
+    
+    eventSource.onmessage = (event) => {
+      try {
+        const payload = JSON.parse(event.data);
+        if (payload.type === 'chat_update' || payload.type === `chat_${userId}`) {
+          fetchMessages();
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    };
+
+    return () => {
+      eventSource.close();
+    };
   }, [userId]);
 
   const [hasScrolledInit, setHasScrolledInit] = useState(false);

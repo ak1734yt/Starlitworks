@@ -156,32 +156,53 @@ export default function History() {
   const [expandedOrderUpdates, setExpandedOrderUpdates] = useState(null);
   const [orderUpdates, setOrderUpdates] = useState({});
 
-  const load = async (silent = false) => {
+  const loadOrders = async (silent = false) => {
     if (!silent) setLoading(true);
     try {
-      const token = localStorage.getItem('ssw_token');
-      if (!token) {
-        navigate('/login');
-        return;
-      }
       const data = await getMyOrders();
-      setOrders(data);
+      setOrders(data || []);
+    } catch (_) {
+      if (!silent) toast.error('Failed to load orders');
+    } finally {
+      if (!silent) setLoading(false);
+    }
+  };
 
+  const loadInvoices = async (silent = false) => {
+    if (!silent) setLoading(true);
+    try {
       if (user?.id) {
         const invRes = await getUserInvoicesByAdmin(user.id);
         if (invRes && !invRes.error) {
           setInvoices(invRes);
         }
-        // Load referral info
-        try {
-          const ref = await getReferralInfo();
-          setReferralInfo(ref);
-        } catch (_) {}
       }
-    } catch {
-      if (!silent) toast.error('Failed to load history');
+    } catch (_) {
+      if (!silent) toast.error('Failed to load invoices');
     } finally {
       if (!silent) setLoading(false);
+    }
+  };
+
+  const loadReferrals = async (silent = false) => {
+    if (!silent) setLoading(true);
+    try {
+      const ref = await getReferralInfo();
+      setReferralInfo(ref);
+    } catch (_) {
+      if (!silent) toast.error('Failed to load referral details');
+    } finally {
+      if (!silent) setLoading(false);
+    }
+  };
+
+  const load = async (silent = false) => {
+    if (portalTab === 'services') await loadOrders(silent);
+    else if (portalTab === 'billing') await loadInvoices(silent);
+    else if (portalTab === 'referrals') await loadReferrals(silent);
+    else {
+      await loadOrders(silent);
+      await loadInvoices(silent);
     }
   };
 
@@ -248,13 +269,49 @@ export default function History() {
     }
   };
 
-  useEffect(() => { 
-    if(user) {
-      load(); 
-      const interval = setInterval(() => load(true), 30000);
-      return () => clearInterval(interval);
+  useEffect(() => {
+    if (!user) return;
+    if (portalTab === 'overview') {
+      loadOrders();
+      loadInvoices();
+    } else if (portalTab === 'services') {
+      loadOrders();
+    } else if (portalTab === 'billing') {
+      loadInvoices();
+    } else if (portalTab === 'referrals') {
+      loadReferrals();
     }
-  }, [user]);
+  }, [portalTab, user]);
+
+  useEffect(() => { 
+    if (!user) return;
+    
+    const token = localStorage.getItem('ssw_token');
+    if (!token) return;
+
+    const eventSource = new EventSource(`/api/realtime/events?token=${encodeURIComponent(token)}`);
+    
+    eventSource.onmessage = (event) => {
+      try {
+        const payload = JSON.parse(event.data);
+        if (payload.type === 'orders_update' || payload.type === `orders_${user.id}`) {
+          if (portalTab === 'overview' || portalTab === 'services') {
+            loadOrders(true);
+          }
+        } else if (payload.type === 'invoices_update') {
+          if (portalTab === 'overview' || portalTab === 'billing') {
+            loadInvoices(true);
+          }
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    };
+
+    return () => {
+      eventSource.close();
+    };
+  }, [portalTab, user]);
 
   // Compute stats
   const unpaidInvoicesCount = invoices.filter(i => i.paymentStatus !== 'paid').length;

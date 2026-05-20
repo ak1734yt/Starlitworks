@@ -58,8 +58,24 @@ export default function Status() {
 
   useEffect(() => {
     checkServices();
-    const interval = setInterval(checkServices, 60000);
-    return () => clearInterval(interval);
+    
+    const token = localStorage.getItem('ssw_token');
+    if (!token) return;
+
+    const eventSource = new EventSource(`/api/realtime/events?token=${encodeURIComponent(token)}`);
+    
+    eventSource.onopen = () => {
+      checkServices();
+    };
+    
+    eventSource.onerror = () => {
+      setServices(prev => prev.map(s => s.name === 'API Server' ? { ...s, status: 'offline', latency: null } : s));
+      setOverallStatus('offline');
+    };
+    
+    return () => {
+      eventSource.close();
+    };
   }, []);
 
   const StatusIcon = ({ status, size = 'w-5 h-5' }) => {

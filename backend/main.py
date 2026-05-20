@@ -37,7 +37,14 @@ if os.getenv("DISCORD_BOT_TOKEN"):
 
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
-app = FastAPI(title="Starlit Siege Works API", version="2.0.0", docs_url="/docs")
+_is_prod = os.getenv("ENV", "").lower() == "production"
+app = FastAPI(
+    title="Starlit Siege Works API",
+    version="2.0.0",
+    docs_url=None if _is_prod else "/docs",
+    redoc_url=None if _is_prod else "/redoc",
+    openapi_url=None if _is_prod else "/openapi.json",
+)
 
 # ── CORS ──────────────────────────────────────────────────────────────────────
 app.add_middleware(
@@ -65,6 +72,7 @@ async def security_header_check(request: Request, call_next):
     if request.url.path.startswith("/api/"):
         exempt_prefixes = [
             "/api/health",
+            "/api/realtime/events",
             "/api/auth/google",
             "/api/auth/discord",
             "/api/auth/microsoft",
@@ -72,8 +80,8 @@ async def security_header_check(request: Request, call_next):
         ]
         if not any(request.url.path.startswith(prefix) for prefix in exempt_prefixes):
             starlit_key = request.headers.get("X-Starlit-Key")
-            expected_key = os.getenv("JWT_SECRET", "b3b985dfebb6061ef6c960d20dbf0cfea3e56a2f34675a0755f32204a37491ca7c69faec1605e42bcafc7d90f91bab7160ce3291bbeef94449155427f695457c")
-            if not starlit_key or starlit_key != expected_key:
+            expected_key = os.getenv("STARLIT_API_KEY", "")
+            if not expected_key or not starlit_key or starlit_key != expected_key:
                 from fastapi.responses import JSONResponse
                 return JSONResponse(status_code=403, content={"error": "Security Check Failed: Unauthorized API Access"})
             
@@ -82,7 +90,7 @@ async def security_header_check(request: Request, call_next):
     # Inject HTTP Hardening Security Headers
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://apis.google.com; "
+        "script-src 'self' 'unsafe-inline' https://apis.google.com; "
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
         "font-src 'self' data: https://fonts.gstatic.com; "
         "img-src 'self' data: https:; "
@@ -98,9 +106,10 @@ async def security_header_check(request: Request, call_next):
     return response
 
 # ── Route Injection ───────────────────────────────────────────────────────────
-from routers import auth_routes, order_routes, chat_routes, admin_routes, analytics_routes, invoice_routes, payment_routes, oauth_routes, referral_routes, marketplace_routes
+from routers import auth_routes, order_routes, chat_routes, admin_routes, analytics_routes, invoice_routes, payment_routes, oauth_routes, referral_routes, marketplace_routes, realtime_routes
 
 app.include_router(auth_routes.router, prefix="/api")
+app.include_router(realtime_routes.router, prefix="/api")
 app.include_router(oauth_routes.router, prefix="/api")
 app.include_router(order_routes.router, prefix="/api")
 app.include_router(chat_routes.router, prefix="/api")
@@ -118,6 +127,36 @@ def root():
 @app.get("/api/health")
 def health_check():
     return {"status": "online", "core": "optimal"}
+
+# ── Global Exception Handlers ──────────────────────────────────────────────────
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from fastapi.responses import JSONResponse
+
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail}
+    )
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    return JSONResponse(
+        status_code=422,
+        content={"detail": "Invalid input data format."}
+    )
+
+@app.exception_handler(Exception)
+async def generic_exception_handler(request: Request, exc: Exception):
+    import traceback
+    print("CRITICAL SERVER ERROR:")
+    traceback.print_exc()
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "An unexpected error occurred. Please try again."}
+    )
+
 
 # ── Run (EnderCloud / local) ───────────────────────────────────────────────────
 if __name__ == "__main__":

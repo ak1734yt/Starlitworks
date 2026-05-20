@@ -54,6 +54,22 @@ def get_db():
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA foreign_keys=OFF")
     attach_databases(conn)
+    
+    def update_hook(op, db_name, table_name, row_id):
+        try:
+            from realtime import pubsub
+            if table_name == "user_chats":
+                pubsub.publish("chat_update")
+            elif table_name == "orders":
+                pubsub.publish("orders_update")
+            elif table_name == "notifications":
+                pubsub.publish("notifications_update")
+            elif table_name == "invoices":
+                pubsub.publish("invoices_update")
+        except Exception:
+            pass
+
+    conn.set_update_hook(update_hook)
     return conn
 
 def init_db():
@@ -131,6 +147,8 @@ def init_db():
         two_factor_secret    TEXT,
         two_factor_enabled   INTEGER DEFAULT 0,
         backup_codes         TEXT    DEFAULT '[]',
+        token_version        INTEGER DEFAULT 0,
+        email_verified       INTEGER DEFAULT 0,
         created_at           INTEGER DEFAULT (strftime('%s','now')),
         last_login           INTEGER
     );
@@ -386,6 +404,26 @@ def init_db():
         print(f"Error checking orders migrations: {e}")
     finally:
         conn_orders.close()
+
+    # ── Security Migrations (users table) ────────────────────────────────────────
+    conn_users_mig = sqlite3.connect(DB_USERS)
+    try:
+        try:
+            conn_users_mig.execute("ALTER TABLE users ADD COLUMN token_version INTEGER DEFAULT 0")
+            conn_users_mig.commit()
+            print("Migration: Added token_version column to users")
+        except Exception:
+            pass
+        try:
+            conn_users_mig.execute("ALTER TABLE users ADD COLUMN email_verified INTEGER DEFAULT 0")
+            conn_users_mig.commit()
+            print("Migration: Added email_verified column to users")
+        except Exception:
+            pass
+    except Exception as e:
+        print(f"Error in security migrations: {e}")
+    finally:
+        conn_users_mig.close()
 
     # ── 4. Migrate legacy combined data ──────────────────────────────────────────
     if has_legacy:

@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
-  apiLogin, apiSignup, apiForgotPassword, apiGetMe, apiGetOAuthStatus, redirectToOAuth,
+  apiLogin, apiSignup, apiVerifySignup, apiResendOTP, apiForgotPassword, apiGetMe, apiGetOAuthStatus, redirectToOAuth,
   apiLogin2FA, apiSetup2FA, apiVerify2FA, apiDisable2FA 
 } from '../services/auth';
 
@@ -98,12 +98,31 @@ export function AuthProvider({ children }) {
   }, [intendedRoute, triggerTransition]);
 
   const signup = useCallback(async (name, email, password, referralCode = '') => {
-    const { token, user } = await apiSignup(name, email, password, referralCode);
+    const result = await apiSignup(name, email, password, referralCode);
+    if (result.requires_otp) {
+      return result; // Return to AuthModal to show OTP step
+    }
+    // Fallback: if server returns token directly
+    if (result.token) {
+      localStorage.setItem('ssw_token', result.token);
+      if (result.user?.email) localStorage.setItem('ssw_user_email', result.user.email);
+      setUser(result.user);
+      triggerTransition(intendedRoute || '/');
+    }
+    return result;
+  }, [intendedRoute, triggerTransition]);
+
+  const verifySignupOTP = useCallback(async (email, otp, referralCode = '') => {
+    const { token, user } = await apiVerifySignup(email, otp, referralCode);
     localStorage.setItem('ssw_token', token);
     if (user?.email) localStorage.setItem('ssw_user_email', user.email);
     setUser(user);
     triggerTransition(intendedRoute || '/');
   }, [intendedRoute, triggerTransition]);
+
+  const resendOTP = useCallback(async (email) => {
+    return apiResendOTP(email);
+  }, []);
 
   const forgotPassword = useCallback(async (email) => {
     return apiForgotPassword(email);
@@ -127,14 +146,11 @@ export function AuthProvider({ children }) {
   }, []);
 
   const updateProfile = useCallback(async (data) => {
-    const token = localStorage.getItem('ssw_token');
-    const res = await fetch('/api/auth/profile', {
+    const { request } = await import('../services/api');
+    const json = await request('/auth/profile', {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify(data),
     });
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.error || 'Failed to update profile');
     if (json.user) setUser(json.user);
     return json;
   }, []);
@@ -153,7 +169,7 @@ export function AuthProvider({ children }) {
       user, loading, showTransition,
       modalOpen, modalTab, intendedRoute,
       oauthStatus,
-      login, signup, logout, forgotPassword, loginWithOAuth, setUserFromToken,
+      login, signup, verifySignupOTP, resendOTP, logout, forgotPassword, loginWithOAuth, setUserFromToken,
       openAuthModal, closeAuthModal, updateProfile, refreshMe,
       verify2FA, setup2FA: apiSetup2FA, confirm2FA: apiVerify2FA, disable2FA: apiDisable2FA
     }}>

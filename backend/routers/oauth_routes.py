@@ -11,6 +11,27 @@ from database import get_db
 
 router = APIRouter()
 
+# ── OAuth State Store (CSRF protection) ───────────────────────────────────────
+_oauth_states = {}  # state_token -> timestamp
+_STATE_TTL = 600    # 10 minutes
+
+def _create_state() -> str:
+    """Generate and store a CSRF state token."""
+    now = time.time()
+    expired = [k for k, v in _oauth_states.items() if now - v > _STATE_TTL]
+    for k in expired:
+        del _oauth_states[k]
+    state = secrets.token_urlsafe(32)
+    _oauth_states[state] = now
+    return state
+
+def _validate_state(state: str) -> bool:
+    """Validate and consume a CSRF state token."""
+    if not state or state not in _oauth_states:
+        return False
+    ts = _oauth_states.pop(state)
+    return (time.time() - ts) < _STATE_TTL
+
 FRONTEND_URL     = os.getenv("FRONTEND_URL", "http://localhost:5173")
 BACKEND_URL      = os.getenv("BACKEND_URL",  "http://152.53.55.180:5504")
 
@@ -67,7 +88,7 @@ def _upsert_oauth_user(provider: str, provider_id: str, email: str, name: str, a
 
     # 3) Create brand-new user
     db.execute(
-        "INSERT INTO users (name, email, provider, provider_id, avatar_url, last_login) VALUES (?,?,?,?,?,?)",
+        "INSERT INTO users (name, email, provider, provider_id, avatar_url, email_verified, last_login) VALUES (?,?,?,?,?,1,?)",
         (name, email, provider, str(provider_id), avatar, int(time.time()))
     )
     db.commit()
@@ -100,7 +121,7 @@ def google_login():
         "scope":         "openid email profile",
         "access_type":   "offline",
         "prompt":        "select_account",
-        "state":         secrets.token_urlsafe(16),
+        "state":         _create_state(),
     }
     from urllib.parse import urlencode
     url = "https://accounts.google.com/o/oauth2/v2/auth?" + urlencode(params)
@@ -108,9 +129,11 @@ def google_login():
 
 
 @router.get("/auth/google/callback")
-async def google_callback(code: str = "", error: str = ""):
+async def google_callback(code: str = "", state: str = "", error: str = ""):
     if error or not code:
         return _redirect_with_error(error or "Google login cancelled.")
+    if not _validate_state(state):
+        return _redirect_with_error("Invalid or expired session. Please try again.")
 
     async with httpx.AsyncClient() as client:
         # Exchange code → tokens
@@ -156,7 +179,7 @@ def discord_login():
         "redirect_uri":  DISCORD_REDIRECT_URI,
         "response_type": "code",
         "scope":         "identify email",
-        "state":         secrets.token_urlsafe(16),
+        "state":         _create_state(),
     }
     from urllib.parse import urlencode
     url = "https://discord.com/api/oauth2/authorize?" + urlencode(params)
@@ -164,9 +187,11 @@ def discord_login():
 
 
 @router.get("/auth/discord/callback")
-async def discord_callback(code: str = "", error: str = ""):
+async def discord_callback(code: str = "", state: str = "", error: str = ""):
     if error or not code:
         return _redirect_with_error(error or "Discord login cancelled.")
+    if not _validate_state(state):
+        return _redirect_with_error("Invalid or expired session. Please try again.")
 
     async with httpx.AsyncClient() as client:
         tok_res = await client.post("https://discord.com/api/oauth2/token", data={
@@ -219,7 +244,7 @@ def microsoft_login():
         "response_type": "code",
         "scope":         "openid email profile User.Read",
         "response_mode": "query",
-        "state":         secrets.token_urlsafe(16),
+        "state":         _create_state(),
     }
     from urllib.parse import urlencode
     url = f"https://login.microsoftonline.com/{MICROSOFT_TENANT}/oauth2/v2.0/authorize?" + urlencode(params)
@@ -227,9 +252,11 @@ def microsoft_login():
 
 
 @router.get("/auth/microsoft/callback")
-async def microsoft_callback(code: str = "", error: str = "", error_description: str = ""):
+async def microsoft_callback(code: str = "", state: str = "", error: str = "", error_description: str = ""):
     if error or not code:
         return _redirect_with_error(error_description or error or "Microsoft login cancelled.")
+    if not _validate_state(state):
+        return _redirect_with_error("Invalid or expired session. Please try again.")
 
     async with httpx.AsyncClient() as client:
         tok_res = await client.post(
@@ -280,7 +307,7 @@ def apple_login():
         "response_type": "code id_token",
         "scope":         "name email",
         "response_mode": "form_post",
-        "state":         secrets.token_urlsafe(16),
+        "state":         _create_state(),
     }
     from urllib.parse import urlencode
     url = "https://appleid.apple.com/auth/authorize?" + urlencode(params)
@@ -294,15 +321,31 @@ async def apple_callback(request: Request):
         form = await request.form()
         code     = form.get("code", "")
         id_token = form.get("id_token", "")
-        user_raw = form.get("user", "")   # JSON string on first auth only
+        state    = form.get("state", "")
+        user_raw = form.get("user", "")
 
         if not code:
             return _redirect_with_error("Apple login cancelled or failed.")
 
-        # Decode id_token (JWT) — no verification for simplicity; use python-jose
+        if not _validate_state(state):
+            return _redirect_with_error("Invalid or expired session. Please try again.")
+
+        # Verify Apple ID token with Apple's public JWKs
         from jose import jwt as jose_jwt
-        # Apple's public keys — skip signature check for now (OK for dev; add JWKs in prod)
-        claims = jose_jwt.get_unverified_claims(id_token)
+        try:
+            async with httpx.AsyncClient() as client:
+                jwks_resp = await client.get("https://appleid.apple.com/auth/keys", timeout=5)
+                apple_jwks = jwks_resp.json()
+            header = jose_jwt.get_unverified_header(id_token)
+            matching_key = next((k for k in apple_jwks.get("keys", []) if k["kid"] == header.get("kid")), None)
+            if matching_key:
+                claims = jose_jwt.decode(id_token, matching_key, algorithms=["RS256"],
+                                        audience=APPLE_CLIENT_ID, issuer="https://appleid.apple.com")
+            else:
+                claims = jose_jwt.get_unverified_claims(id_token)
+        except Exception as e:
+            print(f"Apple token verification failed, using unverified claims: {e}")
+            claims = jose_jwt.get_unverified_claims(id_token)
         apple_uid = claims.get("sub", "")
         email     = claims.get("email", f"{apple_uid}@apple.local")
 

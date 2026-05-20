@@ -89,10 +89,11 @@ class FeedbackStatusBody(BaseModel):
 # ── Admin ────────────────────────────────────────────────────────────────────
 @router.get("/admin/clients")
 def get_clients(user=Depends(require_admin)):
+    from auth import safe_user
     db = get_db()
     rows = db.execute("SELECT * FROM auth.users ORDER BY created_at DESC").fetchall()
     db.close()
-    return [dict(r) for r in rows]
+    return [safe_user(dict(r)) for r in rows]
 
 @router.get("/admin/analytics")
 def get_analytics(user=Depends(require_manager)):
@@ -317,20 +318,21 @@ def manager_logs(user=Depends(require_manager)):
 
 @router.get("/manager/users")
 def manager_users(user=Depends(require_manager)):
+    from auth import safe_user
     db = get_db()
     rows = db.execute("SELECT * FROM auth.users ORDER BY created_at DESC").fetchall()
     db.close()
-    return [dict(r) for r in rows]
+    return [safe_user(dict(r)) for r in rows]
 
 @router.get("/manager/users/{uid}")
 def manager_user_detail(uid: int, user=Depends(require_manager)):
+    from auth import safe_user
     db = get_db()
     row = db.execute("SELECT * FROM auth.users WHERE id = ?", (uid,)).fetchone()
     if not row: db.close(); raise HTTPException(404, "User not found")
     orders = db.execute("SELECT * FROM orders.orders WHERE user_id = ?", (uid,)).fetchall()
     activity = db.execute("SELECT * FROM orders.activity_logs WHERE user_id = ? ORDER BY created_at DESC", (uid,)).fetchall()
     db.close()
-    from auth import safe_user
     return {**safe_user(dict(row)), "orders": [dict(o) for o in orders], "activity": [dict(a) for a in activity]}
 
 @router.put("/manager/users/{uid}/role")
