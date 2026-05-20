@@ -16,20 +16,15 @@ const Hero = ({ settings = {} }) => {
     fetch('/api/portfolio').then(r => r.json()).then(data => setPortfolio(data)).catch(() => {});
   }, []);
 
-  // Build carousel slides: banner + up to 3 shop cards + up to 2 portfolio cards
+  // Build carousel slides: banner + up to 4 portfolio cards
   useEffect(() => {
     const slides = [{ type: 'banner' }];
 
-    const featuredProducts = products
-      .filter(p => p.category === 'server' || p.category === 'bot')
-      .slice(0, 3);
-    featuredProducts.forEach(p => slides.push({ type: 'shop', data: p }));
-
-    const featuredPortfolio = portfolio.slice(0, 2);
+    const featuredPortfolio = portfolio.slice(0, 4);
     featuredPortfolio.forEach(p => slides.push({ type: 'portfolio', data: p }));
 
     setCardData(slides);
-  }, [products, portfolio]);
+  }, [portfolio]);
 
   // Auto-rotate every 3.5s
   useEffect(() => {
@@ -167,8 +162,8 @@ const Hero = ({ settings = {} }) => {
             </p>
 
             <div className="flex flex-wrap gap-4">
-              <button onClick={() => navigate('/shop')} className="btn-primary flex items-center gap-2 group">
-                Shop
+              <button onClick={() => navigate('/templates')} className="btn-primary flex items-center gap-2 group">
+                Explore Templates
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </button>
               <button onClick={() => navigate('/portfolio')} className="btn-outline flex items-center gap-2 group">

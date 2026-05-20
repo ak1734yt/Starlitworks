@@ -5,19 +5,21 @@ import Hero from "../components/Hero";
 import Features from "../components/Features";
 import Stats from "../components/Stats";
 import Portfolio from "../components/Portfolio";
-import Pricing from "../components/Pricing";
 import About from "../components/About";
 import Footer from "../components/Footer";
 import { motion } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
-import { ArrowRight, MessageCircle, Star, Send, Loader2 } from "lucide-react";
-import { getFeedbacks, submitFeedback, getSiteSettings } from "../services/api";
+import { ArrowRight, MessageCircle, Star, Send, Loader2, Sparkles } from "lucide-react";
+import { getFeedbacks, submitFeedback, getSiteSettings, getBlogs, getFaqs } from "../services/api";
 import { toast } from "react-hot-toast";
 
 function Home() {
   const navigate = useNavigate();
   const { openAuthModal, user } = useAuth();
   const [feedbacks, setFeedbacks] = useState([]);
+  const [blogs, setBlogs] = useState([]);
+  const [faqs, setFaqs] = useState([]);
+  const [faqOpenId, setFaqOpenId] = useState(null);
   const [siteSettings, setSiteSettings] = useState({
     maintenance_mode: 'false',
     show_stats: 'true',
@@ -42,6 +44,9 @@ function Home() {
       if (settings.brand_primary) document.documentElement.style.setProperty('--brand-primary', settings.brand_primary);
       if (settings.brand_secondary) document.documentElement.style.setProperty('--brand-secondary', settings.brand_secondary);
     }).catch(console.error);
+
+    getBlogs().then(data => setBlogs(data.slice(0, 3))).catch(console.error);
+    getFaqs().then(data => setFaqs(data.slice(0, 4))).catch(console.error);
   }, []);
 
   const fetchFeedbacks = async () => {
@@ -99,7 +104,6 @@ function Home() {
       <main>
         <Hero settings={siteSettings} />
         {siteSettings.show_stats !== 'false' && <Stats />}
-        {siteSettings.show_pricing !== 'false' && <Pricing />}
         <About settings={siteSettings} />
         <Features />
         {siteSettings.show_portfolio !== 'false' && <Portfolio />}
@@ -190,6 +194,89 @@ function Home() {
           </section>
         )}
 
+        {/* Blogs Section */}
+        <section className="py-24 bg-brand-bg relative overflow-hidden border-t border-white/5">
+          <div className="max-w-7xl mx-auto px-6">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-16 gap-4">
+              <div>
+                <div className="inline-flex items-center gap-2 px-3 py-1 bg-brand-primary/10 border border-brand-primary/20 rounded-full text-[10px] font-bold uppercase tracking-widest text-brand-primary mb-4">
+                  <Sparkles className="w-3 h-3" /> Recent Publications
+                </div>
+                <h2 className="text-4xl font-bold font-display">From Our <span className="text-gradient">Knowledge Hub</span></h2>
+              </div>
+              <button onClick={() => navigate('/blog')} className="btn-outline flex items-center gap-2 group text-sm">
+                View All Articles <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </button>
+            </div>
+
+            {blogs.length === 0 ? (
+              <div className="text-center py-12 text-gray-500">No blog posts available.</div>
+            ) : (
+              <div className="grid md:grid-cols-3 gap-8">
+                {blogs.map(blog => (
+                  <div key={blog.id} className="glass-card p-6 flex flex-col justify-between hover:border-brand-primary/30 transition-all group duration-300">
+                    <div>
+                      <span className="text-[10px] font-bold text-brand-secondary uppercase tracking-wider block mb-3">{blog.category}</span>
+                      <h3 className="text-lg font-bold text-white mb-2 leading-snug group-hover:text-brand-primary transition-colors line-clamp-2">{blog.title}</h3>
+                      <p className="text-gray-400 text-xs leading-relaxed line-clamp-3 mb-6">
+                        {blog.content.replace(/[#*`_-]/g, "")}
+                      </p>
+                    </div>
+                    <button onClick={() => navigate(`/blog/${blog.slug}`)} className="inline-flex items-center gap-2 text-xs font-bold text-white group-hover:text-brand-primary transition-colors">
+                      Read Guide <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* FAQs Section */}
+        <section className="py-24 bg-[#080808] border-t border-white/5">
+          <div className="max-w-4xl mx-auto px-6">
+            <div className="text-center mb-16">
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-brand-primary/10 border border-brand-primary/20 rounded-full text-[10px] font-bold uppercase tracking-widest text-brand-primary mb-4">
+                <Sparkles className="w-3 h-3" /> Quick Help
+              </div>
+              <h2 className="text-4xl font-bold font-display">Frequently Asked <span className="text-gradient">Questions</span></h2>
+            </div>
+
+            {faqs.length === 0 ? (
+              <div className="text-center py-12 text-gray-500">No FAQs available.</div>
+            ) : (
+              <div className="space-y-4">
+                {faqs.map(faq => {
+                  const isOpen = faqOpenId === faq.id;
+                  return (
+                    <div key={faq.id} className="bg-brand-card border border-brand-border rounded-2xl overflow-hidden transition-all duration-300 hover:border-white/10">
+                      <button onClick={() => setFaqOpenId(isOpen ? null : faq.id)} className="w-full flex items-center justify-between p-6 text-left focus:outline-none">
+                        <span className="font-bold text-white text-base pr-4">{faq.question}</span>
+                        {isOpen ? (
+                          <span className="text-brand-primary font-bold text-lg shrink-0">-</span>
+                        ) : (
+                          <span className="text-gray-500 font-bold text-lg shrink-0">+</span>
+                        )}
+                      </button>
+                      {isOpen && (
+                        <div className="px-6 pb-6 pt-2 border-t border-white/5 bg-white/[0.01]">
+                          <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-line">{faq.answer}</p>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <div className="text-center mt-12">
+              <button onClick={() => navigate('/faq')} className="btn-outline flex items-center gap-2 group text-sm mx-auto">
+                See More Questions <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </button>
+            </div>
+          </div>
+        </section>
+
         {/* CTA / Contact Section */}
         <section id="contact" className="py-24 border-t border-white/5">
           <div className="max-w-7xl mx-auto px-6">
@@ -210,13 +297,13 @@ function Home() {
                   {siteSettings.contact_cta_subtext || "Join hundreds of successful communities using our premium Discord solutions. Let's build something amazing together."}
                 </p>
                 <div className="flex flex-wrap justify-center gap-4">
-                  <button onClick={() => handleCTA('/shop')} className="btn-primary flex items-center gap-2 group">
-                    Get Started Now
+                  <button onClick={() => navigate('/templates')} className="btn-primary flex items-center gap-2 group">
+                    Explore Templates
                     <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                   </button>
-                  <button onClick={() => handleCTA('/history')} className="btn-outline flex items-center gap-2 group">
+                  <button onClick={() => navigate('/portfolio')} className="btn-outline flex items-center gap-2 group">
                     <MessageCircle className="w-4 h-4" />
-                    Contact for Custom Quote
+                    Our Work Portfolio
                   </button>
                 </div>
               </motion.div>
