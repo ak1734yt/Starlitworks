@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LayoutDashboard, IndianRupee, FileText, Users, ShoppingBag, Loader2, Save, X, Edit, Plus, Trash2, Search, Filter, Star, CreditCard, MessageSquare, Check, ExternalLink, Download, Globe, MapPin, Activity, Zap, Tag, Bell, DollarSign, History, TrendingUp } from 'lucide-react';
+import { LayoutDashboard, IndianRupee, FileText, Users, ShoppingBag, Loader2, Save, X, Edit, Plus, Trash2, Search, Filter, Star, CreditCard, MessageSquare, Check, ExternalLink, Download, Globe, MapPin, Activity, Zap, Tag, Bell, DollarSign, History, TrendingUp, Calendar, Receipt, Circle, CheckCircle2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import Navbar from '../components/Navbar';
 import SystemHealth from '../components/SystemHealth';
@@ -13,7 +13,7 @@ import {
   getAdminOrders, getInvoices, getAdminFeedbacks, updateOrderStatus,
   verifyPayment, updateFeedbackStatus, getCoupons, createCoupon,
   adminUpdateInvoiceStatus, adminNotifyUserInvoice, adminEditInvoice, adminAddUserCredits,
-  deleteInvoice
+  deleteInvoice, recordInvoicePayment, deleteInvoicePayment
 } from '../services/api';
 import UserChat from '../components/UserChat';
 
@@ -62,6 +62,11 @@ export default function Admin() {
   const [filterStatus, setFilterStatus] = useState('all');
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
+  const [payAmount, setPayAmount] = useState('');
+  const [payDate, setPayDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [payNote, setPayNote] = useState('');
+  const [submittingPayment, setSubmittingPayment] = useState(false);
+  const [showRecordPaymentForm, setShowRecordPaymentForm] = useState(false);
   const [newInvoice, setNewInvoice] = useState({
     userId: '',
     paymentPlan: 'full',
@@ -381,11 +386,13 @@ export default function Admin() {
 
   const handleUpdateInstallmentStatus = async (invoiceId, index, status) => {
     try {
-      await updateInstallment(invoiceId, index, status);
+      const res = await updateInstallment(invoiceId, index, status);
       toast.success('Installment updated');
-      fetchData();
+      fetchData(true);
       // Update local state if the modal is open
-      if (selectedInvoice && selectedInvoice.id === invoiceId) {
+      if (res.invoice && selectedInvoice && selectedInvoice.id === invoiceId) {
+        setSelectedInvoice(res.invoice);
+      } else if (selectedInvoice && selectedInvoice.id === invoiceId) {
         const next = { ...selectedInvoice };
         next.installments[index].status = status;
         next.installments[index].paid = (status.toLowerCase() === 'paid');
@@ -393,6 +400,49 @@ export default function Admin() {
       }
     } catch (err) {
       toast.error(err.message);
+    }
+  };
+
+  const handleRecordPayment = async (e) => {
+    e.preventDefault();
+    if (!selectedInvoice || !payAmount || parseFloat(payAmount) <= 0) {
+      toast.error('Enter a valid amount');
+      return;
+    }
+    setSubmittingPayment(true);
+    try {
+      const result = await recordInvoicePayment(selectedInvoice.id, {
+        amount: parseFloat(payAmount),
+        date: payDate,
+        note: payNote
+      });
+      if (result.success) {
+        setSelectedInvoice(result.invoice);
+        toast.success(`₹${parseFloat(payAmount).toLocaleString()} payment recorded`);
+        setPayAmount('');
+        setPayNote('');
+        setShowRecordPaymentForm(false);
+        fetchData(true);
+      }
+    } catch (err) {
+      toast.error(err.message || 'Failed to record payment');
+    } finally {
+      setSubmittingPayment(false);
+    }
+  };
+
+  const handleDeletePayment = async (paymentId) => {
+    if (!selectedInvoice) return;
+    if (!confirm('Are you sure you want to delete this payment record?')) return;
+    try {
+      const result = await deleteInvoicePayment(selectedInvoice.id, paymentId);
+      if (result.success) {
+        setSelectedInvoice(result.invoice);
+        toast.success('Payment entry removed');
+        fetchData(true);
+      }
+    } catch (err) {
+      toast.error(err.message || 'Failed to delete payment');
     }
   };
 
@@ -1430,52 +1480,173 @@ export default function Admin() {
                   </div>
                 </div>
 
-                {selectedInvoice.paymentType === 'installment' && selectedInvoice.installments && (
-                  <div className="mt-10 space-y-6">
-                    <h4 className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Payment Schedule & Installments</h4>
-                    <div className="grid gap-4">
-                      {selectedInvoice.installments.map((inst, idx) => (
-                        <div key={idx} className="flex items-center justify-between p-6 bg-white/[0.02] border border-white/5 rounded-2xl group hover:border-brand-primary/20 transition-all">
-                          <div className="flex items-center gap-6">
-                            <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center font-black text-xs text-gray-500">
-                              #{idx + 1}
-                            </div>
-                            <div>
-                              <p className="font-bold">{inst.month}</p>
-                              <p className="text-xs font-mono text-gray-500">{selectedInvoice.currency}{inst.amount?.toLocaleString()}</p>
-                            </div>
+                <div className={`mt-10 grid gap-10 ${selectedInvoice.paymentType === 'installment' ? 'md:grid-cols-2' : 'grid-cols-1'}`}>
+                  {/* Left (or full): Payments Ledger */}
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-[10px] font-black text-gray-500 uppercase tracking-widest flex items-center gap-2">
+                        <Receipt className="w-4 h-4 text-green-500" /> Received Payments Ledger
+                      </h4>
+                      <button
+                        onClick={() => {
+                          setShowRecordPaymentForm(!showRecordPaymentForm);
+                          setPayAmount('');
+                          setPayNote('');
+                          setPayDate(new Date().toISOString().split('T')[0]);
+                        }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-primary/10 text-brand-primary text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-brand-primary hover:text-white transition-all"
+                      >
+                        {showRecordPaymentForm ? <X className="w-3 h-3" /> : <Plus className="w-3.5 h-3.5" />}
+                        {showRecordPaymentForm ? 'Cancel' : 'Record Payment'}
+                      </button>
+                    </div>
+
+                    {showRecordPaymentForm && (
+                      <form onSubmit={handleRecordPayment} className="p-5 bg-white/[0.02] border border-white/5 rounded-2xl space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-1">
+                            <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Amount ({selectedInvoice.currency})</label>
+                            <input
+                              type="number"
+                              required
+                              value={payAmount}
+                              onChange={e => setPayAmount(e.target.value)}
+                              placeholder="e.g. 5000"
+                              className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-3 py-2 text-xs font-bold outline-none focus:border-green-500 transition-all text-white"
+                            />
                           </div>
-                          
-                          <div className="flex items-center gap-4">
-                            <div className="flex items-center gap-2">
-                               <div className={`w-2 h-2 rounded-full ${
-                                 inst.status === 'paid' ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]' :
-                                 inst.status === 'overdue' ? 'bg-red-500 animate-pulse' :
-                                 inst.status === 'due' ? 'bg-yellow-500' : 'bg-gray-600'
-                               }`} />
-                               <span className={`text-[10px] font-black uppercase tracking-widest ${
-                                 inst.status === 'paid' ? 'text-green-500' :
-                                 inst.status === 'overdue' ? 'text-red-500' :
-                                 inst.status === 'due' ? 'text-yellow-500' : 'text-gray-500'
-                               }`}>{inst.status || (inst.paid ? 'paid' : 'pending')}</span>
-                            </div>
-                            
-                            <select 
-                              value={inst.status || (inst.paid ? 'paid' : 'pending')}
-                              onChange={(e) => handleUpdateInstallmentStatus(selectedInvoice.id, idx, e.target.value)}
-                              className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-[10px] font-black uppercase tracking-widest outline-none focus:border-brand-primary transition-all cursor-pointer"
-                            >
-                              <option value="pending" className="bg-brand-bg">Pending</option>
-                              <option value="paid" className="bg-brand-bg text-green-500">Mark Paid</option>
-                              <option value="due" className="bg-brand-bg text-yellow-500">Mark Due</option>
-                              <option value="overdue" className="bg-brand-bg text-red-500">Overdue</option>
-                            </select>
+                          <div className="space-y-1">
+                            <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Date</label>
+                            <input
+                              type="date"
+                              required
+                              value={payDate}
+                              onChange={e => setPayDate(e.target.value)}
+                              className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-3 py-2 text-xs font-bold outline-none focus:border-green-500 transition-all text-white color-scheme-dark"
+                            />
                           </div>
                         </div>
-                      ))}
-                    </div>
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Note (Optional)</label>
+                          <input
+                            type="text"
+                            value={payNote}
+                            onChange={e => setPayNote(e.target.value)}
+                            placeholder="UPI / Reference / Installment description"
+                            className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-3 py-2 text-xs outline-none focus:border-green-500 transition-all text-white"
+                          />
+                        </div>
+                        <button
+                          type="submit"
+                          disabled={submittingPayment || !payAmount}
+                          className="w-full py-2 bg-green-500 text-white rounded-xl text-xs font-bold shadow-[0_0_15px_rgba(34,197,94,0.2)] hover:shadow-[0_0_25px_rgba(34,197,94,0.4)] transition-all disabled:opacity-50 flex items-center justify-center gap-1.5"
+                        >
+                          {submittingPayment ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                          Confirm Payment
+                        </button>
+                      </form>
+                    )}
+
+                    {(!selectedInvoice.payments || selectedInvoice.payments.length === 0) ? (
+                      <div className="p-8 bg-white/[0.01] border border-white/5 rounded-2xl text-center">
+                        <p className="text-xs text-gray-500 italic">No payments logged yet.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                        {selectedInvoice.payments.map((p, idx) => {
+                          const amt = parseFloat(p.amount) || 0;
+                          return (
+                            <div key={p.id || idx} className="flex items-center justify-between p-4 bg-white/[0.02] rounded-2xl border border-white/5 group hover:border-green-500/20 transition-all">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center border border-green-500/20">
+                                  <CheckCircle2 className="w-4 h-4 text-green-500" />
+                                </div>
+                                <div>
+                                  <p className="font-bold text-sm text-green-400">{selectedInvoice.currency}{amt.toLocaleString()}</p>
+                                  <p className="text-[10px] text-gray-500">{p.date} {p.note ? `· ${p.note}` : ''}</p>
+                                </div>
+                              </div>
+                              <button
+                                onClick={() => handleDeletePayment(p.id)}
+                                className="p-1.5 text-gray-700 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                                title="Delete payment record"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          );
+                        })}
+                        {/* Summary of ledger */}
+                        {(() => {
+                          const ledgerTotal = selectedInvoice.payments.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0);
+                          const outstanding = parseFloat(selectedInvoice.grandTotal || 0) - ledgerTotal;
+                          return (
+                            <div className="p-4 bg-green-500/5 border border-green-500/10 rounded-2xl text-xs space-y-1">
+                              <div className="flex justify-between">
+                                <span className="text-gray-500">Total Received (Ledger)</span>
+                                <span className="font-bold text-green-500">{selectedInvoice.currency}{ledgerTotal.toLocaleString()}</span>
+                              </div>
+                              <div className="flex justify-between pt-1 border-t border-white/5">
+                                <span className="text-gray-500">Outstanding Balance</span>
+                                <span className="font-bold text-red-400">{selectedInvoice.currency}{outstanding.toLocaleString()}</span>
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    )}
                   </div>
-                )}
+
+                  {/* Right: Installment timeline if installment */}
+                  {selectedInvoice.paymentType === 'installment' && selectedInvoice.installments && (
+                    <div className="space-y-6">
+                      <h4 className="text-[10px] font-black text-gray-500 uppercase tracking-widest flex items-center gap-2">
+                        <Calendar className="w-4 h-4 text-brand-primary" /> Projected EMI Schedule
+                      </h4>
+                      <div className="grid gap-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                        {selectedInvoice.installments.map((inst, idx) => (
+                          <div key={idx} className="flex items-center justify-between p-4 bg-white/[0.02] border border-white/5 rounded-2xl group hover:border-brand-primary/20 transition-all">
+                            <div className="flex items-center gap-4">
+                              <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center font-black text-xs text-gray-500">
+                                #{idx + 1}
+                              </div>
+                              <div>
+                                <p className="font-bold text-sm">{inst.month}</p>
+                                <p className="text-xs font-mono text-gray-500">{selectedInvoice.currency}{inst.amount?.toLocaleString()}</p>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-3">
+                              <div className="flex items-center gap-1.5">
+                                <div className={`w-1.5 h-1.5 rounded-full ${
+                                  inst.status === 'paid' ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]' :
+                                  inst.status === 'overdue' ? 'bg-red-500 animate-pulse' :
+                                  inst.status === 'due' ? 'bg-yellow-500' : 'bg-gray-600'
+                                }`} />
+                                <span className={`text-[9px] font-black uppercase tracking-widest ${
+                                  inst.status === 'paid' ? 'text-green-500' :
+                                  inst.status === 'overdue' ? 'text-red-500' :
+                                  inst.status === 'due' ? 'text-yellow-500' : 'text-gray-500'
+                                }`}>{inst.status || (inst.paid ? 'paid' : 'pending')}</span>
+                              </div>
+
+                              <select
+                                value={inst.status || (inst.paid ? 'paid' : 'pending')}
+                                onChange={(e) => handleUpdateInstallmentStatus(selectedInvoice.id, idx, e.target.value)}
+                                className="bg-white/5 border border-white/10 rounded-xl px-2 py-1 text-[9px] font-black uppercase tracking-widest outline-none focus:border-brand-primary transition-all cursor-pointer text-white"
+                              >
+                                <option value="pending" className="bg-brand-bg text-white">Pending</option>
+                                <option value="paid" className="bg-brand-bg text-green-500">Mark Paid</option>
+                                <option value="due" className="bg-brand-bg text-yellow-500">Mark Due</option>
+                                <option value="overdue" className="bg-brand-bg text-red-500">Overdue</option>
+                              </select>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {selectedInvoice.notes && (

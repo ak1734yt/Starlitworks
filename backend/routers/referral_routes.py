@@ -611,7 +611,7 @@ def get_referral_info(user=Depends(get_current_user)):
         referral_list.append({
             **dict(r),
             "referred_name": ref_user["name"] if ref_user else "Unknown",
-            "referred_email": ref_user["email"][:3] + "***" if ref_user else "***"
+            "referred_email": (ref_user["email"][:3] + "***" if ref_user and ref_user["email"] else "***")
         })
     db3.close()
 

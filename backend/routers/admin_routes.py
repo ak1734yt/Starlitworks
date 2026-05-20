@@ -166,33 +166,6 @@ def get_order_updates_client(oid: int, user=Depends(get_current_user)):
     db.close()
     return [dict(r) for r in rows]
 
-# ── Referral System ────────────────────────────────────────────────────────────
-@router.get("/auth/referral")
-def get_referral_info(user=Depends(get_current_user)):
-    db = get_db()
-    row = db.execute("SELECT details FROM auth.users WHERE id = ?", (user["id"],)).fetchone()
-    setting = db.execute("SELECT value FROM site_settings WHERE key = 'referral_credit_amount'").fetchone()
-    db.close()
-    try:
-        details = json.loads(row["details"] or "{}")
-    except:
-        details = {}
-    referral_code = details.get("referral_code", "")
-    if not referral_code:
-        # Generate and save referral code
-        referral_code = "REF" + secrets.token_hex(4).upper()
-        details["referral_code"] = referral_code
-        db2 = get_db()
-        db2.execute("UPDATE auth.users SET details = ? WHERE id = ?", (json.dumps(details), user["id"]))
-        db2.commit(); db2.close()
-    reward = float(setting["value"]) if setting else 50.0
-    return {
-        "referral_code": referral_code,
-        "referral_link": f"https://starlitsiege.works/signup?ref={referral_code}",
-        "reward_amount": reward,
-        "referral_count": details.get("referral_count", 0)
-    }
-
 # ── Revenue Stats (Manager Panel Widget) ────────────────────────────────────
 @router.get("/manager/revenue")
 def manager_revenue(user=Depends(require_manager)):

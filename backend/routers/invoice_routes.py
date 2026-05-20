@@ -33,6 +33,14 @@ def format_invoice_txt(inv: dict) -> str:
         for i in inv["installments"]:
             t += f"{i['month']:<20} {(currency + str(round(i['amount'], 2))):<20} {'PAID' if i.get('paid') else 'PENDING'}\n"
         t += f"{sep}\n"
+    if inv.get("payments"):
+        t += f"RECEIVED PAYMENTS LEDGER:\n{'Date':<12} {'Amount':<12} {'Note'}\n{'-'*52}\n"
+        for p_item in inv["payments"]:
+            t += f"{p_item.get('date', 'N/A'):<12} {(currency + str(round(p_item.get('amount', 0), 2))):<12} {p_item.get('note', '')}\n"
+        total_paid = sum(float(p_item.get('amount', 0)) for p_item in inv["payments"])
+        outstanding = float(inv.get("grandTotal", 0)) - total_paid
+        t += f"{line}\n{'Total Paid':<40} {(currency + str(round(total_paid, 2))):>12}\n{'Outstanding':<40} {(currency + str(round(outstanding, 2))):>12}\n"
+        t += f"{sep}\n"
     if inv.get("notes"): t += f"NOTES:\n{inv['notes']}\n{sep}\n"
     import datetime
     t += f"Generated on: {datetime.datetime.now().strftime('%d/%m/%Y %H:%M:%S')}\n{sep}\n"
@@ -105,17 +113,97 @@ def get_user_invoices(uid: str, user=Depends(get_current_user)):
 
 @router.patch("/invoices/{inv_id}/installment")
 def update_installment(inv_id: str, body: InstallmentBody, user=Depends(require_admin)):
+    import datetime, uuid as _uuid
     p = os.path.join(INVOICES_DIR, f"{inv_id}.json")
     if not os.path.exists(p): raise HTTPException(404, "Invoice not found")
     with open(p) as f: inv = json.load(f)
     if not inv.get("installments") or body.index >= len(inv["installments"]):
         raise HTTPException(400, "Invalid installment index")
-    inv["installments"][body.index]["status"] = body.status
-    inv["installments"][body.index]["paid"] = (body.status.lower() == "paid")
+    inst = inv["installments"][body.index]
+    was_paid = inst.get("paid", False)
+    is_now_paid = body.status.lower() == "paid"
+    inst["status"] = body.status
+    inst["paid"] = is_now_paid
+    # Sync payments ledger: auto-add an entry when marking paid, remove when reverting
+    if not inv.get("payments"):
+        inv["payments"] = []
+    if is_now_paid and not was_paid:
+        # Add a ledger entry for this installment payment
+        inv["payments"].append({
+            "id": str(_uuid.uuid4()),
+            "amount": float(inst.get("amount", 0)),
+            "date": datetime.datetime.utcnow().strftime("%Y-%m-%d"),
+            "note": f"EMI #{body.index + 1} – {inst.get('month', '')} (auto-logged)",
+            "installment_index": body.index
+        })
+    elif not is_now_paid and was_paid:
+        # Remove any ledger entry that was auto-created for this installment
+        inv["payments"] = [
+            p_item for p_item in inv["payments"]
+            if p_item.get("installment_index") != body.index
+        ]
     with open(p, "w") as f: json.dump(inv, f, indent=2)
     with open(os.path.join(INVOICES_DIR, f"{inv_id}.txt"), "w", encoding="utf-8") as f:
         f.write(format_invoice_txt(inv))
     log_activity(user["id"], "UPDATE_INSTALLMENT", f"Invoice {inv_id} installment {body.index}")
+    pubsub.publish("invoices_update")
+    return {"success": True, "invoice": inv}
+
+
+class PaymentBody(BaseModel):
+    amount: float
+    date: str
+    note: Optional[str] = ""
+
+@router.post("/invoices/{inv_id}/payments", status_code=201)
+def record_payment(inv_id: str, body: PaymentBody, user=Depends(require_admin)):
+    import uuid as _uuid
+    p = os.path.join(INVOICES_DIR, f"{inv_id}.json")
+    if not os.path.exists(p): raise HTTPException(404, "Invoice not found")
+    with open(p) as f: inv = json.load(f)
+    if not inv.get("payments"):
+        inv["payments"] = []
+    payment = {
+        "id": str(_uuid.uuid4()),
+        "amount": float(body.amount),
+        "date": body.date,
+        "note": body.note or ""
+    }
+    inv["payments"].append(payment)
+    # Auto-update paymentStatus if fully paid
+    total_paid = sum(float(e.get("amount", 0)) for e in inv["payments"])
+    if total_paid >= float(inv.get("grandTotal", 0)):
+        inv["paymentStatus"] = "paid"
+    else:
+        inv["paymentStatus"] = "partial"
+    with open(p, "w") as f: json.dump(inv, f, indent=2)
+    with open(os.path.join(INVOICES_DIR, f"{inv_id}.txt"), "w", encoding="utf-8") as f:
+        f.write(format_invoice_txt(inv))
+    log_activity(user["id"], "RECORD_PAYMENT", f"Invoice {inv_id}: ₹{body.amount} on {body.date}")
+    pubsub.publish("invoices_update")
+    return {"success": True, "payment": payment, "invoice": inv}
+
+@router.delete("/invoices/{inv_id}/payments/{payment_id}")
+def delete_payment(inv_id: str, payment_id: str, user=Depends(require_admin)):
+    p = os.path.join(INVOICES_DIR, f"{inv_id}.json")
+    if not os.path.exists(p): raise HTTPException(404, "Invoice not found")
+    with open(p) as f: inv = json.load(f)
+    orig_len = len(inv.get("payments", []))
+    inv["payments"] = [e for e in inv.get("payments", []) if e.get("id") != payment_id]
+    if len(inv["payments"]) == orig_len:
+        raise HTTPException(404, "Payment entry not found")
+    # Recalculate status
+    total_paid = sum(float(e.get("amount", 0)) for e in inv["payments"])
+    if total_paid <= 0:
+        inv["paymentStatus"] = "pending"
+    elif total_paid >= float(inv.get("grandTotal", 0)):
+        inv["paymentStatus"] = "paid"
+    else:
+        inv["paymentStatus"] = "partial"
+    with open(p, "w") as f: json.dump(inv, f, indent=2)
+    with open(os.path.join(INVOICES_DIR, f"{inv_id}.txt"), "w", encoding="utf-8") as f:
+        f.write(format_invoice_txt(inv))
+    log_activity(user["id"], "DELETE_PAYMENT", f"Invoice {inv_id}: removed payment {payment_id}")
     pubsub.publish("invoices_update")
     return {"success": True, "invoice": inv}
 

@@ -39,6 +39,8 @@ export const updateInstallment = (id, index, status) => request(`/invoices/${id}
   method: 'PATCH', 
   body: JSON.stringify({ index, status }) 
 });
+export const recordInvoicePayment = (id, data) => request(`/invoices/${id}/payments`, { method: 'POST', body: JSON.stringify(data) });
+export const deleteInvoicePayment = (id, paymentId) => request(`/invoices/${id}/payments/${paymentId}`, { method: 'DELETE' });
 export const deleteInvoice = (id) => request(`/invoices/${id}`, { method: 'DELETE' });
 export const clearAllInvoices = () => request('/invoices', { method: 'DELETE' });
 
