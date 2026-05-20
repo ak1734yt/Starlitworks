@@ -263,7 +263,7 @@ export default function History() {
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
-      toast.success('Invoice TXT downloaded successfully!');
+      toast.success('Invoice PDF downloaded successfully!');
     } catch (err) {
       toast.error(err.message);
     }
@@ -844,14 +844,23 @@ export default function History() {
                               </button>
                             )}
 
-                            {matchingInvoice && (
-                              <button 
-                                onClick={() => { setSelectedInvoice(matchingInvoice); setShowInvoiceModal(true); }}
-                                className="flex-1 md:flex-initial px-4 py-2.5 bg-white/5 border border-white/10 hover:bg-white/10 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5"
-                              >
-                                <Info className="w-3.5 h-3.5" /> View Invoice
-                              </button>
-                            )}
+                             {matchingInvoice && (
+                               <>
+                                 <button 
+                                   onClick={() => { setSelectedInvoice(matchingInvoice); setShowInvoiceModal(true); }}
+                                   className="flex-1 md:flex-initial px-4 py-2.5 bg-white/5 border border-white/10 hover:bg-white/10 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5"
+                                 >
+                                   <Info className="w-3.5 h-3.5" /> View Invoice
+                                 </button>
+                                 <button 
+                                   onClick={() => handleDownloadInvoice(matchingInvoice.id)}
+                                   className="flex-1 md:flex-initial px-4 py-2.5 bg-white/5 border border-white/10 hover:bg-white/10 text-gray-400 hover:text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5"
+                                   title="Download PDF"
+                                 >
+                                   <Download className="w-3.5 h-3.5" /> Download PDF
+                                 </button>
+                               </>
+                             )}
 
                             {(order.status === 'accepted' || order.status === 'in_progress' || order.status === 'completed') && (
                               <button 
@@ -978,13 +987,13 @@ export default function History() {
                                     <CreditCard className="w-3 h-3" /> Pay
                                   </button>
                                 )}
-                                <button
-                                  onClick={() => handleDownloadInvoice(inv.id)}
-                                  className="p-1.5 bg-white/5 border border-white/10 rounded-lg text-gray-400 hover:text-white transition-all"
-                                  title="Download TXT format invoice"
-                                >
-                                  <Download className="w-3.5 h-3.5" />
-                                </button>
+                                 <button
+                                   onClick={() => handleDownloadInvoice(inv.id)}
+                                   className="p-1.5 bg-white/5 border border-white/10 rounded-lg text-gray-400 hover:text-white transition-all"
+                                   title="Download PDF Invoice"
+                                 >
+                                   <Download className="w-3.5 h-3.5" />
+                                 </button>
                               </div>
                             </td>
                           </tr>
@@ -1236,9 +1245,9 @@ export default function History() {
                             <Award className="w-3.5 h-3.5" /> Promoter Achievement Rank
                           </div>
                           <h3 className="text-2xl font-display font-black text-white flex items-center gap-2.5">
-                            {referralInfo.active_rank}
+                            {referralInfo?.active_rank}
                             <span className="text-xs bg-purple-500/20 text-purple-300 px-3 py-1 rounded-full border border-purple-500/30">
-                              {referralInfo.cashback_pct}% Points Power
+                              {referralInfo?.cashback_pct}% Points Power
                             </span>
                           </h3>
                           <p className="text-xs text-gray-400 mt-2 max-w-xl">
@@ -1247,20 +1256,20 @@ export default function History() {
                         </div>
                       </div>
 
-                      {referralInfo.next_rank && (
+                      {referralInfo?.next_rank && (
                         <div className="mt-6 pt-6 border-t border-white/5 space-y-3">
                           <div className="flex justify-between text-xs font-bold">
-                            <span className="text-purple-300">Next Rank: {referralInfo.next_rank}</span>
-                            <span className="text-gray-400">{referralInfo.referral_count} / {referralInfo.next_milestone} Invites</span>
+                            <span className="text-purple-300">Next Rank: {referralInfo?.next_rank}</span>
+                            <span className="text-gray-400">{referralInfo?.referral_count || 0} / {referralInfo?.next_milestone || 0} Invites</span>
                           </div>
                           <div className="relative h-2 bg-white/5 rounded-full overflow-hidden">
                             <div 
                               className="absolute left-0 top-0 h-full rounded-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-1000"
-                              style={{ width: `${Math.min(100, (referralInfo.referral_count / referralInfo.next_milestone) * 100)}%` }}
+                              style={{ width: `${Math.min(100, ((referralInfo?.referral_count || 0) / (referralInfo?.next_milestone || 1)) * 100)}%` }}
                             />
                           </div>
                           <p className="text-[10px] text-gray-500">
-                            Invite {referralInfo.next_milestone - referralInfo.referral_count} more friend(s) to ascend to the <span className="text-purple-300 font-bold">{referralInfo.next_rank}</span> tier!
+                            Invite {(referralInfo?.next_milestone || 0) - (referralInfo?.referral_count || 0)} more friend(s) to ascend to the <span className="text-purple-300 font-bold">{referralInfo?.next_rank}</span> tier!
                           </p>
                         </div>
                       )}
@@ -1287,20 +1296,20 @@ export default function History() {
                         {referralInfo?.next_tier ? (
                           <div className="space-y-2">
                             <div className="flex justify-between text-xs font-bold">
-                              <span className="text-gray-400">Next Milestone: {referralInfo.next_tier.count} Invites</span>
-                              <span className="text-brand-primary">+{referralInfo.next_tier.bonus} Credits</span>
+                              <span className="text-gray-400">Next Milestone: {referralInfo?.next_tier?.count || 0} Invites</span>
+                              <span className="text-brand-primary">+{referralInfo?.next_tier?.bonus || 0} Credits</span>
                             </div>
                             
                             {/* Visual Progress Bar */}
                             <div className="relative h-2.5 bg-white/5 rounded-full overflow-hidden">
                               <div 
                                 className="absolute left-0 top-0 h-full rounded-full bg-brand-primary animate-pulse transition-all duration-1000"
-                                style={{ width: `${Math.min(100, ((referralInfo.referral_count || 0) / referralInfo.next_tier.count) * 100)}%` }}
+                                style={{ width: `${Math.min(100, (((referralInfo?.referral_count || 0) / (referralInfo?.next_tier?.count || 1)) * 100))}%` }}
                               />
                             </div>
                             
                             <p className="text-[10px] text-gray-500">
-                              You need <span className="text-white font-bold">{referralInfo.next_tier.count - (referralInfo.referral_count || 0)}</span> more successful referral signups to unlock the <span className="text-brand-primary font-bold">₹{referralInfo.next_tier.bonus}</span> bonus.
+                              You need <span className="text-white font-bold">{(referralInfo?.next_tier?.count || 0) - (referralInfo?.referral_count || 0)}</span> more successful referral signups to unlock the <span className="text-brand-primary font-bold">₹{referralInfo?.next_tier?.bonus || 0}</span> bonus.
                             </p>
                           </div>
                         ) : (
@@ -1312,15 +1321,15 @@ export default function History() {
 
                         {/* List of Tiers */}
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-white/5">
-                          {referralInfo.tiers.map((tier, idx) => {
-                            const reached = (referralInfo.referral_count || 0) >= tier.count;
+                          {referralInfo?.tiers?.map((tier, idx) => {
+                            const reached = (referralInfo?.referral_count || 0) >= (tier?.count || 0);
                             return (
                               <div key={idx} className={`p-4 rounded-xl border transition-all ${reached ? 'bg-brand-primary/5 border-brand-primary/20' : 'bg-white/[0.01] border-white/5'}`}>
                                 <div className="flex justify-between items-center mb-1">
-                                  <span className="text-xs font-bold text-gray-400">{tier.count} Invites</span>
+                                  <span className="text-xs font-bold text-gray-400">{tier?.count || 0} Invites</span>
                                   {reached && <Check className="w-3.5 h-3.5 text-brand-primary" />}
                                 </div>
-                                <span className={`text-base font-black ${reached ? 'text-white' : 'text-gray-600'}`}>₹{tier.bonus} Bonus</span>
+                                <span className={`text-base font-black ${reached ? 'text-white' : 'text-gray-600'}`}>₹{tier?.bonus || 0} Bonus</span>
                               </div>
                             );
                           })}
@@ -1338,18 +1347,18 @@ export default function History() {
                         Invited Friends ({referralInfo?.referrals?.length || 0})
                       </h3>
 
-                      {!referralInfo?.referrals || referralInfo.referrals.length === 0 ? (
+                      {!referralInfo?.referrals || referralInfo?.referrals?.length === 0 ? (
                         <p className="text-xs text-gray-600 py-10 text-center">No friends referred yet. Send your referral link to get started!</p>
                       ) : (
                         <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
-                          {referralInfo.referrals.map((ref, idx) => (
+                          {referralInfo?.referrals?.map((ref, idx) => (
                             <div key={idx} className="p-3 bg-white/[0.01] border border-white/5 rounded-xl flex justify-between items-center">
                               <div>
-                                <h4 className="font-bold text-xs text-white">{ref.referred_name}</h4>
-                                <p className="text-[8px] text-gray-500 font-mono mt-0.5">Joined {new Date(ref.created_at * 1000).toLocaleDateString()}</p>
+                                <h4 className="font-bold text-xs text-white">{ref?.referred_name}</h4>
+                                <p className="text-[8px] text-gray-500 font-mono mt-0.5">Joined {ref?.created_at ? new Date(ref.created_at * 1000).toLocaleDateString() : 'N/A'}</p>
                               </div>
                               <span className="text-[8px] font-black px-2 py-0.5 rounded-full uppercase bg-green-500/10 text-green-500 border border-green-500/20">
-                                {ref.status}
+                                {ref?.status}
                               </span>
                             </div>
                           ))}
@@ -1364,18 +1373,18 @@ export default function History() {
                         Earnings History
                       </h3>
 
-                      {!referralInfo?.transactions || referralInfo.transactions.length === 0 ? (
+                      {!referralInfo?.transactions || referralInfo?.transactions?.length === 0 ? (
                         <p className="text-xs text-gray-600 py-10 text-center">No earnings recorded yet. Payouts will appear here instantly.</p>
                       ) : (
                         <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
-                          {referralInfo.transactions.map((tx, idx) => (
+                          {referralInfo?.transactions?.map((tx, idx) => (
                             <div key={idx} className="p-3 bg-white/[0.01] border border-white/5 rounded-xl flex justify-between items-center">
                               <div>
-                                <h4 className="font-bold text-xs text-white">{tx.description || 'Referral Bonus'}</h4>
-                                <p className="text-[8px] text-gray-500 font-mono mt-0.5">{new Date(tx.created_at * 1000).toLocaleDateString()}</p>
+                                <h4 className="font-bold text-xs text-white">{tx?.description || 'Referral Bonus'}</h4>
+                                <p className="text-[8px] text-gray-500 font-mono mt-0.5">{tx?.created_at ? new Date(tx.created_at * 1000).toLocaleDateString() : 'N/A'}</p>
                               </div>
                               <span className="text-xs font-mono font-bold text-brand-secondary">
-                                +₹{tx.amount}
+                                +₹{tx?.amount || 0}
                               </span>
                             </div>
                           ))}
@@ -1391,7 +1400,7 @@ export default function History() {
                       Cash Payout Requests Ledger
                     </h3>
 
-                    {!referralInfo?.withdrawals || referralInfo.withdrawals.length === 0 ? (
+                    {!referralInfo?.withdrawals || referralInfo?.withdrawals?.length === 0 ? (
                       <p className="text-xs text-gray-600 py-8 text-center">No cash payout requests submitted yet.</p>
                     ) : (
                       <div className="overflow-x-auto">
@@ -1406,30 +1415,30 @@ export default function History() {
                             </tr>
                           </thead>
                           <tbody>
-                            {referralInfo.withdrawals.map((w, idx) => (
+                            {referralInfo?.withdrawals?.map((w, idx) => (
                               <tr key={idx} className="border-b border-white/[0.02] last:border-0 hover:bg-white/[0.01] transition-colors">
                                 <td className="py-3 font-mono text-[10px]">
-                                  {new Date(w.created_at * 1000).toLocaleString()}
+                                  {w?.created_at ? new Date(w.created_at * 1000).toLocaleString() : 'N/A'}
                                 </td>
                                 <td className="py-3 font-bold text-white font-mono">
-                                  ₹{w.amount}
+                                  ₹{w?.amount || 0}
                                 </td>
-                                <td className="py-3 font-sans truncate max-w-[200px]" title={w.payment_info}>
-                                  {w.payment_info}
+                                <td className="py-3 font-sans truncate max-w-[200px]" title={w?.payment_info}>
+                                  {w?.payment_info}
                                 </td>
                                 <td className="py-3">
                                   <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${
-                                    w.status === 'approved' 
+                                    w?.status === 'approved' 
                                       ? 'bg-green-500/10 text-green-500 border border-green-500/20' 
-                                      : w.status === 'rejected' 
+                                      : w?.status === 'rejected' 
                                         ? 'bg-red-500/10 text-red-500 border border-red-500/20' 
                                         : 'bg-yellow-500/10 text-yellow-500 border border-yellow-500/20'
                                   }`}>
-                                    {w.status}
+                                    {w?.status}
                                   </span>
                                 </td>
-                                <td className="py-3 text-gray-500 italic truncate max-w-[150px]" title={w.note}>
-                                  {w.note || '—'}
+                                <td className="py-3 text-gray-500 italic truncate max-w-[150px]" title={w?.note}>
+                                  {w?.note || '—'}
                                 </td>
                               </tr>
                             ))}
@@ -1820,7 +1829,7 @@ export default function History() {
                   <button 
                     onClick={() => handleDownloadInvoice(selectedInvoice.id)} 
                     className="p-3 bg-white/5 hover:bg-white/10 rounded-xl transition-all border border-white/10 text-brand-primary" 
-                    title="Download TXT"
+                    title="Download PDF"
                   >
                     <Download className="w-5 h-5" />
                   </button>

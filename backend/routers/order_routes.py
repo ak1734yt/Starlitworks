@@ -55,6 +55,12 @@ def auto_generate_invoice(order_id: int):
         existing_inv["grandTotal"] = amount
         existing_inv["subtotal"] = amount - cgst - sgst
         existing_inv["taxTotal"] = cgst + sgst
+        if order["payment_status"] == "completed":
+            existing_inv["paymentStatus"] = "paid"
+            if existing_inv.get("paymentType") == "installment" and existing_inv.get("installments"):
+                for i in range(len(existing_inv["installments"])):
+                    existing_inv["installments"][i]["paid"] = True
+                    existing_inv["installments"][i]["status"] = "paid"
         if existing_inv.get("items"):
             existing_inv["items"][0]["rate"] = amount / float(order["quantity"] or 1)
             existing_inv["items"][0]["total"] = amount
@@ -70,6 +76,11 @@ def auto_generate_invoice(order_id: int):
                     
         with open(existing_path, "w") as f:
             json.dump(existing_inv, f, indent=2)
+        try:
+            from routers.invoice_routes import generate_invoice_pdf
+            generate_invoice_pdf(existing_inv, existing_path.replace(".json", ".pdf"))
+        except Exception as e:
+            print("Failed to pre-generate invoice pdf for existing invoice:", e)
         try: pubsub.publish("invoices_update")
         except: pass
         return
@@ -77,6 +88,7 @@ def auto_generate_invoice(order_id: int):
     # If it doesn't exist, create a new one
     inv_id = f"INV-{order_id}-{int(time.time())}"
     client_name = user["name"] if user else "Client"
+    is_paid = order["payment_status"] == "completed"
     
     inv = {
         "id": inv_id,
@@ -86,7 +98,7 @@ def auto_generate_invoice(order_id: int):
         "invoiceDate": datetime.datetime.now().strftime("%Y-%m-%d"),
         "savedAt": datetime.datetime.utcnow().isoformat(),
         "client": { "name": client_name, "serverName": order["service_name"] },
-        "org": {"name": "Starlit Siege Works", "emails": ["support@starlitsiegeworks.com"], "phone": "+91 9876543210"},
+        "org": {"name": "Starlit Siege Works", "emails": ["Akshatkumar945296@gmail.com"], "phone": "+91 7392939277"},
         "items": [{
             "id": secrets.token_hex(4),
             "desc": order["service_name"],
@@ -99,18 +111,24 @@ def auto_generate_invoice(order_id: int):
         "grandTotal": amount,
         "currency": "₹",
         "paymentType": order["payment_plan"] or "full",
-        "paymentStatus": "pending"
+        "paymentStatus": "paid" if is_paid else "pending"
     }
 
     if inv["paymentType"] == "installment":
         inv["installments"] = [
-            {"month": "Payment 1 (Setup)", "amount": amount * 0.5, "paid": False, "status": "pending"},
-            {"month": "Payment 2 (Final)", "amount": amount * 0.5, "paid": False, "status": "pending"}
+            {"month": "Payment 1 (Setup)", "amount": amount * 0.5, "paid": is_paid, "status": "paid" if is_paid else "pending"},
+            {"month": "Payment 2 (Final)", "amount": amount * 0.5, "paid": is_paid, "status": "paid" if is_paid else "pending"}
         ]
         inv["recurringTotal"] = 0
 
     with open(os.path.join(INVOICES_DIR, f"{inv_id}.json"), "w") as f:
         json.dump(inv, f, indent=2)
+
+    try:
+        from routers.invoice_routes import generate_invoice_pdf
+        generate_invoice_pdf(inv, os.path.join(INVOICES_DIR, f"{inv_id}.pdf"))
+    except Exception as e:
+        print("Failed to pre-generate invoice pdf for new invoice:", e)
 
     try:
         user_row = get_db().execute("SELECT email FROM auth.users WHERE id=?", (order["user_id"],)).fetchone()
@@ -360,8 +378,26 @@ async def submit_payment_proof(order_id: str, body: PaymentProofBody, user=Depen
             
             try:
                 auto_generate_invoice(numeric_order_id)
+                inv_id = None
+                inv_total = 0.0
+                for fname in os.listdir(INVOICES_DIR):
+                    if not fname.endswith(".json"): continue
+                    fpath = os.path.join(INVOICES_DIR, fname)
+                    with open(fpath) as f_inv:
+                        existing = json.load(f_inv)
+                        if str(existing.get("orderId")) == str(numeric_order_id):
+                            inv_id = existing["id"]
+                            inv_total = existing.get("grandTotal", 0.0)
+                            break
+                if inv_id:
+                    db_user = get_db()
+                    u_info = db_user.execute("SELECT name, email FROM auth.users WHERE id=?", (user["id"],)).fetchone()
+                    db_user.close()
+                    if u_info and u_info["email"]:
+                        from mailer import send_invoice_email_with_pdf
+                        send_invoice_email_with_pdf(u_info["name"], u_info["email"], inv_id, inv_total, os.path.join(INVOICES_DIR, f"{inv_id}.pdf"))
             except Exception as e:
-                print("Error generating invoice for credit purchase:", e)
+                print("Error generating invoice or sending receipt email for credit purchase:", e)
         else:
             # Partial or cash payment
             db.execute("""UPDATE orders.orders SET status='payment_pending', payment_status='pending',
@@ -439,12 +475,23 @@ async def submit_payment_proof(order_id: str, body: PaymentProofBody, user=Depen
             json.dump(inv, f, indent=2)
             
         try:
-            from routers.invoice_routes import format_invoice_txt
+            from routers.invoice_routes import format_invoice_txt, generate_invoice_pdf
             txt_path = os.path.join(INVOICES_DIR, f"{order_id}.txt")
             with open(txt_path, "w", encoding="utf-8") as f:
                 f.write(format_invoice_txt(inv))
+                
+            pdf_path = os.path.join(INVOICES_DIR, f"{order_id}.pdf")
+            generate_invoice_pdf(inv, pdf_path)
+            
+            if body.payment_method == "credits":
+                db_user = get_db()
+                u_info = db_user.execute("SELECT name, email FROM auth.users WHERE id=?", (user["id"],)).fetchone()
+                db_user.close()
+                if u_info and u_info["email"]:
+                    from mailer import send_invoice_email_with_pdf
+                    send_invoice_email_with_pdf(u_info["name"], u_info["email"], order_id, inv["grandTotal"], pdf_path)
         except Exception as e:
-            print("Error re-formatting txt invoice:", e)
+            print("Error re-formatting txt/pdf or sending receipt email for direct invoice payment:", e)
             
         db.close()
         await send_modular_webhook("PAYMENTS", {"embeds": [{"title": f"Payment Proof Submitted: Invoice {order_id}", "description": f"**Method:** {body.payment_method}\n**Credits Applied:** ₹{applied}\n**TxID:** {body.transaction_id or 'N/A'}", "color": 65280}]})
@@ -519,6 +566,23 @@ async def admin_update_order(order_id: int, body: AdminOrderUpdate, user=Depends
     db_chat = get_db()
     if body.status in ("quoted", "accepted"):
         auto_generate_invoice(order_id)
+    elif body.status == "rejected":
+        try:
+            for fname in os.listdir(INVOICES_DIR):
+                if not fname.endswith(".json"): continue
+                p_inv = os.path.join(INVOICES_DIR, fname)
+                with open(p_inv) as f_inv:
+                    inv = json.load(f_inv)
+                if str(inv.get("orderId")) == str(order_id):
+                    if inv.get("paymentStatus") != "paid":
+                        inv_id = inv["id"]
+                        for ext in (".json", ".txt", ".pdf"):
+                            fp = os.path.join(INVOICES_DIR, f"{inv_id}{ext}")
+                            if os.path.exists(fp):
+                                os.remove(fp)
+                        print(f"[REJECT CLEANUP] Deleted unpaid invoice {inv_id} because order #{order_id} was rejected.")
+        except Exception as e:
+            print(f"Error cleaning up unpaid invoice on order rejection: {e}")
 
     # ── Referral: trigger cashback on completion ──────────────────────────────
     if body.status == "completed" and row["status"] != "completed":
@@ -634,12 +698,13 @@ def verify_payment(order_id: int, body: VerifyPaymentBody, user=Depends(require_
                         
                         if updated:
                             with open(p, "w") as f: json.dump(inv, f, indent=2)
-                            # Also update the TXT version if helper exists
                             try:
-                                from routers.invoice_routes import format_invoice_txt
+                                from routers.invoice_routes import format_invoice_txt, generate_invoice_pdf
                                 with open(os.path.join(INVOICES_DIR, f"{inv['id']}.txt"), "w", encoding="utf-8") as f:
                                     f.write(format_invoice_txt(inv))
-                            except: pass
+                                generate_invoice_pdf(inv, os.path.join(INVOICES_DIR, f"{inv['id']}.pdf"))
+                            except Exception as e:
+                                print(f"Error updating TXT/PDF invoice during admin verification: {e}")
         except Exception as e:
             print(f"Error syncing invoice: {e}")
 
@@ -650,9 +715,29 @@ def verify_payment(order_id: int, body: VerifyPaymentBody, user=Depends(require_
             user_row = db_conn.execute("SELECT name, email FROM auth.users WHERE id=?", (user_id,)).fetchone()
             if user_row and user_row["email"]:
                 send_payment_approval_email(user_row["name"], user_row["email"], order_id)
+                
+                # Also send the paid invoice email with the PDF attached
+                try:
+                    inv_id = None
+                    inv_total = 0.0
+                    for fname in os.listdir(INVOICES_DIR):
+                        if not fname.endswith(".json"): continue
+                        fpath = os.path.join(INVOICES_DIR, fname)
+                        with open(fpath) as f_inv:
+                            existing = json.load(f_inv)
+                            if str(existing.get("orderId")) == str(order_id):
+                                inv_id = existing["id"]
+                                inv_total = existing.get("grandTotal", 0.0)
+                                break
+                    if inv_id:
+                        pdf_path = os.path.join(INVOICES_DIR, f"{inv_id}.pdf")
+                        from mailer import send_invoice_email_with_pdf
+                        send_invoice_email_with_pdf(user_row["name"], user_row["email"], inv_id, inv_total, pdf_path)
+                except Exception as email_err:
+                    print(f"Error sending automated invoice receipt email: {email_err}")
             db_conn.close()
         except Exception as e:
-            print(f"Failed to send payment approval email: {e}")
+            print(f"Failed to send payment approval or invoice receipt email: {e}")
             
     log_activity(user["id"], "APPROVE_PAYMENT" if body.approved else "REJECT_PAYMENT", f"Order {order_id}")
     try:
@@ -678,6 +763,23 @@ def update_vault(order_id: int, body: VaultBody, user=Depends(require_admin)):
 
 @router.delete("/admin/orders/{order_id}")
 def delete_order(order_id: int, user=Depends(require_admin)):
+    try:
+        for fname in os.listdir(INVOICES_DIR):
+            if not fname.endswith(".json"): continue
+            p_inv = os.path.join(INVOICES_DIR, fname)
+            with open(p_inv) as f_inv:
+                inv = json.load(f_inv)
+            if str(inv.get("orderId")) == str(order_id):
+                if inv.get("paymentStatus") != "paid":
+                    inv_id = inv["id"]
+                    for ext in (".json", ".txt", ".pdf"):
+                        fp = os.path.join(INVOICES_DIR, f"{inv_id}{ext}")
+                        if os.path.exists(fp):
+                            os.remove(fp)
+                    print(f"[DELETE CLEANUP] Deleted unpaid invoice {inv_id} because order #{order_id} was deleted.")
+    except Exception as e:
+        print(f"Error cleaning up unpaid invoice on order deletion: {e}")
+
     db = get_db()
     db.execute("DELETE FROM orders.chat_messages WHERE order_id = ?", (order_id,))
     db.execute("DELETE FROM orders.orders WHERE id = ?", (order_id,))
