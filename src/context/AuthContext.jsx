@@ -23,7 +23,10 @@ export function AuthProvider({ children }) {
     const token = localStorage.getItem('ssw_token');
     if (token) {
       apiGetMe()
-        .then(({ user }) => setUser(user))
+        .then(({ user }) => {
+          if (user?.email) localStorage.setItem('ssw_user_email', user.email);
+          setUser(user);
+        })
         .catch((err) => {
           if (err.status === 401) localStorage.removeItem('ssw_token');
         })
@@ -80,6 +83,7 @@ export function AuthProvider({ children }) {
       return res; // Return to handle in modal
     }
     localStorage.setItem('ssw_token', res.token);
+    if (res.user?.email) localStorage.setItem('ssw_user_email', res.user.email);
     setUser(res.user);
     triggerTransition(intendedRoute || '/');
     return res;
@@ -88,6 +92,7 @@ export function AuthProvider({ children }) {
   const verify2FA = useCallback(async (userId, code) => {
     const { token, user } = await apiLogin2FA(userId, code);
     localStorage.setItem('ssw_token', token);
+    if (user?.email) localStorage.setItem('ssw_user_email', user.email);
     setUser(user);
     triggerTransition(intendedRoute || '/');
   }, [intendedRoute, triggerTransition]);
@@ -95,6 +100,7 @@ export function AuthProvider({ children }) {
   const signup = useCallback(async (name, email, password, referralCode = '') => {
     const { token, user } = await apiSignup(name, email, password, referralCode);
     localStorage.setItem('ssw_token', token);
+    if (user?.email) localStorage.setItem('ssw_user_email', user.email);
     setUser(user);
     triggerTransition(intendedRoute || '/');
   }, [intendedRoute, triggerTransition]);

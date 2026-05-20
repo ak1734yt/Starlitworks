@@ -156,8 +156,8 @@ export default function History() {
   const [expandedOrderUpdates, setExpandedOrderUpdates] = useState(null);
   const [orderUpdates, setOrderUpdates] = useState({});
 
-  const load = async () => {
-    setLoading(true);
+  const load = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const token = localStorage.getItem('ssw_token');
       if (!token) {
@@ -179,9 +179,9 @@ export default function History() {
         } catch (_) {}
       }
     } catch {
-      toast.error('Failed to load history');
+      if (!silent) toast.error('Failed to load history');
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -249,7 +249,11 @@ export default function History() {
   };
 
   useEffect(() => { 
-    if(user) load(); 
+    if(user) {
+      load(); 
+      const interval = setInterval(() => load(true), 30000);
+      return () => clearInterval(interval);
+    }
   }, [user]);
 
   // Compute stats
@@ -876,8 +880,12 @@ export default function History() {
                       </thead>
                       <tbody className="divide-y divide-white/5">
                         {filteredInvoices.map((inv) => (
-                          <tr key={inv.id} className="hover:bg-white/[0.01] transition-colors">
-                            <td className="py-4 font-mono font-bold text-white text-xs">
+                          <tr 
+                            key={inv.id} 
+                            onClick={() => { setSelectedInvoice(inv); setShowInvoiceModal(true); }}
+                            className="hover:bg-white/5 transition-colors cursor-pointer group"
+                          >
+                            <td className="py-4 font-mono font-bold text-white text-xs px-4 group-hover:text-brand-primary transition-colors">
                               #{inv.id || inv.invoiceNumber}
                             </td>
                             <td className="py-4 text-xs max-w-[200px] truncate text-gray-300">
@@ -896,21 +904,20 @@ export default function History() {
                                 {inv.paymentStatus || 'Pending'}
                               </span>
                             </td>
-                            <td className="py-4 text-right">
+                            <td className="py-4 text-right px-4">
                               <div className="flex gap-2 justify-end">
-                                {inv.paymentStatus !== 'paid' ? (
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setSelectedInvoice(inv); setShowInvoiceModal(true); }}
+                                  className="px-3.5 py-1.5 bg-white/5 border border-white/10 rounded-lg text-xs font-bold text-gray-400 hover:text-white transition-all"
+                                >
+                                  Details
+                                </button>
+                                {inv.paymentStatus !== 'paid' && (
                                   <button
-                                    onClick={() => navigate(`/checkout/invoice/${inv.id}`)}
+                                    onClick={(e) => { e.stopPropagation(); navigate(`/checkout/invoice/${inv.id}`); }}
                                     className="px-3.5 py-1.5 bg-brand-primary/10 border border-brand-primary/20 rounded-lg text-xs font-bold text-brand-primary hover:bg-brand-primary hover:text-white transition-all flex items-center gap-1 shadow-md shadow-brand-primary/5"
                                   >
                                     <CreditCard className="w-3 h-3" /> Pay
-                                  </button>
-                                ) : (
-                                  <button
-                                    onClick={() => { setSelectedInvoice(inv); setShowInvoiceModal(true); }}
-                                    className="px-3.5 py-1.5 bg-white/5 border border-white/10 rounded-lg text-xs font-bold text-gray-400 hover:text-white transition-all"
-                                  >
-                                    Details
                                   </button>
                                 )}
                                 <button

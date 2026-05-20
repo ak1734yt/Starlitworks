@@ -78,7 +78,7 @@ export default function Checkout() {
       if (window.location.pathname.includes('/checkout/invoice/')) {
         if (!user) return; // Need user to fetch invoices
         const res = await getUserInvoicesByAdmin(user.id);
-        const inv = res.find(i => i.id === id || i.invoiceNumber === id);
+        const inv = res.find(i => String(i.id) === String(id) || String(i.invoiceNumber) === String(id));
         if (inv) {
           if (inv.paymentStatus === 'paid') {
             toast.success('This invoice is already paid.');

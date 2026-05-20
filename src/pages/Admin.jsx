@@ -129,8 +129,8 @@ export default function Admin() {
 
   const token = localStorage.getItem('ssw_token');
 
-  const fetchData = async () => {
-    setLoading(true);
+  const fetchData = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const isManagerOrAdmin = user?.role === 'manager' || user?.role === 'admin';
       const [orders, invoices, feedbacks, prices] = await Promise.all([
@@ -161,16 +161,21 @@ export default function Admin() {
       
       setData({ orders, invoices, feedbacks, clients, prices, pulse, coupons });
     } catch (err) {
-      toast.error('Failed to fetch data');
+      if (!silent) toast.error('Failed to fetch data');
       console.error(err);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (user?.role === 'admin' || user?.role === 'manager') fetchData();
-    else navigate('/');
+    if (user?.role === 'admin' || user?.role === 'manager') {
+      fetchData();
+      const interval = setInterval(() => fetchData(true), 30000);
+      return () => clearInterval(interval);
+    } else {
+      navigate('/');
+    }
   }, [user, navigate]);
 
   // --- Handlers ---

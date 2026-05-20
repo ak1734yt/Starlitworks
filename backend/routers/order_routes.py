@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from typing import Optional
 from auth import get_current_user, require_admin, send_discord_webhook, send_modular_webhook, log_activity, create_notification, calculate_risk_score
+from mailer import send_order_confirm_email, send_invoice_email, send_payment_approval_email
 from database import get_db
 
 router = APIRouter()
@@ -28,7 +29,7 @@ def auto_generate_invoice(order_id: int):
     user = db.execute("SELECT name FROM auth.users WHERE id = ?", (order["user_id"],)).fetchone()
     db.close()
     
-    amount = float(order["quoted_price"] if order["quoted_price"] else order["total_amount"])
+    amount = float(order.get("total_amount") or order.get("quoted_price") or 0)
     cgst = float(order["cgst"] or 0)
     sgst = float(order["sgst"] or 0)
     
@@ -107,6 +108,13 @@ def auto_generate_invoice(order_id: int):
 
     with open(os.path.join(INVOICES_DIR, f"{inv_id}.json"), "w") as f:
         json.dump(inv, f, indent=2)
+
+    try:
+        user_row = get_db().execute("SELECT email FROM auth.users WHERE id=?", (order["user_id"],)).fetchone()
+        if user_row and user_row["email"]:
+            send_invoice_email(client_name, user_row["email"], inv_id, f"₹{amount}")
+    except Exception as e:
+        print(f"Failed to send invoice email: {e}")
     try:
         from routers.invoice_routes import format_invoice_txt
         with open(os.path.join(INVOICES_DIR, f"{inv_id}.txt"), "w", encoding="utf-8") as f:
@@ -175,6 +183,14 @@ async def create_order(body: OrderBody, user=Depends(get_current_user)):
     order_id = result.lastrowid
     db.close()
     await send_modular_webhook("ORDERS", {"embeds": [{"title": f"New Service Request: #{order_id}", "description": f"**Client:** {user['name']}\n**Service:** {body.service_name}\n**Timeline:** {body.timeline or 'Flexible'}", "color": 3447003, "timestamp": __import__("datetime").datetime.utcnow().isoformat()}]})
+    
+    try:
+        user_row = get_db().execute("SELECT email FROM auth.users WHERE id=?", (user["id"],)).fetchone()
+        if user_row and user_row["email"]:
+            send_order_confirm_email(user["name"], user_row["email"], order_id, body.service_name)
+    except Exception as e:
+        print(f"Failed to send order email: {e}")
+        
     return {"success": True, "order_id": order_id}
 
 @router.get("/orders/mine")
@@ -551,9 +567,19 @@ def verify_payment(order_id: int, body: VerifyPaymentBody, user=Depends(require_
         except Exception as e:
             print(f"Error syncing invoice: {e}")
 
+    if body.approved:
+        try:
+            db_conn = get_db()
+            user_id = row["user_id"]
+            user_row = db_conn.execute("SELECT name, email FROM auth.users WHERE id=?", (user_id,)).fetchone()
+            if user_row and user_row["email"]:
+                send_payment_approval_email(user_row["name"], user_row["email"], order_id)
+            db_conn.close()
+        except Exception as e:
+            print(f"Failed to send payment approval email: {e}")
+            
     log_activity(user["id"], "APPROVE_PAYMENT" if body.approved else "REJECT_PAYMENT", f"Order {order_id}")
     return {"success": True}
-
 @router.put("/admin/orders/{order_id}/vault")
 def update_vault(order_id: int, body: VaultBody, user=Depends(require_admin)):
     db = get_db()

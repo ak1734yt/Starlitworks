@@ -114,12 +114,16 @@ export default function Manager() {
   });
 
   useEffect(() => {
-    if (user?.role === 'manager') fetchData();
+    if (user?.role === 'manager') {
+      fetchData();
+      const interval = setInterval(() => fetchData(true), 30000);
+      return () => clearInterval(interval);
+    }
     else if (user) navigate('/');
   }, [user, activeTab, navigate]);
 
-  const fetchData = async () => {
-    setLoading(true);
+  const fetchData = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       if (activeTab === 'logs') {
         const [logData, statData, revData, orderData] = await Promise.all([
@@ -181,9 +185,9 @@ export default function Manager() {
         }
       }
     } catch (err) {
-      toast.error(err.message);
+      if (!silent) toast.error(err.message);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -21,12 +21,12 @@ export default function InvoiceDetail() {
   const [loading, setLoading] = useState(true);
   const grandTotal = Number(invoice?.grandTotal || 0);
 
-  const loadInvoice = async () => {
+  const loadInvoice = useCallback(async () => {
     if (!user) return;
     setLoading(true);
     try {
       const res = await getUserInvoicesByAdmin(user.id);
-      const found = res.find(inv => inv.id === id || inv.invoiceNumber === id);
+      const found = res.find(inv => String(inv.id) === String(id) || String(inv.invoiceNumber) === String(id));
       if (!found) {
         toast.error('Invoice not found');
         navigate('/history');
@@ -38,11 +38,11 @@ export default function InvoiceDetail() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, user, navigate]);
 
   useEffect(() => {
     loadInvoice();
-  }, [id, user]);
+  }, [loadInvoice]);
 
   const handleDownloadInvoice = async () => {
     if (!invoice) return;
