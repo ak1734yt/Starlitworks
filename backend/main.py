@@ -1,4 +1,5 @@
 import os
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -15,6 +16,15 @@ start_discord_stats_loop()
 
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
+# Lifespan context manager for startup and shutdown tasks
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    if os.getenv("DISCORD_BOT_TOKEN"):
+        import asyncio
+        from discord_bot import start_discord_bot
+        asyncio.create_task(start_discord_bot())
+    yield
+
 _is_prod = os.getenv("ENV", "").lower() == "production"
 app = FastAPI(
     title="Starlit Siege Works API",
@@ -22,15 +32,8 @@ app = FastAPI(
     docs_url=None if _is_prod else "/docs",
     redoc_url=None if _is_prod else "/redoc",
     openapi_url=None if _is_prod else "/openapi.json",
+    lifespan=lifespan,
 )
-
-# Start Discord Operations Bot on main event loop startup
-@app.on_event("startup")
-async def startup_event():
-    if os.getenv("DISCORD_BOT_TOKEN"):
-        import asyncio
-        from discord_bot import start_discord_bot
-        asyncio.create_task(start_discord_bot())
 
 # ── CORS ──────────────────────────────────────────────────────────────────────
 app.add_middleware(
