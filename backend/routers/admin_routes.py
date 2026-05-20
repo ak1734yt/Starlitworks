@@ -335,7 +335,7 @@ def manager_user_detail(uid: int, user=Depends(require_manager)):
 
 @router.put("/manager/users/{uid}/role")
 def update_role(uid: int, body: RoleBody, user=Depends(require_manager)):
-    if body.role not in ("client","admin","manager"): raise HTTPException(400, "Invalid role")
+    if body.role not in ("client", "regular_client", "vip_client", "admin", "manager"): raise HTTPException(400, "Invalid role")
     db = get_db()
     db.execute("UPDATE auth.users SET role = ? WHERE id = ?", (body.role, uid))
     db.commit(); db.close()

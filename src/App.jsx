@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
-import { useEffect } from "react";
+import { useEffect, lazy, Suspense } from "react";
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import TransitionScreen from "./components/TransitionScreen";
@@ -12,27 +12,37 @@ import ParticlesBg from "./components/ParticlesBg";
 
 
 
-import Home           from "./pages/Home";
-import About          from "./pages/About";
-import Shop           from "./pages/Shop";
-import CreateInvoice  from "./pages/CreateInvoice";
-import History        from "./pages/History";
-import InstallmentTracker from "./pages/InstallmentTracker";
-import ProductDetails from "./pages/ProductDetails";
-import Checkout       from "./pages/Checkout";
-import Login          from "./pages/Login";
-import SignUp         from "./pages/SignUp";
-import ForgotPassword from "./pages/ForgotPassword";
-import ServiceRequest from "./pages/ServiceRequest";
-import Admin          from "./pages/Admin";
-import Manager        from "./pages/Manager";
-import Profile        from "./pages/Profile";
-import ToS            from "./pages/ToS";
-import InvoiceDetail  from "./pages/InvoiceDetail";
-import OAuthCallback  from "./pages/OAuthCallback";
-import Status        from "./pages/Status";
-import PortfolioPage from "./pages/PortfolioPage";
-import Help          from "./pages/Help";
+const Home           = lazy(() => import("./pages/Home"));
+const About          = lazy(() => import("./pages/About"));
+const Shop           = lazy(() => import("./pages/Shop"));
+const CreateInvoice  = lazy(() => import("./pages/CreateInvoice"));
+const History        = lazy(() => import("./pages/History"));
+const InstallmentTracker = lazy(() => import("./pages/InstallmentTracker"));
+const ProductDetails = lazy(() => import("./pages/ProductDetails"));
+const Checkout       = lazy(() => import("./pages/Checkout"));
+const Login          = lazy(() => import("./pages/Login"));
+const SignUp         = lazy(() => import("./pages/SignUp"));
+const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
+const ServiceRequest = lazy(() => import("./pages/ServiceRequest"));
+const Admin          = lazy(() => import("./pages/Admin"));
+const Manager        = lazy(() => import("./pages/Manager"));
+const Profile        = lazy(() => import("./pages/Profile"));
+const ToS            = lazy(() => import("./pages/ToS"));
+const InvoiceDetail  = lazy(() => import("./pages/InvoiceDetail"));
+const OAuthCallback  = lazy(() => import("./pages/OAuthCallback"));
+const Status         = lazy(() => import("./pages/Status"));
+const PortfolioPage  = lazy(() => import("./pages/PortfolioPage"));
+const Help           = lazy(() => import("./pages/Help"));
+
+const RouteLoader = () => (
+  <div className="fixed inset-0 z-[9999] bg-black flex flex-col items-center justify-center">
+    <div className="relative w-16 h-16 mb-4">
+      <div className="absolute inset-0 border-4 border-brand-primary/20 rounded-full animate-pulse"></div>
+      <div className="absolute inset-0 border-4 border-brand-primary rounded-full border-t-transparent animate-spin"></div>
+    </div>
+    <p className="text-white/50 text-xs tracking-[0.2em] font-mono animate-pulse uppercase">Initializing Environment...</p>
+  </div>
+);
 
 // Silent analytics tracker for returning users
 function PulseTracker() {
@@ -108,35 +118,37 @@ function AppInner() {
       <CookieConsent />
       <PulseTracker />
       {!['/login', '/signup'].includes(pathname) && <ChatBubble />}
-      <Routes>
-        {/* Public */}
-        <Route path="/"               element={<Home />} />
-        <Route path="/about"          element={<About />} />
-        <Route path="/login"          element={<Login />} />
-        <Route path="/signup"         element={<SignUp />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/oauth-callback"  element={<OAuthCallback />} />
-        <Route path="/tos"            element={<ToS />} />
-        <Route path="/status"         element={<Status />} />
-        <Route path="/portfolio"      element={<PortfolioPage />} />
-        <Route path="/help"           element={<Help />} />
-
-        {/* Protected — client */}
-        <Route path="/shop"           element={<ProtectedRoute><Shop /></ProtectedRoute>} />
-        <Route path="/service-request" element={<ProtectedRoute><ServiceRequest /></ProtectedRoute>} />
-        <Route path="/create-invoice" element={<ProtectedRoute adminOnly><CreateInvoice /></ProtectedRoute>} />
-        <Route path="/history"        element={<ProtectedRoute><History /></ProtectedRoute>} />
-        <Route path="/tracker"        element={<ProtectedRoute><InstallmentTracker /></ProtectedRoute>} />
-        <Route path="/product/:id"    element={<ProtectedRoute><ProductDetails /></ProtectedRoute>} />
-        <Route path="/checkout/:id"   element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
-        <Route path="/invoice/:id"    element={<ProtectedRoute><InvoiceDetail /></ProtectedRoute>} />
-        <Route path="/checkout/invoice/:id" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
-        <Route path="/profile"        element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-
-        {/* Protected — admin/manager */}
-        <Route path="/admin"          element={<ProtectedRoute adminOnly><Admin /></ProtectedRoute>} />
-        <Route path="/manager"        element={<ProtectedRoute managerOnly><Manager /></ProtectedRoute>} />
-      </Routes>
+      <Suspense fallback={<RouteLoader />}>
+        <Routes>
+          {/* Public */}
+          <Route path="/"               element={<Home />} />
+          <Route path="/about"          element={<About />} />
+          <Route path="/login"          element={<Login />} />
+          <Route path="/signup"         element={<SignUp />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/oauth-callback"  element={<OAuthCallback />} />
+          <Route path="/tos"            element={<ToS />} />
+          <Route path="/status"         element={<Status />} />
+          <Route path="/portfolio"      element={<PortfolioPage />} />
+          <Route path="/help"           element={<Help />} />
+  
+          {/* Protected — client */}
+          <Route path="/shop"           element={<ProtectedRoute><Shop /></ProtectedRoute>} />
+          <Route path="/service-request" element={<ProtectedRoute><ServiceRequest /></ProtectedRoute>} />
+          <Route path="/create-invoice" element={<ProtectedRoute adminOnly><CreateInvoice /></ProtectedRoute>} />
+          <Route path="/history"        element={<ProtectedRoute><History /></ProtectedRoute>} />
+          <Route path="/tracker"        element={<ProtectedRoute><InstallmentTracker /></ProtectedRoute>} />
+          <Route path="/product/:id"    element={<ProtectedRoute><ProductDetails /></ProtectedRoute>} />
+          <Route path="/checkout/:id"   element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
+          <Route path="/invoice/:id"    element={<ProtectedRoute><InvoiceDetail /></ProtectedRoute>} />
+          <Route path="/checkout/invoice/:id" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
+          <Route path="/profile"        element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+  
+          {/* Protected — admin/manager */}
+          <Route path="/admin"          element={<ProtectedRoute adminOnly><Admin /></ProtectedRoute>} />
+          <Route path="/manager"        element={<ProtectedRoute managerOnly><Manager /></ProtectedRoute>} />
+        </Routes>
+      </Suspense>
     </>
   );
 }

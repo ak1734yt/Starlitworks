@@ -244,8 +244,7 @@ export default function Manager() {
     }
   };
 
-  const handleRoleChange = async (userId, currentRole) => {
-    const newRole = currentRole === 'admin' ? 'client' : 'admin';
+  const handleRoleChange = async (userId, newRole) => {
     try {
       await updateUserRole(userId, newRole);
       toast.success(`User role updated to ${newRole}`);
@@ -357,7 +356,11 @@ export default function Manager() {
     if (!sendEmailTo) return;
     setSendingEmail(true);
     try {
-      await managerSendTestEmail(sendEmailTo, subject, mailBody);
+      await managerSendTestEmail({
+        custom_email: sendEmailTo,
+        subject: subject,
+        message: mailBody
+      });
       toast.success(`Test email sent successfully to ${sendEmailTo}!`);
       setShowEmailModal(false);
     } catch (err) {
@@ -1041,17 +1044,16 @@ export default function Manager() {
                               <XCircle className="w-4 h-4" />
                             </button>
                             {u.role !== 'manager' && (
-                              <button 
-                                onClick={() => handleRoleChange(u.id, u.role)}
-                                className={`p-2 rounded-lg transition-all ${
-                                  u.role === 'admin' 
-                                  ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20' 
-                                  : 'bg-blue-500/10 text-blue-400 hover:bg-blue-500/20'
-                                }`}
-                                title={u.role === 'admin' ? 'Remove Admin' : 'Make Admin'}
+                              <select
+                                value={u.role}
+                                onChange={(e) => handleRoleChange(u.id, e.target.value)}
+                                className="bg-black border border-white/20 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-brand-primary transition-all font-semibold"
                               >
-                                {u.role === 'admin' ? <UserMinus className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
-                              </button>
+                                <option value="client">Client</option>
+                                <option value="regular_client">Regular Client</option>
+                                <option value="vip_client">VIP Client</option>
+                                <option value="admin">Admin</option>
+                              </select>
                             )}
                           </div>
                         </td>

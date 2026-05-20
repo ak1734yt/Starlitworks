@@ -47,13 +47,17 @@ export default function ParticlesBg() {
       }
 
       draw() {
+        // Draw simulated glow (faster than shadowBlur)
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius * 3, 0, Math.PI * 2);
+        ctx.fillStyle = this.color.replace('0.4', '0.06');
+        ctx.fill();
+
+        // Draw solid particle core
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
         ctx.fillStyle = this.color;
-        ctx.shadowBlur = 8;
-        ctx.shadowColor = this.color;
         ctx.fill();
-        ctx.shadowBlur = 0;
       }
     }
 
