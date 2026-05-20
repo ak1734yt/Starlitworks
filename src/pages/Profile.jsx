@@ -516,8 +516,18 @@ export default function Profile() {
                         <p className="text-xs text-gray-500 mt-1 truncate">{user?.email}</p>
                       </div>
                       
-                      <div className="inline-flex px-3 py-1 rounded-full bg-brand-primary/10 border border-brand-primary/20 text-[9px] font-black uppercase tracking-widest text-brand-primary">
-                        {user?.role || 'Client'}
+                      <div className={`inline-flex px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${
+                        user?.role === 'vip_client' ? 'bg-yellow-500/10 border border-yellow-500/20 text-yellow-400' :
+                        user?.role === 'regular_client' ? 'bg-green-500/10 border border-green-500/20 text-green-400' :
+                        user?.role === 'admin' ? 'bg-red-500/10 border border-red-500/20 text-red-400' :
+                        user?.role === 'manager' ? 'bg-blue-500/10 border border-blue-500/20 text-blue-400' :
+                        'bg-brand-primary/10 border border-brand-primary/20 text-brand-primary'
+                      }`}>
+                        {user?.role === 'vip_client' ? 'VIP Client ✨' :
+                         user?.role === 'regular_client' ? 'Regular Client' :
+                         user?.role === 'admin' ? 'Admin' :
+                         user?.role === 'manager' ? 'Manager' :
+                         'Standard Client'}
                       </div>
                     </div>
 

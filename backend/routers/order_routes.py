@@ -470,8 +470,23 @@ async def admin_update_order(order_id: int, body: AdminOrderUpdate, user=Depends
             discount_multiplier = 0.92
         body.quoted_price = round(body.quoted_price * discount_multiplier, 2)
     
-    db.execute("UPDATE orders.orders SET status=?, quoted_price=?, admin_notes=?, accepted_by=COALESCE(?,accepted_by), updated_at=? WHERE id=?",
-               (body.status, body.quoted_price, body.admin_notes, accepted_by, int(time.time()), order_id))
+    if body.quoted_price is not None and body.quoted_price > 0:
+        cgst = round(body.quoted_price * 0.09, 2)
+        sgst = round(body.quoted_price * 0.09, 2)
+        total_amount = round(body.quoted_price + cgst + sgst, 2)
+        db.execute("""
+            UPDATE orders.orders 
+            SET status=?, quoted_price=?, total_amount=?, cgst=?, sgst=?, tax_rate=18.0, 
+                admin_notes=?, accepted_by=COALESCE(?,accepted_by), updated_at=? 
+            WHERE id=?
+        """, (body.status, body.quoted_price, total_amount, cgst, sgst, body.admin_notes, accepted_by, int(time.time()), order_id))
+    else:
+        db.execute("""
+            UPDATE orders.orders 
+            SET status=?, admin_notes=?, accepted_by=COALESCE(?,accepted_by), updated_at=? 
+            WHERE id=?
+        """, (body.status, body.admin_notes, accepted_by, int(time.time()), order_id))
+        
     db.commit()
     db.close()
     db_chat = get_db()

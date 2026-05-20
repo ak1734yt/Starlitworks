@@ -457,7 +457,19 @@ export default function History() {
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-600">Account Type:</span>
-                          <span className="text-brand-secondary font-bold">Standard Client</span>
+                          <span className={`font-bold ${
+                            user?.role === 'vip_client' ? 'text-yellow-400 font-black' :
+                            user?.role === 'regular_client' ? 'text-green-400' :
+                            user?.role === 'admin' ? 'text-red-400' :
+                            user?.role === 'manager' ? 'text-blue-400' :
+                            'text-brand-secondary'
+                          }`}>
+                            {user?.role === 'vip_client' ? 'VIP Client ✨' :
+                             user?.role === 'regular_client' ? 'Regular Client' :
+                             user?.role === 'admin' ? 'Admin' :
+                             user?.role === 'manager' ? 'Manager' :
+                             'Standard Client'}
+                          </span>
                         </div>
                       </div>
                     </div>

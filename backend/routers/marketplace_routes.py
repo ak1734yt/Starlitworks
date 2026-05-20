@@ -235,7 +235,6 @@ async def purchase_template(template_id: int, user=Depends(get_current_user)):
         return {"success": True, "order_id": existing_order["id"], "message": "Existing purchase order found."}
         
     # Create order
-    price = template["price"]
     title = template["title"]
     
     result = db.execute("""
@@ -247,11 +246,11 @@ async def purchase_template(template_id: int, user=Depends(get_current_user)):
         f"template_{template_id}",
         f"Template: {title}",
         "",
-        f"Instant copy server layout template for '{title}' purchased from Starlit Marketplace.",
-        "Instant",
+        f"Custom quote request for server layout template '{title}' (ID: {template_id}).",
+        "Flexible",
         user.get("name", "DiscordClient"),
-        price,
-        0.0, 0.0, 0.0, price,
+        0.0,
+        0.0, 0.0, 0.0, 0.0,
         "full",
         1
     ))
@@ -262,17 +261,17 @@ async def purchase_template(template_id: int, user=Depends(get_current_user)):
     # Send webhook alert
     await send_modular_webhook("ORDERS", {
         "embeds": [{
-            "title": f"🛒 Template Order Created: #{order_id}",
-            "description": f"**Client:** {user['name']}\n**Template:** {title}\n**Price:** ₹{price:.2f}",
-            "color": 15844367,
+            "title": f"🛒 Template Quote Requested: #{order_id}",
+            "description": f"**Client:** {user['name']}\n**Template:** {title}\n**Price:** Custom Quote (Talk to us)",
+            "color": 3447003,
             "timestamp": __import__("datetime").datetime.utcnow().isoformat()
         }]
     })
     
     create_notification(
         user_id=user["id"],
-        title="🛒 Template Order Created",
-        message=f"Order #{order_id} for '{title}' template has been created. Proceed to checkout to unlock the creation link.",
+        title="🛒 Template Quote Requested",
+        message=f"Order #{order_id} for '{title}' template quote request has been created. Please talk to us in the order chat to get your custom price.",
         type_="info"
     )
     
