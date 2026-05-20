@@ -27,12 +27,12 @@ const About = ({ settings = {} }) => {
 
   // Fallbacks if database is empty
   const defaultServers = [
-    { name: "Cozy Clouds", link: "https://discord.gg/cozyclouds", members: "1.5k+", focus: "Chill, Socialize and fun" },
-];
+    { name: "Cozy Clouds", link: "https://discord.gg/cozyclouds", members: "1.5k+", focus: "Chill, socializing, and fun" },
+  ];
 
   const defaultProjects = [
     { title: "Advanced Invoice Pro", tech: "React, Node.js, SQLite", desc: "Automated billing system with installment tracking and PDF generation." },
-    { title: "Event Util Script", tech: "python,  SQLite", desc: "Event utility Advance script" },
+    { title: "Event Util Script", tech: "Python, SQLite", desc: "Advanced event utility script." },
   ];
 
   const finalServers = upgradedServers.length > 0 ? upgradedServers : defaultServers;

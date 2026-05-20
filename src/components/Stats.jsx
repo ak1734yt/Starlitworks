@@ -59,7 +59,7 @@ const AnimatedNumber = ({ value }) => {
   const formattedNum = formatComma ? currentValue.toLocaleString() : currentValue;
   
   if (parseValue(value).isStatic) {
-    return <span>{value.replace('/', 'x')}</span>;
+    return <span>{value}</span>;
   }
 
   return (

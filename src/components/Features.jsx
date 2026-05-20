@@ -12,7 +12,7 @@ const features = [
   {
     icon: Zap,
     title: "Lightning Fast",
-    description: "Optimised infrastructure for peak performance and zero latency responses.",
+    description: "Optimized infrastructure for peak performance and zero latency responses.",
     color: "text-yellow-400",
     bg: "bg-yellow-400/10"
   },
