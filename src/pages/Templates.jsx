@@ -238,12 +238,12 @@ export default function Templates() {
         {/* Floating Centered Interactive Discord Mock Previewer Modal */}
         {previewOpen && selectedTemplate && (
           <div
-            className="fixed inset-0 bg-brand-bg z-[100] flex items-center justify-center p-4 md:p-6 lg:p-10 animate-fade-in"
+            className="fixed inset-0 bg-brand-bg z-[100] flex items-center justify-center md:p-6 lg:p-10 animate-fade-in"
             onClick={(e) => {
               if (e.target === e.currentTarget) setPreviewOpen(false);
             }}
           >
-            <div className="bg-[#0A0A0C] border border-white/10 rounded-[2rem] w-full max-w-7xl h-[85vh] lg:h-[90vh] shadow-2xl flex flex-col overflow-hidden text-[#dbdee1] relative animate-scale-in">
+            <div className="bg-[#0A0A0C] md:border border-white/10 md:rounded-[2rem] w-full h-full md:max-w-7xl md:h-[85vh] lg:h-[90vh] shadow-2xl flex flex-col overflow-hidden text-[#dbdee1] relative animate-scale-in">
               {/* Top Header Bar */}
               <div className="h-16 border-b border-white/10 px-6 flex items-center justify-between shrink-0 bg-[#111214]">
                 <div className="flex items-center gap-3">
