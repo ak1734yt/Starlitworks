@@ -8,7 +8,7 @@ import {
   Star, MessageSquare, Palette, Globe, Megaphone, 
   Layers, ListOrdered, Share2, TrendingUp, Loader2, Gift,
   Edit, FileText, Download, CreditCard, History, Check, Bell, ExternalLink, DollarSign, X, ShoppingBag, Zap,
-  ArrowLeft, MoreVertical, Layout, PieChart, IndianRupee, Mail, Send, Sparkles
+  ArrowLeft, MoreVertical, Layout, PieChart, IndianRupee, Mail, Send, Sparkles, Eye
 } from 'lucide-react';
 import { 
   getManagerLogs, getManagerUsers, updateUserRole, 
@@ -44,6 +44,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-hot-toast';
+import InvoicePreview from '../components/InvoicePreview';
 
 const ReferralTreeNode = ({ node, level }) => {
   const [isExpanded, setIsExpanded] = useState(level < 1);
@@ -135,6 +136,7 @@ export default function Manager() {
   const [invoices, setInvoices] = useState([]);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [previewInvoice, setPreviewInvoice] = useState(null);
   const [addingCreditTo, setAddingCreditTo] = useState(null);
   const [creditAmount, setCreditAmount] = useState(0);
   const [creditMode, setCreditMode] = useState('add'); // 'add' or 'deduct'
@@ -1979,13 +1981,22 @@ export default function Manager() {
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
-                            <button 
-                              onClick={(e) => { e.stopPropagation(); handleDownloadInvoice(inv.id); }} 
-                              className="p-1.5 hover:bg-white/10 rounded-lg text-gray-400 transition-all"
-                              title="Download TXT"
-                            >
-                              <Download className="w-4 h-4" />
-                            </button>
+                            <div className="flex items-center justify-end gap-2">
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); setPreviewInvoice(inv); }}
+                                className="p-1.5 hover:bg-white/10 rounded-lg text-blue-400 transition-all"
+                                title="Preview Invoice"
+                              >
+                                <Eye className="w-4 h-4" />
+                              </button>
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); setPreviewInvoice(inv); }}
+                                className="p-1.5 hover:bg-white/10 rounded-lg text-brand-primary transition-all"
+                                title="Download TXT"
+                              >
+                                <Download className="w-4 h-4" />
+                              </button>
+                            </div>
                           </div>
                         </td>
                       </tr>
@@ -2926,7 +2937,10 @@ export default function Manager() {
                   </div>
                 </div>
                 <div className="flex gap-3">
-                  <button onClick={() => handleDownloadInvoice(selectedInvoice.id)} className="p-3 hover:bg-white/5 rounded-xl transition-all border border-white/10 text-brand-primary" title="Download TXT">
+                  <button onClick={() => setPreviewInvoice(selectedInvoice)} className="p-3 hover:bg-white/5 rounded-xl transition-all border border-white/10 text-blue-400" title="Preview">
+                    <Eye className="w-5 h-5" />
+                  </button>
+                  <button onClick={() => setPreviewInvoice(selectedInvoice)} className="p-3 hover:bg-white/5 rounded-xl transition-all border border-white/10 text-brand-primary" title="Download TXT">
                     <Download className="w-5 h-5" />
                   </button>
                   <button onClick={() => setShowInvoiceModal(false)} className="p-3 hover:bg-red-500/10 hover:text-red-500 rounded-xl transition-all border border-white/10">
@@ -3347,6 +3361,7 @@ export default function Manager() {
           </motion.div>
         )}
       </AnimatePresence>
+      {previewInvoice && <InvoicePreview invoice={previewInvoice} onClose={() => setPreviewInvoice(null)} />}
     </div>
   );
 }

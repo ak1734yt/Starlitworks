@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LayoutDashboard, IndianRupee, FileText, Users, ShoppingBag, Loader2, Save, X, Edit, Plus, Trash2, Search, Filter, Star, CreditCard, MessageSquare, Check, ExternalLink, Download, Globe, MapPin, Activity, Zap, Tag, Bell, DollarSign, History, TrendingUp, Calendar, Receipt, Circle, CheckCircle2 } from 'lucide-react';
+import { LayoutDashboard, IndianRupee, FileText, Users, ShoppingBag, Loader2, Save, X, Edit, Plus, Trash2, Search, Filter, Star, CreditCard, MessageSquare, Check, ExternalLink, Download, Eye, Globe, MapPin, Activity, Zap, Tag, Bell, DollarSign, History, TrendingUp, Calendar, Receipt, Circle, CheckCircle2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import Navbar from '../components/Navbar';
 import SystemHealth from '../components/SystemHealth';
+import InvoicePreview from '../components/InvoicePreview';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
@@ -62,6 +63,7 @@ export default function Admin() {
   const [filterStatus, setFilterStatus] = useState('all');
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
+  const [previewInvoice, setPreviewInvoice] = useState(null);
   const [payAmount, setPayAmount] = useState('');
   const [payDate, setPayDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [payNote, setPayNote] = useState('');
@@ -996,7 +998,14 @@ export default function Admin() {
                                 <Trash2 className="w-4 h-4" />
                               </button>
                               <button 
-                                onClick={(e) => { e.stopPropagation(); handleDownloadInvoice(inv.id); }} 
+                                onClick={(e) => { e.stopPropagation(); setPreviewInvoice(inv); }}
+                                className="p-1.5 hover:bg-white/10 rounded-lg text-blue-400 transition-all"
+                                title="Preview Invoice"
+                              >
+                                <Eye className="w-4 h-4" />
+                              </button>
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); setPreviewInvoice(inv); }}
                                 className="p-1.5 hover:bg-white/10 rounded-lg text-gray-400 transition-all"
                                 title="Download"
                               >
@@ -1418,7 +1427,10 @@ export default function Admin() {
                   </div>
                 </div>
                 <div className="flex gap-3">
-                  <button onClick={() => handleDownloadInvoice(selectedInvoice.id)} className="p-3 hover:bg-white/5 rounded-xl transition-all border border-white/10 text-brand-primary" title="Download TXT">
+                  <button onClick={() => setPreviewInvoice(selectedInvoice)} className="p-3 hover:bg-white/5 rounded-xl transition-all border border-white/10 text-blue-400" title="Preview">
+                    <Eye className="w-5 h-5" />
+                  </button>
+                  <button onClick={() => setPreviewInvoice(selectedInvoice)} className="p-3 hover:bg-white/5 rounded-xl transition-all border border-white/10 text-brand-primary" title="Download TXT">
                     <Download className="w-5 h-5" />
                   </button>
                   <button onClick={() => setShowInvoiceModal(false)} className="p-3 hover:bg-red-500/10 hover:text-red-500 rounded-xl transition-all border border-white/10">
@@ -1738,7 +1750,7 @@ export default function Admin() {
           </motion.div>
         )}
       </AnimatePresence>
-
+      {previewInvoice && <InvoicePreview invoice={previewInvoice} onClose={() => setPreviewInvoice(null)} />}
     </div>
   );
 }

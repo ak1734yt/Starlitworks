@@ -6,11 +6,12 @@ import {
   ShieldAlert, Send, CreditCard, Zap, FileText, Download, Activity, 
   Globe, Monitor, MapPin, Sparkles, ChevronRight, UserCircle2, ArrowRight,
   Headphones, PlusCircle, HelpCircle, Layers, CreditCard as CardIcon, LayoutDashboard,
-  KeyRound, Lock, Gift, Users, Award, DollarSign, Copy
+  KeyRound, Lock, Gift, Users, Award, DollarSign, Copy, Eye, Info
 } from 'lucide-react';
 import UserChat from '../components/UserChat';
 import { negotiateOrder, acceptOrder, getUserInvoicesByAdmin, getMyOrders, getReferralInfo, getOrderUpdates, requestWithdrawal, convertReferralPoints } from '../services/api';
 import Navbar from '../components/Navbar';
+import InvoicePreview from '../components/InvoicePreview';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
@@ -82,6 +83,7 @@ export default function History() {
   // Popout Invoice Details modal
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [previewInvoice, setPreviewInvoice] = useState(null);
   
   const [pointsToConvert, setPointsToConvert] = useState('');
   const [convertingPoints, setConvertingPoints] = useState(false);
@@ -853,7 +855,14 @@ export default function History() {
                                    <Info className="w-3.5 h-3.5" /> View Invoice
                                  </button>
                                  <button 
-                                   onClick={() => handleDownloadInvoice(matchingInvoice.id)}
+                                   onClick={() => setPreviewInvoice(matchingInvoice)}
+                                   className="flex-1 md:flex-initial px-4 py-2.5 bg-white/5 border border-white/10 hover:bg-white/10 text-blue-400 hover:text-blue-300 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5"
+                                   title="Preview PDF"
+                                 >
+                                   <Eye className="w-3.5 h-3.5" /> Preview PDF
+                                 </button>
+                                 <button 
+                                   onClick={() => setPreviewInvoice(matchingInvoice)}
                                    className="flex-1 md:flex-initial px-4 py-2.5 bg-white/5 border border-white/10 hover:bg-white/10 text-gray-400 hover:text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5"
                                    title="Download PDF"
                                  >
@@ -988,7 +997,14 @@ export default function History() {
                                   </button>
                                 )}
                                  <button
-                                   onClick={() => handleDownloadInvoice(inv.id)}
+                                   onClick={(e) => { e.stopPropagation(); setPreviewInvoice(inv); }}
+                                   className="p-1.5 bg-white/5 border border-white/10 rounded-lg text-blue-400 hover:text-blue-300 transition-all"
+                                   title="Preview PDF Invoice"
+                                 >
+                                   <Eye className="w-3.5 h-3.5" />
+                                 </button>
+                                 <button
+                                   onClick={(e) => { e.stopPropagation(); setPreviewInvoice(inv); }}
                                    className="p-1.5 bg-white/5 border border-white/10 rounded-lg text-gray-400 hover:text-white transition-all"
                                    title="Download PDF Invoice"
                                  >
@@ -1827,7 +1843,14 @@ export default function History() {
                 </div>
                 <div className="flex gap-3">
                   <button 
-                    onClick={() => handleDownloadInvoice(selectedInvoice.id)} 
+                    onClick={() => setPreviewInvoice(selectedInvoice)} 
+                    className="p-3 bg-white/5 hover:bg-white/10 rounded-xl transition-all border border-white/10 text-blue-400" 
+                    title="Preview PDF"
+                  >
+                    <Eye className="w-5 h-5" />
+                  </button>
+                  <button 
+                    onClick={() => setPreviewInvoice(selectedInvoice)} 
                     className="p-3 bg-white/5 hover:bg-white/10 rounded-xl transition-all border border-white/10 text-brand-primary" 
                     title="Download PDF"
                   >
@@ -2004,6 +2027,7 @@ export default function History() {
           </div>
         )}
       </AnimatePresence>
+      {previewInvoice && <InvoicePreview invoice={previewInvoice} onClose={() => setPreviewInvoice(null)} />}
     </div>
   );
 }
