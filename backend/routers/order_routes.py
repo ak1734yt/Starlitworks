@@ -27,12 +27,13 @@ def auto_generate_invoice(order_id: int):
     db = get_db()
     order = db.execute("SELECT * FROM orders.orders WHERE id = ?", (order_id,)).fetchone()
     if not order: return
+    order = dict(order)
     user = db.execute("SELECT name FROM auth.users WHERE id = ?", (order["user_id"],)).fetchone()
     db.close()
     
     amount = float(order.get("total_amount") or order.get("quoted_price") or 0)
-    cgst = float(order["cgst"] or 0)
-    sgst = float(order["sgst"] or 0)
+    cgst = float(order.get("cgst") or 0)
+    sgst = float(order.get("sgst") or 0)
     
     # Check if invoice already exists for this order
     existing_path = None
