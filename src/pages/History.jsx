@@ -286,32 +286,19 @@ export default function History() {
   useEffect(() => { 
     if (!user) return;
     
-    const token = localStorage.getItem('ssw_token');
-    if (!token) return;
-
-    const eventSource = new EventSource(`/api/realtime/events?token=${encodeURIComponent(token)}`);
-    
-    eventSource.onmessage = (event) => {
-      try {
-        const payload = JSON.parse(event.data);
-        if (payload.type === 'orders_update' || payload.type === `orders_${user.id}`) {
-          if (portalTab === 'overview' || portalTab === 'services') {
-            loadOrders(true);
-          }
-          refreshMe();
-        } else if (payload.type === 'invoices_update') {
-          if (portalTab === 'overview' || portalTab === 'billing') {
-            loadInvoices(true);
-          }
-          refreshMe();
-        }
-      } catch (e) {
-        console.error(e);
+    // Fallback to simple polling (every 10s) to avoid Vercel edge disconnections
+    const interval = setInterval(() => {
+      if (portalTab === 'overview' || portalTab === 'services') {
+        loadOrders(true);
       }
-    };
+      if (portalTab === 'overview' || portalTab === 'billing') {
+        loadInvoices(true);
+      }
+      refreshMe();
+    }, 10000);
 
     return () => {
-      eventSource.close();
+      clearInterval(interval);
     };
   }, [portalTab, user]);
 

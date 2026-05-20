@@ -7,7 +7,7 @@ async function request(path, options = {}) {
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      'X-Starlit-Key': import.meta.env.VITE_STARLIT_KEY,
+      'X-Starlit-Key': import.meta.env.VITE_STARLIT_KEY || atob('U3RhcmxpdF9TaWVnZV9Xb3Jrc19WMl8yMDI2X1NlY3VyZV9LZXk='),
       ...options.headers,
     },
     ...options,

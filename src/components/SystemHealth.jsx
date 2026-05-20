@@ -17,21 +17,11 @@ export default function SystemHealth() {
   useEffect(() => {
     checkHealth();
     
-    const token = localStorage.getItem('ssw_token');
-    if (!token) return;
-
-    const eventSource = new EventSource(`/api/realtime/events?token=${encodeURIComponent(token)}`);
-    
-    eventSource.onopen = () => {
-      setStatus('online');
-    };
-    
-    eventSource.onerror = () => {
-      setStatus('offline');
-    };
+    // Fallback to simple polling (every 30s) to avoid Vercel edge disconnections
+    const interval = setInterval(checkHealth, 30000);
     
     return () => {
-      eventSource.close();
+      clearInterval(interval);
     };
   }, []);
 

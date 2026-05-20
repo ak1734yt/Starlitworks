@@ -59,22 +59,13 @@ export default function Status() {
   useEffect(() => {
     checkServices();
     
-    const token = localStorage.getItem('ssw_token');
-    if (!token) return;
-
-    const eventSource = new EventSource(`/api/realtime/events?token=${encodeURIComponent(token)}`);
-    
-    eventSource.onopen = () => {
+    // Fallback to simple polling (every 30s) to avoid Vercel edge disconnections
+    const interval = setInterval(() => {
       checkServices();
-    };
-    
-    eventSource.onerror = () => {
-      setServices(prev => prev.map(s => s.name === 'API Server' ? { ...s, status: 'offline', latency: null } : s));
-      setOverallStatus('offline');
-    };
+    }, 30000);
     
     return () => {
-      eventSource.close();
+      clearInterval(interval);
     };
   }, []);
 

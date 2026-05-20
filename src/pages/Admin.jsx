@@ -244,30 +244,17 @@ export default function Admin() {
   useEffect(() => {
     if (!user || (user.role !== 'admin' && user.role !== 'manager')) return;
     
-    const token = localStorage.getItem('ssw_token');
-    if (!token) return;
-
-    const eventSource = new EventSource(`/api/realtime/events?token=${encodeURIComponent(token)}`);
-    
-    eventSource.onmessage = (event) => {
-      try {
-        const payload = JSON.parse(event.data);
-        if (payload.type === 'orders_update') {
-          if (activeTab === 'orders' || activeTab === 'payments') {
-            loadOrders(true);
-          }
-        } else if (payload.type === 'invoices_update') {
-          if (activeTab === 'transactions' || activeTab === 'invoices') {
-            loadInvoices(true);
-          }
-        }
-      } catch (e) {
-        console.error(e);
+    // Fallback to simple polling (every 10s) to avoid Vercel edge disconnections
+    const interval = setInterval(() => {
+      if (activeTab === 'orders' || activeTab === 'payments') {
+        loadOrders(true);
+      } else if (activeTab === 'transactions' || activeTab === 'invoices') {
+        loadInvoices(true);
       }
-    };
+    }, 10000);
 
     return () => {
-      eventSource.close();
+      clearInterval(interval);
     };
   }, [activeTab, user]);
 

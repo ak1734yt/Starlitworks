@@ -39,24 +39,11 @@ export default function NotificationCenter() {
   useEffect(() => {
     fetchNotifications();
     
-    const token = localStorage.getItem('ssw_token');
-    if (!token) return;
-
-    const eventSource = new EventSource(`/api/realtime/events?token=${encodeURIComponent(token)}`);
-    
-    eventSource.onmessage = (event) => {
-      try {
-        const payload = JSON.parse(event.data);
-        if (payload.type === 'notifications_update' || payload.type.startsWith('notifications_')) {
-          fetchNotifications();
-        }
-      } catch (e) {
-        console.error(e);
-      }
-    };
+    // Fallback to simple polling (every 10s) to avoid Vercel edge disconnections
+    const interval = setInterval(fetchNotifications, 10000);
 
     return () => {
-      eventSource.close();
+      clearInterval(interval);
     };
   }, []);
 

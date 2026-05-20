@@ -26,24 +26,11 @@ export default function UserChat({ userId, onClose }) {
   useEffect(() => {
     fetchMessages();
 
-    const token = localStorage.getItem('ssw_token');
-    if (!token) return;
-
-    const eventSource = new EventSource(`/api/realtime/events?token=${encodeURIComponent(token)}`);
-    
-    eventSource.onmessage = (event) => {
-      try {
-        const payload = JSON.parse(event.data);
-        if (payload.type === 'chat_update' || payload.type === `chat_${userId}`) {
-          fetchMessages();
-        }
-      } catch (e) {
-        console.error(e);
-      }
-    };
+    // Fallback to simple polling (every 10s) to avoid Vercel edge disconnections
+    const interval = setInterval(fetchMessages, 10000);
 
     return () => {
-      eventSource.close();
+      clearInterval(interval);
     };
   }, [userId]);
 
