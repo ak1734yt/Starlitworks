@@ -20,7 +20,7 @@ def generate_invoice_pdf(inv: dict, filepath: str):
     if currency == "₹":
         currency = "Rs. "
     def add_line(text, align="L"):
-        pdf.multi_cell(0, 5, text=text.encode("latin-1", "replace").decode("latin-1"), align=align)
+        pdf.multi_cell(0, 5, text=text.encode("latin-1", "replace").decode("latin-1"), align=align, new_x="LMARGIN", new_y="NEXT")
     
     pdf.set_font("Helvetica", style="B", size=16)
     add_line("STARLIT SIEGE WORKS - INVOICE", align="C")
