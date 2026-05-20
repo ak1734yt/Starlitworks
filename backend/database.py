@@ -69,7 +69,8 @@ def get_db():
         except Exception:
             pass
 
-    conn.set_update_hook(update_hook)
+    if hasattr(conn, "set_update_hook"):
+        conn.set_update_hook(update_hook)
     return conn
 
 def init_db():

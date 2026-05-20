@@ -13,28 +13,6 @@ start_notification_service()
 from discord_stats import start_discord_stats_loop
 start_discord_stats_loop()
 
-# Start Discord Operations Bot in the background
-def start_discord_bot_background():
-    import threading
-    import asyncio
-    from discord_bot import start_discord_bot
-    
-    def _run():
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
-            loop.run_until_complete(start_discord_bot())
-        except Exception as e:
-            print(f"[BOT] Startup failed: {e}")
-        finally:
-            loop.close()
-        
-    threading.Thread(target=_run, daemon=True).start()
-
-if os.getenv("DISCORD_BOT_TOKEN"):
-    start_discord_bot_background()
-
-
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
 _is_prod = os.getenv("ENV", "").lower() == "production"
@@ -45,6 +23,14 @@ app = FastAPI(
     redoc_url=None if _is_prod else "/redoc",
     openapi_url=None if _is_prod else "/openapi.json",
 )
+
+# Start Discord Operations Bot on main event loop startup
+@app.on_event("startup")
+async def startup_event():
+    if os.getenv("DISCORD_BOT_TOKEN"):
+        import asyncio
+        from discord_bot import start_discord_bot
+        asyncio.create_task(start_discord_bot())
 
 # ── CORS ──────────────────────────────────────────────────────────────────────
 app.add_middleware(
