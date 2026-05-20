@@ -29,6 +29,17 @@ export default function Templates() {
       });
   }, []);
 
+  useEffect(() => {
+    if (previewOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [previewOpen]);
+
   const handlePurchase = async (templateId) => {
     if (!user) {
       openAuthModal("/templates", "login");
@@ -227,7 +238,7 @@ export default function Templates() {
         {/* Floating Centered Interactive Discord Mock Previewer Modal */}
         {previewOpen && selectedTemplate && (
           <div
-            className="fixed inset-0 bg-[#060608]/80 backdrop-blur-md z-50 flex items-center justify-center p-4 md:p-6 lg:p-10 animate-fade-in"
+            className="fixed inset-0 bg-brand-bg z-[100] flex items-center justify-center p-4 md:p-6 lg:p-10 animate-fade-in"
             onClick={(e) => {
               if (e.target === e.currentTarget) setPreviewOpen(false);
             }}

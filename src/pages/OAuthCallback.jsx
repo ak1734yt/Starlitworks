@@ -28,7 +28,7 @@ export default function OAuthCallback() {
       if (typeof setUserFromToken === 'function') {
         setUserFromToken(token).then(() => {
           setStatus('success');
-          setTimeout(() => navigate('/history'), 1200);
+          setTimeout(() => navigate('/'), 1200);
         }).catch(() => {
           setStatus('error');
           setMessage('Failed to load your profile.');
@@ -38,7 +38,7 @@ export default function OAuthCallback() {
         // Fallback: just reload the page to trigger context re-init
         setStatus('success');
         setTimeout(() => {
-          window.location.href = '/history';
+          window.location.href = '/';
         }, 1200);
       }
       return;
