@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Bell, Check, Info, AlertTriangle, CheckCircle, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -8,6 +8,7 @@ export default function NotificationCenter() {
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const intervalRef = useRef(null);
 
   const fetchNotifications = async () => {
     try {
@@ -20,6 +21,12 @@ export default function NotificationCenter() {
         const data = await res.json();
         setNotifications(data);
         setUnreadCount(data.filter(n => !n.is_read).length);
+      } else if (res.status === 401) {
+        // Token expired/invalid — stop polling to avoid log spam
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
+        }
       }
     } catch (e) { console.error(e); }
   };
@@ -27,6 +34,7 @@ export default function NotificationCenter() {
   const markAsRead = async () => {
     try {
       const token = localStorage.getItem('ssw_token');
+      if (!token) return;
       await fetch('/api/notifications/read', {
         method: 'PUT',
         headers: { Authorization: `Bearer ${token}` }
@@ -40,10 +48,10 @@ export default function NotificationCenter() {
     fetchNotifications();
     
     // Fallback to simple polling (every 10s) to avoid Vercel edge disconnections
-    const interval = setInterval(fetchNotifications, 10000);
+    intervalRef.current = setInterval(fetchNotifications, 10000);
 
     return () => {
-      clearInterval(interval);
+      if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, []);
 
