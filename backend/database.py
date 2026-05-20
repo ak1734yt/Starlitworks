@@ -460,8 +460,11 @@ def init_db():
             conn_temp = sqlite3.connect(temp_db_path)
             conn_temp.row_factory = sqlite3.Row
             
+            import re
             for table, target_path in mapping.items():
                 if table in legacy_tables:
+                    if not re.match(r"^[a-zA-Z0-9_]+$", table):
+                        continue
                     conn_target = None
                     try:
                         rows = conn_temp.execute(f"SELECT * FROM {table}").fetchall()
@@ -470,7 +473,7 @@ def init_db():
                             
                         # Fetch column names
                         cursor = conn_temp.execute(f"SELECT * FROM {table} LIMIT 1")
-                        cols = [d[0] for d in cursor.description]
+                        cols = [d[0] for d in cursor.description if re.match(r"^[a-zA-Z0-9_]+$", d[0])]
                         
                         placeholders = ", ".join(["?"] * len(cols))
                         col_names = ", ".join(cols)
@@ -514,7 +517,8 @@ def init_db():
             cursor_clear.execute("SELECT name FROM sqlite_master WHERE type='table' AND name != 'sqlite_sequence'")
             tables_to_drop = [row[0] for row in cursor_clear.fetchall()]
             for t in tables_to_drop:
-                conn_clear.execute(f"DROP TABLE IF EXISTS {t}")
+                if re.match(r"^[a-zA-Z0-9_]+$", t):
+                    conn_clear.execute(f"DROP TABLE IF EXISTS {t}")
             conn_clear.commit()
             conn_clear.execute("VACUUM")
             conn_clear.close()

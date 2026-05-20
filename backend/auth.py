@@ -85,9 +85,26 @@ def make_refresh_token(user: dict) -> str:
     }
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
+def encrypt_val(text: str, key: str) -> str:
+    if not text:
+        return ""
+    text_bytes = text.encode("utf-8")
+    key_bytes = key.encode("utf-8")
+    result_bytes = bytearray(b ^ key_bytes[i % len(key_bytes)] for i, b in enumerate(text_bytes))
+    return base64.b64encode(result_bytes).decode("utf-8")
+
 def safe_user(user: dict) -> dict:
     exclude = {"password_hash", "reset_token", "reset_token_expires", "two_factor_secret"}
-    return {k: v for k, v in user.items() if k not in exclude}
+    res = {k: v for k, v in user.items() if k not in exclude}
+    if "details" in res:
+        details_val = res["details"] or "{}"
+        if not isinstance(details_val, str):
+            details_val = json.dumps(details_val)
+        key = os.getenv("STARLIT_API_KEY", "")
+        if key:
+            res["details"] = encrypt_val(details_val, key)
+            res["details_enc"] = True
+    return res
 
 def decode_token(token: str) -> dict:
     try:

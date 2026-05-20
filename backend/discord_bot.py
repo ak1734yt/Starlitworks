@@ -44,6 +44,11 @@ def get_order(order_id):
 
 def write_order(order_id, **kwargs):
     if not kwargs: return
+    import re
+    # Validate column names to prevent SQL injection (defense-in-depth)
+    for k in kwargs:
+        if not re.match(r"^[a-zA-Z0-9_]+$", k):
+            raise ValueError(f"Invalid column name: {k}")
     cols = ", ".join(f"{k}=?" for k in kwargs)
     vals = list(kwargs.values()) + [int(time.time()), order_id]
     c = db()

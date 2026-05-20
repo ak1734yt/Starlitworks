@@ -102,21 +102,95 @@ import { Toaster } from 'react-hot-toast'
   };
 })();
 
-// ── Global Fetch Interceptor for X-Starlit-Key Hardening ─────────────────────
+const decryptVal = (encoded, key) => {
+  if (!encoded) return '';
+  try {
+    const raw = atob(encoded);
+    const keyStr = String(key);
+    const result = new Uint8Array(raw.length);
+    for (let i = 0; i < raw.length; i++) {
+      result[i] = raw.charCodeAt(i) ^ keyStr.charCodeAt(i % keyStr.length);
+    }
+    return new TextDecoder().decode(result);
+  } catch (e) {
+    console.error("Decryption failed:", e);
+    return '';
+  }
+};
+
+// ── Global Fetch Interceptor for X-Starlit-Key Hardening & Transparent Decryption ──
 const originalFetch = window.fetch;
 window.fetch = async function (url, options = {}) {
+  let isBackendUrl = false;
   if (
     typeof url === 'string' &&
     (url.startsWith('/api/') || url.startsWith('http://localhost:5504/api/') || url.includes('/api/')) &&
     !url.includes('ipapi.co')
   ) {
-    const headers = {
-      ...options.headers,
-      'X-Starlit-Key': import.meta.env.VITE_STARLIT_KEY || ''
-    };
-    return originalFetch(url, { ...options, headers });
+    isBackendUrl = true;
   }
-  return originalFetch(url, options);
+
+  const headers = {
+    ...options.headers,
+    ...(isBackendUrl ? { 'X-Starlit-Key': import.meta.env.VITE_STARLIT_KEY || '' } : {})
+  };
+
+  const response = await originalFetch(url, { ...options, headers });
+
+  if (isBackendUrl) {
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      const clonedResponse = response.clone();
+      try {
+        const json = await clonedResponse.json();
+        let modified = false;
+
+        const decryptDetails = (userObj) => {
+          if (userObj && userObj.details_enc && typeof userObj.details === 'string') {
+            const key = import.meta.env.VITE_STARLIT_KEY || '';
+            const decrypted = decryptVal(userObj.details, key);
+            userObj.details = decrypted;
+            delete userObj.details_enc;
+            return true;
+          }
+          return false;
+        };
+
+        // Case 1: single user object: { user: { details: '...', details_enc: true } }
+        if (json.user) {
+          if (decryptDetails(json.user)) modified = true;
+        }
+        // Case 2: list of users or other lists: [ { details: '...', details_enc: true }, ... ]
+        if (Array.isArray(json)) {
+          json.forEach(item => {
+            if (decryptDetails(item)) modified = true;
+          });
+        }
+        // Case 3: nested structures
+        for (const key in json) {
+          if (Array.isArray(json[key])) {
+            json[key].forEach(item => {
+              if (decryptDetails(item)) modified = true;
+            });
+          } else if (typeof json[key] === 'object' && json[key] !== null) {
+            if (decryptDetails(json[key])) modified = true;
+          }
+        }
+
+        if (modified) {
+          return new Response(JSON.stringify(json), {
+            status: response.status,
+            statusText: response.statusText,
+            headers: response.headers
+          });
+        }
+      } catch (e) {
+        console.error("Transparent decryption interceptor error:", e);
+      }
+    }
+  }
+
+  return response;
 };
 
 createRoot(document.getElementById('root')).render(

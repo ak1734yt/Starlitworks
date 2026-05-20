@@ -24,7 +24,8 @@ import {
   getUserReferralStats, getManagerRevenue, bulkUpdateOrderStatus,
   deleteInvoice, adminEditInvoice, updateOrderStatus, updateOrderVault, managerSendTestEmail,
   getCoupons, deleteCoupon, getCouponUses, getManagerWithdrawals, updateWithdrawalStatus,
-  getTemplates, createTemplate, updateTemplate, deleteTemplate
+  getTemplates, createTemplate, updateTemplate, deleteTemplate,
+  getReferralTree
 } from '../services/api';
 import UserChat from '../components/UserChat';
 
