@@ -45,7 +45,7 @@ const getFriendlyInvoiceDesc = (inv) => {
 };
 
 export default function History() {
-  const { user } = useAuth();
+  const { user, refreshMe } = useAuth();
   const [orders, setOrders] = useState([]);
   const [invoices, setInvoices] = useState([]);
   const [search, setSearch] = useState('');
@@ -298,10 +298,12 @@ export default function History() {
           if (portalTab === 'overview' || portalTab === 'services') {
             loadOrders(true);
           }
+          refreshMe();
         } else if (payload.type === 'invoices_update') {
           if (portalTab === 'overview' || portalTab === 'billing') {
             loadInvoices(true);
           }
+          refreshMe();
         }
       } catch (e) {
         console.error(e);
@@ -630,7 +632,7 @@ export default function History() {
                             >
                               <div>
                                 <h4 className="font-bold text-xs text-white truncate max-w-[150px] group-hover:text-brand-secondary transition-colors">{getFriendlyInvoiceDesc(inv)}</h4>
-                                <p className="text-[9px] text-gray-500 font-mono mt-0.5">₹{inv.grandTotal?.toLocaleString()}</p>
+                                <p className="text-[9px] text-gray-500 font-mono mt-0.5">{inv.currency || '₹'}{inv.grandTotal?.toLocaleString()}</p>
                               </div>
                               <span className={`text-[8px] font-black px-2 py-0.5 rounded-full uppercase ${
                                 inv.paymentStatus === 'paid' ? 'bg-green-500/10 text-green-500 border border-green-500/20' : 'bg-yellow-500/10 text-yellow-500 border border-yellow-500/20'
@@ -964,7 +966,7 @@ export default function History() {
                               {inv.invoiceDate}
                             </td>
                             <td className="py-4 text-xs font-mono font-bold text-white">
-                              ₹{inv.grandTotal?.toLocaleString()}
+                              {inv.currency || '₹'}{inv.grandTotal?.toLocaleString()}
                             </td>
                             <td className="py-4 text-xs">
                               <span className={`text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${

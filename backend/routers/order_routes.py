@@ -5,6 +5,7 @@ from typing import Optional
 from auth import get_current_user, require_admin, send_discord_webhook, send_modular_webhook, log_activity, create_notification, calculate_risk_score
 from mailer import send_order_confirm_email, send_invoice_email, send_payment_approval_email
 from database import get_db
+from realtime import pubsub
 
 router = APIRouter()
 
@@ -69,6 +70,8 @@ def auto_generate_invoice(order_id: int):
                     
         with open(existing_path, "w") as f:
             json.dump(existing_inv, f, indent=2)
+        try: pubsub.publish("invoices_update")
+        except: pass
         return
 
     # If it doesn't exist, create a new one
@@ -119,6 +122,8 @@ def auto_generate_invoice(order_id: int):
         from routers.invoice_routes import format_invoice_txt
         with open(os.path.join(INVOICES_DIR, f"{inv_id}.txt"), "w", encoding="utf-8") as f:
             f.write(format_invoice_txt(inv))
+    except: pass
+    try: pubsub.publish("invoices_update")
     except: pass
 
 class OrderBody(BaseModel):
@@ -204,6 +209,10 @@ async def create_order(body: OrderBody, user=Depends(get_current_user)):
     except Exception as e:
         print(f"Failed to send order email: {e}")
         
+    try:
+        pubsub.publish("orders_update")
+        pubsub.publish(f"orders_{user['id']}")
+    except: pass
     return {"success": True, "order_id": order_id}
 
 @router.get("/orders/mine")
@@ -231,6 +240,10 @@ def negotiate_order(order_id: int, body: NegotiateBody, user=Depends(get_current
     db.execute("UPDATE orders.orders SET negotiated_price=?, negotiation_reason=?, negotiation_status='pending', updated_at=? WHERE id=?",
                (body.negotiated_price, body.negotiation_reason, int(time.time()), order_id))
     db.commit(); db.close()
+    try:
+        pubsub.publish("orders_update")
+        pubsub.publish(f"orders_{user['id']}")
+    except: pass
     return {"success": True}
 
 @router.post("/orders/{order_id}/accept")
@@ -241,6 +254,10 @@ def accept_order(order_id: int, user=Depends(get_current_user)):
     db.execute("UPDATE orders.orders SET status='accepted', updated_at=? WHERE id=?", (int(time.time()), order_id))
     db.commit(); db.close()
     auto_generate_invoice(order_id)
+    try:
+        pubsub.publish("orders_update")
+        pubsub.publish(f"orders_{user['id']}")
+    except: pass
     return {"success": True}
 
 @router.post("/orders/{order_id}/payment-proof")
@@ -357,6 +374,11 @@ async def submit_payment_proof(order_id: str, body: PaymentProofBody, user=Depen
             
         db.close()
         await send_modular_webhook("PAYMENTS", {"embeds": [{"title": f"Payment Proof Submitted: Order #{numeric_order_id}", "description": f"**Method:** {body.payment_method}\n**Credits Applied:** ₹{applied}\n**TxID:** {body.transaction_id or 'N/A'}", "color": 65280}]})
+        try:
+            pubsub.publish("orders_update")
+            pubsub.publish(f"orders_{user['id']}")
+            pubsub.publish("invoices_update")
+        except: pass
         return {"success": True}
     else:
         p = os.path.join(INVOICES_DIR, f"{order_id}.json")
@@ -426,6 +448,11 @@ async def submit_payment_proof(order_id: str, body: PaymentProofBody, user=Depen
             
         db.close()
         await send_modular_webhook("PAYMENTS", {"embeds": [{"title": f"Payment Proof Submitted: Invoice {order_id}", "description": f"**Method:** {body.payment_method}\n**Credits Applied:** ₹{applied}\n**TxID:** {body.transaction_id or 'N/A'}", "color": 65280}]})
+        try:
+            pubsub.publish("orders_update")
+            pubsub.publish(f"orders_{user['id']}")
+            pubsub.publish("invoices_update")
+        except: pass
         return {"success": True}
 
 # ── Admin Order Routes ────────────────────────────────────────────────────────
@@ -628,6 +655,11 @@ def verify_payment(order_id: int, body: VerifyPaymentBody, user=Depends(require_
             print(f"Failed to send payment approval email: {e}")
             
     log_activity(user["id"], "APPROVE_PAYMENT" if body.approved else "REJECT_PAYMENT", f"Order {order_id}")
+    try:
+        pubsub.publish("orders_update")
+        pubsub.publish(f"orders_{row['user_id']}")
+        pubsub.publish("invoices_update")
+    except: pass
     return {"success": True}
 @router.put("/admin/orders/{order_id}/vault")
 def update_vault(order_id: int, body: VaultBody, user=Depends(require_admin)):
@@ -637,6 +669,11 @@ def update_vault(order_id: int, body: VaultBody, user=Depends(require_admin)):
     row = db.execute("SELECT user_id FROM orders.orders WHERE id = ?", (order_id,)).fetchone()
     db.close()
     if row: create_notification(row["user_id"], "Vault Updated", f"New assets added to Order #{order_id}", "success")
+    try:
+        pubsub.publish("orders_update")
+        if row:
+            pubsub.publish(f"orders_{row['user_id']}")
+    except: pass
     return {"success": True}
 
 @router.delete("/admin/orders/{order_id}")
@@ -646,4 +683,7 @@ def delete_order(order_id: int, user=Depends(require_admin)):
     db.execute("DELETE FROM orders.orders WHERE id = ?", (order_id,))
     db.commit(); db.close()
     log_activity(user["id"], "DELETE_ORDER", f"Deleted order #{order_id}")
+    try:
+        pubsub.publish("orders_update")
+    except: pass
     return {"message": "Order deleted successfully"}

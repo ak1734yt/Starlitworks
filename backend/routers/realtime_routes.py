@@ -34,8 +34,10 @@ async def event_generator(request: Request, user_id: int, user_role: str):
                 elif ev_type.startswith("notifications_"):
                     target_id = ev_type.split("_")[1]
                     is_authorized = (str(user_id) == target_id)
-                elif ev_type in ["admin_update", "orders_update", "invoices_update"]:
+                elif ev_type in ["admin_update"]:
                     is_authorized = (user_role in ["admin", "manager"])
+                elif ev_type in ["orders_update", "invoices_update"]:
+                    is_authorized = True
                 elif ev_type == f"orders_{user_id}":
                     is_authorized = True
                 else:

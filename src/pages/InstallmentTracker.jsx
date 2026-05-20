@@ -95,21 +95,21 @@ export default function InstallmentTracker() {
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 md:gap-8 lg:text-right">
                       <div>
                         <p className="text-[10px] text-gray-600 uppercase font-bold mb-1">Total Contract</p>
-                        <p className="text-base sm:text-lg font-bold">₹{inv.grandTotal.toLocaleString()}</p>
+                        <p className="text-base sm:text-lg font-bold">{inv.currency || '₹'}{inv.grandTotal.toLocaleString()}</p>
                       </div>
                       <div>
                         <p className="text-[10px] text-green-500/60 uppercase font-bold mb-1">Received</p>
-                        <p className="text-base sm:text-lg font-bold text-green-500">₹{paidAmt.toLocaleString()}</p>
+                        <p className="text-base sm:text-lg font-bold text-green-500">{inv.currency || '₹'}{paidAmt.toLocaleString()}</p>
                       </div>
                       <div className="col-span-2 sm:col-span-1">
                         <p className="text-[10px] text-red-400/60 uppercase font-bold mb-1">Outstanding</p>
-                        <p className="text-base sm:text-lg font-bold text-red-400">₹{pendingAmt.toLocaleString()}</p>
+                        <p className="text-base sm:text-lg font-bold text-red-400">{inv.currency || '₹'}{pendingAmt.toLocaleString()}</p>
                       </div>
                       {(parseFloat(inv.recurringTotal) || 0) > 0 && (
                         <div className="col-span-2 sm:col-span-3 pt-4 mt-2 sm:mt-4 border-t border-white/5 lg:border-t-0 lg:mt-0 lg:pt-0">
                           <p className="text-[10px] text-brand-secondary uppercase font-bold mb-1">Monthly Recurring</p>
                           <p className="text-base sm:text-lg font-bold text-brand-secondary flex items-center gap-2">
-                            ₹{parseFloat(inv.recurringTotal).toLocaleString()}
+                            {inv.currency || '₹'}{parseFloat(inv.recurringTotal).toLocaleString()}
                             <span className="text-[10px] text-gray-500 font-normal">/ mo</span>
                           </p>
                           <p className="text-[8px] text-gray-600 italic">Monthly recurring amount will be provided till the plan will be canceled or terminated.</p>
@@ -146,7 +146,7 @@ export default function InstallmentTracker() {
                           {inst.paid ? <CheckCircle2 className="w-5 h-5 text-green-500" /> : <Circle className="w-5 h-5 text-gray-700" />}
                         </div>
                         <div className="flex justify-between items-end">
-                          <p className="text-sm font-bold">₹{inst.amount.toLocaleString()}</p>
+                          <p className="text-sm font-bold">{inv.currency || '₹'}{inst.amount.toLocaleString()}</p>
                           {(user?.role === 'admin' || user?.role === 'manager') && (
                             <button 
                               onClick={() => togglePaid(inv.id, i, inst.paid)}

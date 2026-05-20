@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from typing import Optional
 from auth import get_current_user, require_admin, log_activity, create_notification
 from database import get_db
+from realtime import pubsub
 
 router = APIRouter()
 INVOICES_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "invoices")
@@ -56,6 +57,7 @@ async def create_user_invoice(body: dict, user=Depends(require_admin)):
     with open(os.path.join(INVOICES_DIR, f"{inv['id']}.txt"), "w", encoding="utf-8") as f:
         f.write(format_invoice_txt(inv))
     log_activity(user["id"], "CREATE_USER_INVOICE", f"Invoice {inv['id']} for user {inv.get('userId', 'N/A')}")
+    pubsub.publish("invoices_update")
     return {"success": True, "id": inv["id"]}
 
 @router.get("/invoices")
@@ -95,6 +97,7 @@ def update_installment(inv_id: str, body: InstallmentBody, user=Depends(require_
     with open(os.path.join(INVOICES_DIR, f"{inv_id}.txt"), "w", encoding="utf-8") as f:
         f.write(format_invoice_txt(inv))
     log_activity(user["id"], "UPDATE_INSTALLMENT", f"Invoice {inv_id} installment {body.index}")
+    pubsub.publish("invoices_update")
     return {"success": True, "invoice": inv}
 
 @router.delete("/invoices/{inv_id}")
@@ -103,6 +106,7 @@ def delete_invoice(inv_id: str, user=Depends(require_admin)):
         p = os.path.join(INVOICES_DIR, f"{inv_id}{ext}")
         if os.path.exists(p): os.remove(p)
     log_activity(user["id"], "DELETE_INVOICE", f"Invoice {inv_id}")
+    pubsub.publish("invoices_update")
     return {"success": True}
 
 class InvoiceStatusBody(BaseModel):
@@ -118,6 +122,7 @@ def update_invoice_status(inv_id: str, body: InvoiceStatusBody, user=Depends(req
     with open(os.path.join(INVOICES_DIR, f"{inv_id}.txt"), "w", encoding="utf-8") as f:
         f.write(format_invoice_txt(inv))
     log_activity(user["id"], "UPDATE_INVOICE_STATUS", f"Invoice {inv_id} -> {body.status}")
+    pubsub.publish("invoices_update")
     return {"success": True, "invoice": inv}
 
 @router.post("/invoices/{inv_id}/notify")
@@ -141,6 +146,7 @@ def edit_invoice(inv_id: str, body: dict, user=Depends(require_admin)):
     with open(os.path.join(INVOICES_DIR, f"{inv_id}.txt"), "w", encoding="utf-8") as f:
         f.write(format_invoice_txt(inv))
     log_activity(user["id"], "EDIT_INVOICE", f"Edited invoice {inv_id}")
+    pubsub.publish("invoices_update")
     return {"success": True, "invoice": inv}
 
 @router.get("/invoices/{inv_id}/download")

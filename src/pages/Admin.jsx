@@ -1337,11 +1337,25 @@ export default function Admin() {
                   <textarea value={editingOrder.admin_notes || ''} onChange={e => setEditingOrder({...editingOrder, admin_notes: e.target.value})} rows={2} placeholder="Internal notes..." className="w-full bg-white/10 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-brand-primary resize-none" />
                 </div>
 
-                <div className="flex gap-3 pt-2">
-                  <button type="button" onClick={() => setEditingOrder(null)} className="flex-1 btn-outline">Cancel</button>
-                  <button type="submit" disabled={saving} className="flex-1 btn-primary flex items-center justify-center gap-2">
-                    {saving ? <Loader2 className="w-4 h-4 animate-spin"/> : <Save className="w-4 h-4"/>} Update Request
+                <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                  <button 
+                    type="button" 
+                    onClick={async () => {
+                      if (window.confirm("Are you sure you want to delete this order? This will also delete all associated chat messages. This action is permanent!")) {
+                        await handleDeleteOrder(editingOrder.id);
+                        setEditingOrder(null);
+                      }
+                    }} 
+                    className="px-4 py-2 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl text-sm font-bold hover:bg-red-500 hover:text-white transition-all flex items-center justify-center gap-1.5"
+                  >
+                    <Trash2 className="w-4 h-4"/> Delete Request
                   </button>
+                  <div className="flex-grow flex gap-3">
+                    <button type="button" onClick={() => setEditingOrder(null)} className="flex-grow btn-outline">Cancel</button>
+                    <button type="submit" disabled={saving} className="flex-grow btn-primary flex items-center justify-center gap-2">
+                      {saving ? <Loader2 className="w-4 h-4 animate-spin"/> : <Save className="w-4 h-4"/>} Update Request
+                    </button>
+                  </div>
                 </div>
               </form>
             </motion.div>

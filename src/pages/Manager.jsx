@@ -1036,12 +1036,26 @@ export default function Manager() {
                               )}
                             </td>
                             <td className="px-6 py-4 text-right">
-                              <button 
-                                onClick={(e) => { e.stopPropagation(); setEditingOrder(order); }}
-                                className="px-3 py-1.5 bg-white/5 hover:bg-brand-primary/10 border border-white/5 hover:border-brand-primary/20 rounded-xl text-xs font-semibold text-gray-300 hover:text-white transition-all"
-                              >
-                                View / Manage
-                              </button>
+                              <div className="flex items-center justify-end gap-2">
+                                <button 
+                                  onClick={(e) => { e.stopPropagation(); setEditingOrder(order); }}
+                                  className="px-3 py-1.5 bg-white/5 hover:bg-brand-primary/10 border border-white/5 hover:border-brand-primary/20 rounded-xl text-xs font-semibold text-gray-300 hover:text-white transition-all"
+                                >
+                                  View / Manage
+                                </button>
+                                <button 
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    if (window.confirm("Are you sure you want to delete this order? This will also delete all associated chat messages. This action is permanent!")) {
+                                      await handleDeleteOrder(order.id);
+                                    }
+                                  }} 
+                                  className="p-1.5 hover:bg-red-500/10 hover:text-red-500 rounded-xl border border-white/5 transition-all text-gray-500 hover:border-red-500/20"
+                                  title="Delete Order"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         ))}
