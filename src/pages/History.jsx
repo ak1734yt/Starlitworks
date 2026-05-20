@@ -259,7 +259,7 @@ export default function History() {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `Invoice_${id}.txt`;
+      a.download = `Invoice_${id}.pdf`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);

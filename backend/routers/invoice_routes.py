@@ -11,40 +11,90 @@ router = APIRouter()
 INVOICES_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "invoices")
 os.makedirs(INVOICES_DIR, exist_ok=True)
 
-def format_invoice_txt(inv: dict) -> str:
-    sep = "=" * 70; line = "-" * 70
-    currency = inv.get("currency", "₹")
-    t = f"{sep}\n                    STARLIT SIEGE WORKS - INVOICE\n{sep}\n"
-    t += f"Invoice No   : {inv.get('invoiceNumber', inv.get('id', 'N/A'))}\nDate         : {inv.get('invoiceDate', 'N/A')}\nPayment Type : {'Monthly Installments' if inv.get('paymentType') == 'installment' else 'One-Time Payment'}\n{line}\n"
+from fpdf import FPDF
+def generate_invoice_pdf(inv: dict, filepath: str):
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Helvetica", size=12)
+    currency = inv.get("currency", "Rs.")
+    if currency == "₹":
+        currency = "Rs. "
+    def add_line(text, align="L"):
+        pdf.multi_cell(0, 5, text=text.encode("latin-1", "replace").decode("latin-1"), align=align)
+    
+    pdf.set_font("Helvetica", style="B", size=16)
+    add_line("STARLIT SIEGE WORKS - INVOICE", align="C")
+    pdf.set_font("Helvetica", size=12)
+    pdf.ln(5)
+    add_line(f"Invoice No   : {inv.get('invoiceNumber', inv.get('id', 'N/A'))}")
+    add_line(f"Date         : {inv.get('invoiceDate', 'N/A')}")
+    add_line(f"Payment Type : {'Monthly Installments' if inv.get('paymentType') == 'installment' else 'One-Time Payment'}")
+    pdf.line(pdf.get_x(), pdf.get_y()+2, 200, pdf.get_y()+2)
+    pdf.ln(5)
     org = inv.get("org", {"name": "Starlit Siege Works", "emails": ["support@starlitsiegeworks.com"], "phone": "+91 9876543210"})
-    t += f"FROM:\n  {org.get('name')} | {org.get('emails', ['N/A'])[0]} | {org.get('phone', 'N/A')}\n{line}\n"
+    pdf.set_font("Helvetica", style="B", size=12)
+    add_line("FROM:")
+    pdf.set_font("Helvetica", size=12)
+    add_line(f"  {org.get('name')} | {org.get('emails', ['N/A'])[0]} | {org.get('phone', 'N/A')}")
+    pdf.line(pdf.get_x(), pdf.get_y()+2, 200, pdf.get_y()+2)
+    pdf.ln(5)
     client = inv.get("client", {"name": "Valued Client"})
-    t += f"TO:\n  {client.get('name', 'N/A')} | {client.get('serverName', 'N/A')} | GSTIN: {client.get('gstin', 'N/A')}\n{line}\n"
-    t += f"LINE ITEMS:\n{'Description':<40} {'Qty':>5} {'Rate':>12} {'Total':>12}\n{'-'*72}\n"
+    pdf.set_font("Helvetica", style="B", size=12)
+    add_line("TO:")
+    pdf.set_font("Helvetica", size=12)
+    add_line(f"  {client.get('name', 'N/A')} | {client.get('serverName', 'N/A')} | GSTIN: {client.get('gstin', 'N/A')}")
+    pdf.line(pdf.get_x(), pdf.get_y()+2, 200, pdf.get_y()+2)
+    pdf.ln(5)
+    pdf.set_font("Helvetica", style="B", size=12)
+    add_line("LINE ITEMS:")
+    pdf.set_font("Courier", size=10)
+    header = f"{'Description':<40} {'Qty':>5} {'Rate':>12} {'Total':>12}"
+    add_line(header)
+    add_line("-" * 72)
     for i in (inv.get("items") or []):
-        qty = i.get("qty", 1); rate = i.get("amount", i.get("rate", 0)); total = qty * rate
-        t += f"{(i.get('desc') or i.get('description') or 'Item'):<40} {str(qty):>5} {str(rate):>12} {(currency + str(total)):>12}\n"
-    t += f"{line}\n{'Subtotal':<58} {(currency + str(inv.get('subtotal', 0))):>12}\n"
-    if inv.get("discountAmount", 0) > 0: t += f"{'Discount':<58} {('-' + currency + str(inv['discountAmount'])):>12}\n"
-    if inv.get("taxTotal", 0) > 0: t += f"{'Tax':<58} {(currency + str(inv['taxTotal'])):>12}\n"
-    t += f"{'GRAND TOTAL':<58} {(currency + str(inv.get('grandTotal', 0))):>12}\n{sep}\n"
+        qty = i.get("qty", 1); rate = i.get("amount", i.get("rate", 0)); total = float(qty) * float(rate)
+        desc = (i.get('desc') or i.get('description') or 'Item')
+        if len(desc) > 38: desc = desc[:35] + "..."
+        add_line(f"{desc:<40} {str(qty):>5} {str(rate):>12} {(currency + str(total)):>12}")
+    add_line("-" * 72)
+    add_line(f"{'Subtotal':<58} {(currency + str(inv.get('subtotal', 0))):>12}")
+    if inv.get("discountAmount", 0) > 0: add_line(f"{'Discount':<58} {'-' + currency + str(inv['discountAmount']):>12}")
+    if inv.get("taxTotal", 0) > 0: add_line(f"{'Tax':<58} {(currency + str(inv['taxTotal'])):>12}")
+    add_line(f"{'GRAND TOTAL':<58} {(currency + str(inv.get('grandTotal', 0))):>12}")
     if inv.get("paymentType") == "installment" and inv.get("installments"):
-        t += f"PAYMENT SCHEDULE:\n{'Month':<20} {'Amount':<20} Status\n{'-'*52}\n"
+        pdf.ln(5)
+        pdf.set_font("Helvetica", style="B", size=12)
+        add_line("PAYMENT SCHEDULE:")
+        pdf.set_font("Courier", size=10)
+        add_line(f"{'Month':<20} {'Amount':<20} Status")
+        add_line("-" * 52)
         for i in inv["installments"]:
-            t += f"{i['month']:<20} {(currency + str(round(i['amount'], 2))):<20} {'PAID' if i.get('paid') else 'PENDING'}\n"
-        t += f"{sep}\n"
+            add_line(f"{i['month']:<20} {(currency + str(round(i['amount'], 2))):<20} {'PAID' if i.get('paid') else 'PENDING'}")
     if inv.get("payments"):
-        t += f"RECEIVED PAYMENTS LEDGER:\n{'Date':<12} {'Amount':<12} {'Note'}\n{'-'*52}\n"
+        pdf.ln(5)
+        pdf.set_font("Helvetica", style="B", size=12)
+        add_line("RECEIVED PAYMENTS LEDGER:")
+        pdf.set_font("Courier", size=10)
+        add_line(f"{'Date':<12} {'Amount':<12} {'Note'}")
+        add_line("-" * 52)
         for p_item in inv["payments"]:
-            t += f"{p_item.get('date', 'N/A'):<12} {(currency + str(round(p_item.get('amount', 0), 2))):<12} {p_item.get('note', '')}\n"
+            add_line(f"{p_item.get('date', 'N/A'):<12} {(currency + str(round(p_item.get('amount', 0), 2))):<12} {p_item.get('note', '')}")
         total_paid = sum(float(p_item.get('amount', 0)) for p_item in inv["payments"])
         outstanding = float(inv.get("grandTotal", 0)) - total_paid
-        t += f"{line}\n{'Total Paid':<40} {(currency + str(round(total_paid, 2))):>12}\n{'Outstanding':<40} {(currency + str(round(outstanding, 2))):>12}\n"
-        t += f"{sep}\n"
-    if inv.get("notes"): t += f"NOTES:\n{inv['notes']}\n{sep}\n"
+        add_line("-" * 52)
+        add_line(f"{'Total Paid':<40} {(currency + str(round(total_paid, 2))):>12}")
+        add_line(f"{'Outstanding':<40} {(currency + str(round(outstanding, 2))):>12}")
+    if inv.get("notes"):
+        pdf.ln(5)
+        pdf.set_font("Helvetica", style="B", size=12)
+        add_line("NOTES:")
+        pdf.set_font("Helvetica", size=10)
+        add_line(inv["notes"])
+    pdf.ln(10)
+    pdf.set_font("Helvetica", style="I", size=8)
     import datetime
-    t += f"Generated on: {datetime.datetime.now().strftime('%d/%m/%Y %H:%M:%S')}\n{sep}\n"
-    return t
+    add_line(f"Generated on: {datetime.datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
+    pdf.output(filepath)
 
 class InstallmentBody(BaseModel):
     index: int
@@ -62,8 +112,7 @@ async def create_user_invoice(body: dict, user=Depends(require_admin)):
         inv["org"] = {"name": "Starlit Siege Works", "emails": ["support@starlitsiegeworks.com"], "phone": "+91 9876543210"}
     with open(os.path.join(INVOICES_DIR, f"{inv['id']}.json"), "w") as f:
         json.dump(inv, f, indent=2)
-    with open(os.path.join(INVOICES_DIR, f"{inv['id']}.txt"), "w", encoding="utf-8") as f:
-        f.write(format_invoice_txt(inv))
+    generate_invoice_pdf(inv, os.path.join(INVOICES_DIR, f"{inv['id']}.pdf"))
     log_activity(user["id"], "CREATE_USER_INVOICE", f"Invoice {inv['id']} for user {inv.get('userId', 'N/A')}")
     pubsub.publish("invoices_update")
     return {"success": True, "id": inv["id"]}
@@ -80,8 +129,7 @@ async def create_invoice(body: dict, user=Depends(require_admin)):
         inv["org"] = {"name": "Starlit Siege Works", "emails": ["support@starlitsiegeworks.com"], "phone": "+91 9876543210"}
     with open(os.path.join(INVOICES_DIR, f"{inv['id']}.json"), "w") as f:
         json.dump(inv, f, indent=2)
-    with open(os.path.join(INVOICES_DIR, f"{inv['id']}.txt"), "w", encoding="utf-8") as f:
-        f.write(format_invoice_txt(inv))
+    generate_invoice_pdf(inv, os.path.join(INVOICES_DIR, f"{inv['id']}.pdf"))
     log_activity(user["id"], "CREATE_INVOICE", f"Invoice {inv['id']} created")
     pubsub.publish("invoices_update")
     return {"success": True, "id": inv["id"]}
@@ -143,8 +191,7 @@ def update_installment(inv_id: str, body: InstallmentBody, user=Depends(require_
             if p_item.get("installment_index") != body.index
         ]
     with open(p, "w") as f: json.dump(inv, f, indent=2)
-    with open(os.path.join(INVOICES_DIR, f"{inv_id}.txt"), "w", encoding="utf-8") as f:
-        f.write(format_invoice_txt(inv))
+    generate_invoice_pdf(inv, os.path.join(INVOICES_DIR, f"{inv_id}.pdf"))
     log_activity(user["id"], "UPDATE_INSTALLMENT", f"Invoice {inv_id} installment {body.index}")
     pubsub.publish("invoices_update")
     return {"success": True, "invoice": inv}
@@ -177,8 +224,7 @@ def record_payment(inv_id: str, body: PaymentBody, user=Depends(require_admin)):
     else:
         inv["paymentStatus"] = "partial"
     with open(p, "w") as f: json.dump(inv, f, indent=2)
-    with open(os.path.join(INVOICES_DIR, f"{inv_id}.txt"), "w", encoding="utf-8") as f:
-        f.write(format_invoice_txt(inv))
+    generate_invoice_pdf(inv, os.path.join(INVOICES_DIR, f"{inv_id}.pdf"))
     log_activity(user["id"], "RECORD_PAYMENT", f"Invoice {inv_id}: ₹{body.amount} on {body.date}")
     pubsub.publish("invoices_update")
     return {"success": True, "payment": payment, "invoice": inv}
@@ -201,15 +247,14 @@ def delete_payment(inv_id: str, payment_id: str, user=Depends(require_admin)):
     else:
         inv["paymentStatus"] = "partial"
     with open(p, "w") as f: json.dump(inv, f, indent=2)
-    with open(os.path.join(INVOICES_DIR, f"{inv_id}.txt"), "w", encoding="utf-8") as f:
-        f.write(format_invoice_txt(inv))
+    generate_invoice_pdf(inv, os.path.join(INVOICES_DIR, f"{inv_id}.pdf"))
     log_activity(user["id"], "DELETE_PAYMENT", f"Invoice {inv_id}: removed payment {payment_id}")
     pubsub.publish("invoices_update")
     return {"success": True, "invoice": inv}
 
 @router.delete("/invoices/{inv_id}")
 def delete_invoice(inv_id: str, user=Depends(require_admin)):
-    for ext in (".json", ".txt"):
+    for ext in (".json", ".txt", ".pdf"):
         p = os.path.join(INVOICES_DIR, f"{inv_id}{ext}")
         if os.path.exists(p): os.remove(p)
     log_activity(user["id"], "DELETE_INVOICE", f"Invoice {inv_id}")
@@ -238,8 +283,7 @@ def update_invoice_status(inv_id: str, body: InvoiceStatusBody, user=Depends(req
     with open(p) as f: inv = json.load(f)
     inv["paymentStatus"] = body.status
     with open(p, "w") as f: json.dump(inv, f, indent=2)
-    with open(os.path.join(INVOICES_DIR, f"{inv_id}.txt"), "w", encoding="utf-8") as f:
-        f.write(format_invoice_txt(inv))
+    generate_invoice_pdf(inv, os.path.join(INVOICES_DIR, f"{inv_id}.pdf"))
     log_activity(user["id"], "UPDATE_INVOICE_STATUS", f"Invoice {inv_id} -> {body.status}")
     pubsub.publish("invoices_update")
     return {"success": True, "invoice": inv}
@@ -262,18 +306,20 @@ def edit_invoice(inv_id: str, body: dict, user=Depends(require_admin)):
     with open(p) as f: inv = json.load(f)
     inv.update(body)
     with open(p, "w") as f: json.dump(inv, f, indent=2)
-    with open(os.path.join(INVOICES_DIR, f"{inv_id}.txt"), "w", encoding="utf-8") as f:
-        f.write(format_invoice_txt(inv))
+    generate_invoice_pdf(inv, os.path.join(INVOICES_DIR, f"{inv_id}.pdf"))
     log_activity(user["id"], "EDIT_INVOICE", f"Edited invoice {inv_id}")
     pubsub.publish("invoices_update")
     return {"success": True, "invoice": inv}
 
 @router.get("/invoices/{inv_id}/download")
 def download_invoice(inv_id: str, user=Depends(get_current_user)):
-    txt_p = os.path.join(INVOICES_DIR, f"{inv_id}.txt")
+    pdf_p = os.path.join(INVOICES_DIR, f"{inv_id}.pdf")
     json_p = os.path.join(INVOICES_DIR, f"{inv_id}.json")
-    if not os.path.exists(txt_p): raise HTTPException(404, "Invoice not found")
+    if not os.path.exists(pdf_p):
+        if not os.path.exists(json_p): raise HTTPException(404, "Invoice not found")
+        with open(json_p) as f: inv = json.load(f)
+        generate_invoice_pdf(inv, pdf_p)
     if user["role"] == "client":
         with open(json_p) as f: inv = json.load(f)
         if str(inv.get("userId")) != str(user["id"]): raise HTTPException(403, "Forbidden")
-    return FileResponse(txt_p, filename=f"Invoice_{inv_id}.txt", media_type="text/plain")
+    return FileResponse(pdf_p, filename=f"Invoice_{inv_id}.pdf", media_type="application/pdf")

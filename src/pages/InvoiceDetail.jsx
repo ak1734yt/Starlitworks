@@ -57,7 +57,7 @@ export default function InvoiceDetail() {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `Invoice_${invoice.id}.txt`;
+      a.download = `Invoice_${invoice.id}.pdf`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
