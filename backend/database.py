@@ -216,6 +216,30 @@ def init_db():
         value TEXT NOT NULL
     );
     """)
+    create_table_in_db(DB_SHOP, "templates", """
+    CREATE TABLE IF NOT EXISTS templates (
+        id            INTEGER PRIMARY KEY AUTOINCREMENT,
+        title         TEXT NOT NULL,
+        description   TEXT,
+        price         REAL NOT NULL,
+        roles_json    TEXT NOT NULL,
+        channels_json TEXT NOT NULL,
+        template_link TEXT NOT NULL,
+        created_at    INTEGER DEFAULT (strftime('%s','now')),
+        is_deleted    INTEGER DEFAULT 0
+    );
+    """)
+    create_table_in_db(DB_SHOP, "blogs", """
+    CREATE TABLE IF NOT EXISTS blogs (
+        id            INTEGER PRIMARY KEY AUTOINCREMENT,
+        title         TEXT NOT NULL,
+        slug          TEXT UNIQUE NOT NULL,
+        content       TEXT NOT NULL,
+        category      TEXT DEFAULT 'General',
+        created_at    INTEGER DEFAULT (strftime('%s','now')),
+        is_deleted    INTEGER DEFAULT 0
+    );
+    """)
     
     # Check default settings and handle migrations in shop.db
     conn_shop = sqlite3.connect(DB_SHOP)

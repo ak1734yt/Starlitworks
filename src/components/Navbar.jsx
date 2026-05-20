@@ -72,6 +72,9 @@ const Navbar = () => {
           <Link to="/" className="hover:text-brand-primary transition-colors">Home</Link>
           <Link to="/about" className="hover:text-brand-primary transition-colors">About Us</Link>
           <Link to="/portfolio" className="hover:text-brand-primary transition-colors">Our Work</Link>
+          <Link to="/templates" className="hover:text-brand-primary transition-colors">Templates</Link>
+          <Link to="/blog" className="hover:text-brand-primary transition-colors">Blog</Link>
+          <Link to="/faq" className="hover:text-brand-primary transition-colors">FAQ</Link>
           <button onClick={() => handleProtectedLink('/shop')} className="hover:text-brand-primary transition-colors flex items-center gap-1.5">
             <ShoppingBag className="w-3.5 h-3.5" /> Shop
           </button>
@@ -333,6 +336,15 @@ const Navbar = () => {
               </Link>
               <Link to="/portfolio" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-3 p-3 text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-all">
                 <Activity className="w-4 h-4" /> Our Work
+              </Link>
+              <Link to="/templates" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-3 p-3 text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-all">
+                <Sparkles className="w-4 h-4" /> Templates
+              </Link>
+              <Link to="/blog" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-3 p-3 text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-all">
+                <Sparkles className="w-4 h-4" /> Blog
+              </Link>
+              <Link to="/faq" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-3 p-3 text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-all">
+                <Sparkles className="w-4 h-4" /> FAQ
               </Link>
               <button onClick={() => { handleProtectedLink('/shop'); setUserMenuOpen(false); }} className="flex items-center gap-3 p-3 text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-all">
                 <ShoppingBag className="w-4 h-4" /> Shop

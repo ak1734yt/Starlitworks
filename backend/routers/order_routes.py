@@ -523,8 +523,8 @@ def verify_payment(order_id: int, body: VerifyPaymentBody, user=Depends(require_
     if not row: db.close(); raise HTTPException(404, "Order not found")
 
     if body.approved:
-        # Check if this is a credit top-up order
-        if str(row["service_id"]) == "credit_topup" or str(row["service_name"]).startswith("Add Credit"):
+        # Check if this is a credit top-up order or template purchase
+        if str(row["service_id"]) == "credit_topup" or str(row["service_name"]).startswith("Add Credit") or str(row["service_id"]).startswith("template_"):
             status = "completed"
             pay_status = "completed"
             

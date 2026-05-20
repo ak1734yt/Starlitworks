@@ -337,6 +337,79 @@ async def bot_help(ctx):
         e.set_thumbnail(url=bot.user.avatar.url)
     await ctx.send(embed=e)
 
+# ── !savetemplate ──────────────────────────────────────────────────────────────
+@bot.command(name="savetemplate")
+@commands.has_permissions(administrator=True)
+async def bot_savetemplate(ctx, price: float, template_link: str, *, title: str):
+    guild = ctx.guild
+    
+    # Extract roles (highest position first, skipping default @everyone)
+    roles = []
+    for r in sorted(guild.roles, key=lambda x: x.position, reverse=True):
+        if r.is_default():
+            continue
+        roles.append({
+            "name": r.name,
+            "color": str(r.color),
+            "hoist": r.hoist,
+            "position": r.position
+        })
+
+    # Extract channels
+    channels_data = []
+    for c in sorted(guild.channels, key=lambda x: x.position):
+        if isinstance(c, discord.CategoryChannel):
+            continue
+        ch_type = "text"
+        if isinstance(c, discord.VoiceChannel):
+            ch_type = "voice"
+        elif isinstance(c, discord.StageChannel):
+            ch_type = "stage"
+        elif isinstance(c, discord.ForumChannel):
+            ch_type = "forum"
+
+        channels_data.append({
+            "name": c.name,
+            "type": ch_type,
+            "category": c.category.name if c.category else "Uncategorized",
+            "position": c.position
+        })
+
+    try:
+        c = db()
+        c.execute("""
+            INSERT INTO shop.templates (title, description, price, roles_json, channels_json, template_link)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (
+            title,
+            f"Premium Discord server template for {title} cloned directly from guild '{guild.name}' via Starlit Bot.",
+            price,
+            json.dumps(roles),
+            json.dumps(channels_data),
+            template_link
+        ))
+        c.commit()
+        c.close()
+
+        e = discord.Embed(
+            title="✅ Server Template Saved",
+            description=f"Successfully copied server layout and saved to marketplace catalog.",
+            color=0x10b981
+        )
+        e.add_field(name="🏷️ Title", value=title, inline=True)
+        e.add_field(name="💰 Price", value=f"₹{price:.2f}", inline=True)
+        e.add_field(name="👥 Roles Copied", value=f"{len(roles)} roles", inline=True)
+        e.add_field(name="📂 Channels Copied", value=f"{len(channels_data)} channels", inline=True)
+        e.set_footer(text="Starlit Siege Works Template System")
+        await ctx.send(embed=e)
+
+    except Exception as ex:
+        await ctx.send(embed=discord.Embed(
+            title="🔴 Save Template Failed",
+            description=f"Error saving template: `{ex}`",
+            color=0xef4444
+        ))
+
 # ── !order ─────────────────────────────────────────────────────────────────────
 @bot.command(name="order")
 async def bot_order(ctx, order_id: int):

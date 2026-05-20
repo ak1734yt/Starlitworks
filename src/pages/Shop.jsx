@@ -229,6 +229,28 @@ export default function Shop() {
       {modalProduct && <ProductModal product={modalProduct} onClose={() => setModalProduct(null)} />}
 
       <main className="pt-32 max-w-[90rem] mx-auto px-6 relative">
+        {/* Onboarding Alert Banner */}
+        {user && !(typeof user.details === 'string' ? JSON.parse(user.details || '{}') : user.details)?.onboarded && (
+          <div className="mb-8 p-6 rounded-3xl bg-gradient-to-r from-brand-primary/10 to-brand-secondary/10 border border-brand-primary/30 relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-6 shadow-[0_0_30px_rgba(124,58,237,0.1)]">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-brand-primary/10 blur-2xl pointer-events-none" />
+            <div className="flex items-center gap-4 relative z-10">
+              <div className="p-3 bg-brand-primary/20 rounded-2xl text-brand-primary shrink-0">
+                <Sparkles className="w-6 h-6 animate-pulse" />
+              </div>
+              <div className="text-left">
+                <h4 className="font-bold text-white text-base">Complete your onboarding profile</h4>
+                <p className="text-gray-400 text-xs mt-1">Tell us about your community niche and feature requirements so we can tailor your experience.</p>
+              </div>
+            </div>
+            <button 
+              onClick={() => navigate('/onboarding')}
+              className="btn-primary py-3 px-6 text-xs font-bold whitespace-nowrap shrink-0 relative z-10"
+            >
+              Start Onboarding Setup
+            </button>
+          </div>
+        )}
+
         <div className="mb-16 text-center max-w-2xl mx-auto">
           <div className="inline-flex items-center gap-2 text-brand-primary font-bold tracking-widest uppercase text-xs mb-3 px-3 py-1 glass rounded-full">
             <Sparkles className="w-3.5 h-3.5" />

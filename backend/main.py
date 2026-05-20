@@ -98,7 +98,7 @@ async def security_header_check(request: Request, call_next):
     return response
 
 # ── Route Injection ───────────────────────────────────────────────────────────
-from routers import auth_routes, order_routes, chat_routes, admin_routes, analytics_routes, invoice_routes, payment_routes, oauth_routes, referral_routes
+from routers import auth_routes, order_routes, chat_routes, admin_routes, analytics_routes, invoice_routes, payment_routes, oauth_routes, referral_routes, marketplace_routes
 
 app.include_router(auth_routes.router, prefix="/api")
 app.include_router(oauth_routes.router, prefix="/api")
@@ -109,6 +109,7 @@ app.include_router(analytics_routes.router, prefix="/api")
 app.include_router(invoice_routes.router, prefix="/api")
 app.include_router(payment_routes.router, prefix="/api")
 app.include_router(referral_routes.router, prefix="/api")
+app.include_router(marketplace_routes.router, prefix="/api")
 
 @app.get("/")
 def root():

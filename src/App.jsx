@@ -33,6 +33,11 @@ const OAuthCallback  = lazy(() => import("./pages/OAuthCallback"));
 const Status         = lazy(() => import("./pages/Status"));
 const PortfolioPage  = lazy(() => import("./pages/PortfolioPage"));
 const Help           = lazy(() => import("./pages/Help"));
+const Templates      = lazy(() => import("./pages/Templates"));
+const Blog           = lazy(() => import("./pages/Blog"));
+const BlogDetail     = lazy(() => import("./pages/BlogDetail"));
+const FAQ            = lazy(() => import("./pages/FAQ"));
+const Onboarding     = lazy(() => import("./pages/Onboarding"));
 
 const RouteLoader = () => (
   <div className="fixed inset-0 z-[9999] bg-black flex flex-col items-center justify-center">
@@ -131,6 +136,10 @@ function AppInner() {
           <Route path="/status"         element={<Status />} />
           <Route path="/portfolio"      element={<PortfolioPage />} />
           <Route path="/help"           element={<Help />} />
+          <Route path="/templates"      element={<Templates />} />
+          <Route path="/faq"            element={<FAQ />} />
+          <Route path="/blog"           element={<Blog />} />
+          <Route path="/blog/:slug"     element={<BlogDetail />} />
   
           {/* Protected — client */}
           <Route path="/shop"           element={<ProtectedRoute><Shop /></ProtectedRoute>} />
@@ -143,6 +152,7 @@ function AppInner() {
           <Route path="/invoice/:id"    element={<ProtectedRoute><InvoiceDetail /></ProtectedRoute>} />
           <Route path="/checkout/invoice/:id" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
           <Route path="/profile"        element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+          <Route path="/onboarding"     element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
   
           {/* Protected — admin/manager */}
           <Route path="/admin"          element={<ProtectedRoute adminOnly><Admin /></ProtectedRoute>} />

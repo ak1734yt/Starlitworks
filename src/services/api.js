@@ -136,3 +136,17 @@ export const managerSendTestEmail = (data) => request('/manager/send-test-email'
 export const linkReferralCode = (referral_code) => request('/referral/link', { method: 'POST', body: JSON.stringify({ referral_code }) });
 export const lookupReferralCode = (referral_code) => request(`/referral/lookup/${referral_code}`);
 
+// Marketplace Templates
+export const getTemplates = () => request('/marketplace/templates');
+export const getTemplate = (id) => request(`/marketplace/templates/${id}`);
+export const purchaseTemplate = (id) => request(`/marketplace/templates/${id}/purchase`, { method: 'POST' });
+
+// Blogs & FAQ
+export const getBlogs = () => request('/blogs');
+export const getBlogBySlug = (slug) => request(`/blogs/${slug}`);
+export const createOrUpdateBlog = (data) => request('/blogs', { method: 'POST', body: JSON.stringify(data) });
+export const getFaqs = () => request('/faq');
+
+// Onboarding
+export const saveOnboarding = (data) => request('/onboarding', { method: 'POST', body: JSON.stringify(data) });
+

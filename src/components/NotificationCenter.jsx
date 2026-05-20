@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Bell, Check, Info, AlertTriangle, CheckCircle, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 
 export default function NotificationCenter() {
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -39,6 +41,27 @@ export default function NotificationCenter() {
     const timer = setInterval(fetchNotifications, 30000); // Poll every 30s
     return () => clearInterval(timer);
   }, []);
+
+  const handleNotificationClick = (n) => {
+    setIsOpen(false);
+    const title = (n.title || '').toLowerCase();
+    const msg = (n.message || '').toLowerCase();
+    
+    if (title.includes('template') || msg.includes('template')) {
+      navigate('/templates');
+    } else if (
+      title.includes('order') || 
+      msg.includes('order') || 
+      title.includes('vault') || 
+      msg.includes('vault') || 
+      title.includes('invoice') || 
+      msg.includes('invoice')
+    ) {
+      navigate('/history');
+    } else {
+      navigate('/profile');
+    }
+  };
 
   const getIcon = (type) => {
     switch (type) {
@@ -88,7 +111,8 @@ export default function NotificationCenter() {
                   notifications.map(n => (
                     <div 
                       key={n.id} 
-                      className={`p-4 border-b border-white/5 hover:bg-white/5 transition-all flex gap-3 ${!n.is_read ? 'bg-brand-primary/5' : ''}`}
+                      onClick={() => handleNotificationClick(n)}
+                      className={`p-4 border-b border-white/5 hover:bg-white/10 cursor-pointer transition-all flex gap-3 ${!n.is_read ? 'bg-brand-primary/5' : ''}`}
                     >
                       <div className="mt-0.5">{getIcon(n.type)}</div>
                       <div className="flex-1 min-w-0">
