@@ -386,8 +386,6 @@ const Navbar = () => {
                       <Shield className="w-4 h-4" /> Manager Panel
                     </Link>
                   )}
-                </>
-              )}
                   <div className="mt-auto pt-8">
                     <button onClick={() => { logout(); setUserMenuOpen(false); }} className="w-full flex items-center gap-3 p-4 text-red-400 hover:bg-red-500/10 rounded-2xl transition-all font-bold">
                       <LogOut className="w-5 h-5" /> Sign Out

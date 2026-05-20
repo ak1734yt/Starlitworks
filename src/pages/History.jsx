@@ -680,7 +680,7 @@ export default function History() {
 
                       {/* Action 3: Discord Chat support */}
                       <a
-                        href="https://discord.gg/starlit"
+                        href="https://discord.gg/cozyclouds"
                         target="_blank"
                         rel="noreferrer"
                         className="w-full p-4 bg-white/[0.01] border border-white/5 rounded-2xl text-left hover:bg-white/10 text-gray-300 hover:text-white transition-all group flex items-center justify-between"
