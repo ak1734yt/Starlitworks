@@ -140,6 +140,9 @@ export const lookupReferralCode = (referral_code) => request(`/referral/lookup/$
 export const getTemplates = () => request('/marketplace/templates');
 export const getTemplate = (id) => request(`/marketplace/templates/${id}`);
 export const purchaseTemplate = (id) => request(`/marketplace/templates/${id}/purchase`, { method: 'POST' });
+export const createTemplate = (data) => request('/marketplace/templates/admin', { method: 'POST', body: JSON.stringify(data) });
+export const updateTemplate = (id, data) => request(`/marketplace/templates/admin/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+export const deleteTemplate = (id) => request(`/marketplace/templates/admin/${id}`, { method: 'DELETE' });
 
 // Blogs & FAQ
 export const getBlogs = () => request('/blogs');

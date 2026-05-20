@@ -23,7 +23,8 @@ import {
   updateReferralTiers, setUserReferralOverride, grantManualBonus,
   getUserReferralStats, getManagerRevenue, bulkUpdateOrderStatus,
   deleteInvoice, adminEditInvoice, updateOrderStatus, updateOrderVault, managerSendTestEmail,
-  getCoupons, deleteCoupon, getCouponUses, getManagerWithdrawals, updateWithdrawalStatus
+  getCoupons, deleteCoupon, getCouponUses, getManagerWithdrawals, updateWithdrawalStatus,
+  getTemplates, createTemplate, updateTemplate, deleteTemplate
 } from '../services/api';
 import UserChat from '../components/UserChat';
 
@@ -161,6 +162,18 @@ export default function Manager() {
     days_valid: ''
   });
 
+  // Template State
+  const [templates, setTemplates] = useState([]);
+  const [editingTemplate, setEditingTemplate] = useState(null);
+  const [templateForm, setTemplateForm] = useState({
+    title: '',
+    description: '',
+    price: 0,
+    template_link: '',
+    roles_json: '[]',
+    channels_json: '[]'
+  });
+
   useEffect(() => {
     if (user?.role === 'manager') {
       fetchData();
@@ -236,6 +249,9 @@ export default function Manager() {
       } else if (activeTab === 'coupons') {
         const data = await getCoupons();
         setCouponsList(data);
+      } else if (activeTab === 'templates') {
+        const data = await getTemplates();
+        setTemplates(data);
       }
     } catch (err) {
       if (!silent) toast.error(err.message);
@@ -299,6 +315,47 @@ export default function Manager() {
     try {
       await deleteCoupon(id);
       toast.success('Coupon deleted successfully');
+      fetchData();
+    } catch (err) {
+      toast.error(err.message);
+    }
+  };
+
+  const handleTemplateSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      if (editingTemplate) {
+        await updateTemplate(editingTemplate.id, templateForm);
+        toast.success('Template updated successfully');
+        setEditingTemplate(null);
+      } else {
+        await createTemplate(templateForm);
+        toast.success('Template created successfully');
+      }
+      setTemplateForm({ title: '', description: '', price: 0, template_link: '', roles_json: '[]', channels_json: '[]' });
+      fetchData();
+    } catch (err) {
+      toast.error(err.message);
+    }
+  };
+
+  const handleEditTemplate = (tmpl) => {
+    setEditingTemplate(tmpl);
+    setTemplateForm({
+      title: tmpl.title,
+      description: tmpl.description || '',
+      price: tmpl.price,
+      template_link: tmpl.template_link || '',
+      roles_json: tmpl.roles ? JSON.stringify(tmpl.roles) : '[]',
+      channels_json: tmpl.channels ? JSON.stringify(tmpl.channels) : '[]'
+    });
+  };
+
+  const handleDeleteTemplate = async (id) => {
+    if (!confirm('Are you sure you want to delete this template?')) return;
+    try {
+      await deleteTemplate(id);
+      toast.success('Template deleted successfully');
       fetchData();
     } catch (err) {
       toast.error(err.message);
@@ -562,6 +619,7 @@ export default function Manager() {
             { id: 'portfolio', icon: Layout, label: 'Portfolio Mgr' },
             { id: 'site-editor', icon: Settings, label: 'Site Editor' },
             { id: 'coupons', icon: Star, label: 'Coupons' },
+            { id: 'templates', icon: ShoppingBag, label: 'Templates Mgr' },
             { id: 'referrals', icon: Gift, label: 'Referrals & Rewards' },
             { id: 'pulse', icon: BarChart3, label: 'User Pulse' },
           ].map((item) => (
@@ -1903,6 +1961,167 @@ export default function Manager() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {activeTab === 'templates' && (
+          <motion.div key="templates" initial={{opacity:0, y:10}} animate={{opacity:1, y:0}} exit={{opacity:0, y:-10}} className="grid grid-cols-1 lg:grid-cols-2 gap-10 text-left">
+            <div className="bg-[#0A0A0A] border border-white/10 rounded-2xl p-8 shadow-2xl">
+              <div className="flex items-center gap-3 mb-8">
+                <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center">
+                  <Sparkles className="w-6 h-6 text-purple-400" />
+                </div>
+                <h3 className="text-xl font-bold">{editingTemplate ? 'Edit Template' : 'Create New Template'}</h3>
+              </div>
+              
+              <form onSubmit={handleTemplateSubmit} className="space-y-6">
+                <div>
+                  <label className="text-xs text-gray-500 uppercase tracking-widest font-semibold block mb-2 font-display font-bold">Template Title</label>
+                  <input 
+                    type="text" 
+                    placeholder="e.g. Gaming Community Layout"
+                    required
+                    value={templateForm.title}
+                    onChange={(e) => setTemplateForm({...templateForm, title: e.target.value})}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-brand-primary transition-all text-white"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs text-gray-500 uppercase tracking-widest font-semibold block mb-2 font-display font-bold">Price (₹)</label>
+                    <input 
+                      type="number" 
+                      placeholder="e.g. 499"
+                      required
+                      value={templateForm.price}
+                      onChange={(e) => setTemplateForm({...templateForm, price: parseFloat(e.target.value) || 0})}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-brand-primary transition-all font-mono text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 uppercase tracking-widest font-semibold block mb-2 font-display font-bold">Template Link</label>
+                    <input 
+                      type="text" 
+                      placeholder="e.g. https://discord.new/..."
+                      required
+                      value={templateForm.template_link}
+                      onChange={(e) => setTemplateForm({...templateForm, template_link: e.target.value})}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-brand-primary transition-all font-mono text-white"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs text-gray-500 uppercase tracking-widest font-semibold block mb-2 font-display font-bold">Description</label>
+                  <textarea 
+                    placeholder="Provide a compelling description of the template layout, roles, and setup..."
+                    value={templateForm.description}
+                    onChange={(e) => setTemplateForm({...templateForm, description: e.target.value})}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-brand-primary transition-all h-24 text-white"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs text-gray-500 uppercase tracking-widest font-semibold block mb-2 font-display font-bold font-mono">Roles JSON (Advanced)</label>
+                    <textarea 
+                      placeholder="[]"
+                      value={templateForm.roles_json}
+                      onChange={(e) => setTemplateForm({...templateForm, roles_json: e.target.value})}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-xs focus:outline-none focus:border-brand-primary transition-all font-mono h-20 text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 uppercase tracking-widest font-semibold block mb-2 font-display font-bold font-mono">Channels JSON (Advanced)</label>
+                    <textarea 
+                      placeholder="[]"
+                      value={templateForm.channels_json}
+                      onChange={(e) => setTemplateForm({...templateForm, channels_json: e.target.value})}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-xs focus:outline-none focus:border-brand-primary transition-all font-mono h-20 text-white"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-4">
+                  <button type="submit" className="flex-1 btn-primary py-4 rounded-xl font-bold flex items-center justify-center gap-2">
+                    <Save className="w-5 h-5" />
+                    {editingTemplate ? 'Update Template' : 'Save Template'}
+                  </button>
+                  {editingTemplate && (
+                    <button 
+                      type="button" 
+                      onClick={() => {
+                        setEditingTemplate(null);
+                        setTemplateForm({ title: '', description: '', price: 0, template_link: '', roles_json: '[]', channels_json: '[]' });
+                      }}
+                      className="px-6 bg-white/5 border border-white/10 hover:bg-white/10 rounded-xl transition-all text-sm font-semibold text-white"
+                    >
+                      Cancel
+                    </button>
+                  )}
+                </div>
+              </form>
+            </div>
+
+            <div className="bg-[#0A0A0A] border border-white/10 rounded-2xl p-8 shadow-2xl space-y-6">
+              <div>
+                <h3 className="text-xl font-bold">Existing Templates</h3>
+                <p className="text-xs text-gray-500 mt-1">Manage and configure server templates currently in the marketplace catalog.</p>
+              </div>
+
+              <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
+                {templates.length === 0 ? (
+                  <div className="py-20 text-center border border-dashed border-white/10 rounded-2xl">
+                    <ShoppingBag className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+                    <p className="text-gray-500 font-medium">No templates created yet.</p>
+                    <p className="text-xs text-gray-600 mt-1">Save a template from Discord bot using !savetemplate or fill the form on the left.</p>
+                  </div>
+                ) : (
+                  templates.map((tmpl) => (
+                    <div key={tmpl.id} className="p-5 bg-white/[0.02] border border-white/5 rounded-xl hover:border-white/10 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <div className="space-y-2 flex-1">
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-bold text-white text-base">{tmpl.title}</h4>
+                          <span className="text-[10px] bg-brand-primary/20 text-brand-primary px-2 py-0.5 rounded font-mono font-bold">
+                            ₹{tmpl.price}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-400 line-clamp-2">{tmpl.description || 'No description provided.'}</p>
+                        <div className="flex flex-col gap-1 text-[10px] text-gray-500 font-mono">
+                          <div className="flex gap-4">
+                            <span>Roles: <strong className="text-white">{tmpl.roles?.length || 0}</strong></span>
+                            <span>Channels: <strong className="text-white">{tmpl.channels?.length || 0}</strong></span>
+                          </div>
+                          {tmpl.template_link && (
+                            <span className="text-brand-secondary truncate max-w-[300px]" title={tmpl.template_link}>
+                              {tmpl.template_link}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-2 self-end md:self-center">
+                        <button 
+                          onClick={() => handleEditTemplate(tmpl)}
+                          className="p-2.5 bg-white/5 hover:bg-white/10 text-white rounded-lg transition-all"
+                          title="Edit Template"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteTemplate(tmpl.id)}
+                          className="p-2.5 bg-red-500/10 hover:bg-red-500 hover:text-white text-red-400 rounded-lg transition-all"
+                          title="Delete Template"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </motion.div>

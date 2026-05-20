@@ -340,7 +340,9 @@ async def bot_help(ctx):
 # ── !savetemplate ──────────────────────────────────────────────────────────────
 @bot.command(name="savetemplate")
 @commands.has_permissions(administrator=True)
-async def bot_savetemplate(ctx, price: float, template_link: str, *, title: str):
+async def bot_savetemplate(ctx, *, title: str):
+    price = 0.0
+    template_link = ""
     guild = ctx.guild
     
     # Extract roles (highest position first, skipping default @everyone)

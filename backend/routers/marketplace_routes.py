@@ -22,6 +22,14 @@ class BlogCreateBody(BaseModel):
     content: str
     category: str = "General"
 
+class TemplateCreateBody(BaseModel):
+    title: str
+    description: Optional[str] = ""
+    price: float
+    template_link: str
+    roles_json: Optional[str] = "[]"
+    channels_json: Optional[str] = "[]"
+
 # ── FAQ List ──────────────────────────────────────────────────────────────────
 DEFAULT_FAQS = [
     {
@@ -269,3 +277,60 @@ async def purchase_template(template_id: int, user=Depends(get_current_user)):
     )
     
     return {"success": True, "order_id": order_id}
+
+@router.post("/marketplace/templates/admin")
+def create_template(body: TemplateCreateBody, user=Depends(require_admin)):
+    db = get_db()
+    cursor = db.execute("""
+        INSERT INTO shop.templates (title, description, price, roles_json, channels_json, template_link)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """, (
+        body.title,
+        body.description,
+        body.price,
+        body.roles_json,
+        body.channels_json,
+        body.template_link
+    ))
+    db.commit()
+    new_id = cursor.lastrowid
+    db.close()
+    return {"success": True, "id": new_id, "message": "Template created successfully."}
+
+@router.put("/marketplace/templates/admin/{template_id}")
+def update_template(template_id: int, body: TemplateCreateBody, user=Depends(require_admin)):
+    db = get_db()
+    row = db.execute("SELECT id FROM shop.templates WHERE id = ? AND is_deleted = 0", (template_id,)).fetchone()
+    if not row:
+        db.close()
+        raise HTTPException(404, "Template not found")
+        
+    db.execute("""
+        UPDATE shop.templates
+        SET title = ?, description = ?, price = ?, roles_json = ?, channels_json = ?, template_link = ?
+        WHERE id = ?
+    """, (
+        body.title,
+        body.description,
+        body.price,
+        body.roles_json,
+        body.channels_json,
+        body.template_link,
+        template_id
+    ))
+    db.commit()
+    db.close()
+    return {"success": True, "message": "Template updated successfully."}
+
+@router.delete("/marketplace/templates/admin/{template_id}")
+def delete_template(template_id: int, user=Depends(require_admin)):
+    db = get_db()
+    row = db.execute("SELECT id FROM shop.templates WHERE id = ? AND is_deleted = 0", (template_id,)).fetchone()
+    if not row:
+        db.close()
+        raise HTTPException(404, "Template not found")
+        
+    db.execute("UPDATE shop.templates SET is_deleted = 1 WHERE id = ?", (template_id,))
+    db.commit()
+    db.close()
+    return {"success": True, "message": "Template deleted successfully."}
