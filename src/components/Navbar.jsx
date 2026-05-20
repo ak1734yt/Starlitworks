@@ -72,18 +72,25 @@ const Navbar = () => {
           <Link to="/" className="hover:text-brand-primary transition-colors">Home</Link>
           <Link to="/about" className="hover:text-brand-primary transition-colors">About Us</Link>
           <Link to="/portfolio" className="hover:text-brand-primary transition-colors">Our Work</Link>
-          <Link to="/templates" className="hover:text-brand-primary transition-colors">Templates</Link>
-          <Link to="/blog" className="hover:text-brand-primary transition-colors">Blog</Link>
-          <Link to="/faq" className="hover:text-brand-primary transition-colors">FAQ</Link>
           <button onClick={() => handleProtectedLink('/shop')} className="hover:text-brand-primary transition-colors flex items-center gap-1.5">
             <ShoppingBag className="w-3.5 h-3.5" /> Shop
           </button>
+          <Link to="/templates" className="hover:text-brand-primary transition-colors">Templates</Link>
+          
           {user && (
             <>
               <Link to="/history" className="hover:text-brand-primary transition-colors flex items-center gap-1.5"><History className="w-3.5 h-3.5"/>History</Link>
               {hasInstallments && (
                 <Link to="/tracker" className="hover:text-brand-primary transition-colors flex items-center gap-1.5"><CreditCard className="w-3.5 h-3.5"/>Tracker</Link>
               )}
+            </>
+          )}
+
+          <Link to="/blog" className="hover:text-brand-primary transition-colors">Blog</Link>
+          <Link to="/faq" className="hover:text-brand-primary transition-colors">FAQ</Link>
+
+          {user && (
+            <>
               {(user.role === 'admin' || user.role === 'manager') && (
                 <Link to="/admin" className="hover:text-yellow-400 transition-colors flex items-center gap-1.5 text-yellow-500">
                   <Shield className="w-3.5 h-3.5"/>Admin
@@ -337,18 +344,13 @@ const Navbar = () => {
               <Link to="/portfolio" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-3 p-3 text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-all">
                 <Activity className="w-4 h-4" /> Our Work
               </Link>
+              <button onClick={() => { handleProtectedLink('/shop'); setUserMenuOpen(false); }} className="w-full text-left flex items-center gap-3 p-3 text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-all">
+                <ShoppingBag className="w-4 h-4" /> Shop
+              </button>
               <Link to="/templates" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-3 p-3 text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-all">
                 <Sparkles className="w-4 h-4" /> Templates
               </Link>
-              <Link to="/blog" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-3 p-3 text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-all">
-                <Sparkles className="w-4 h-4" /> Blog
-              </Link>
-              <Link to="/faq" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-3 p-3 text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-all">
-                <Sparkles className="w-4 h-4" /> FAQ
-              </Link>
-              <button onClick={() => { handleProtectedLink('/shop'); setUserMenuOpen(false); }} className="flex items-center gap-3 p-3 text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-all">
-                <ShoppingBag className="w-4 h-4" /> Shop
-              </button>
+              
               {user && (
                 <>
                   <div className="h-px bg-white/5 my-2" />
@@ -360,6 +362,20 @@ const Navbar = () => {
                       <CreditCard className="w-4 h-4" /> Tracker
                     </Link>
                   )}
+                  <div className="h-px bg-white/5 my-2" />
+                </>
+              )}
+
+              <Link to="/blog" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-3 p-3 text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-all">
+                <Sparkles className="w-4 h-4" /> Blog
+              </Link>
+              <Link to="/faq" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-3 p-3 text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-all">
+                <Sparkles className="w-4 h-4" /> FAQ
+              </Link>
+
+              {user && (
+                <>
+                  <div className="h-px bg-white/5 my-2" />
                   {(user.role === 'admin' || user.role === 'manager') && (
                     <Link to="/admin" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-3 p-3 text-yellow-500/80 hover:text-yellow-400 hover:bg-yellow-500/10 rounded-xl transition-all font-bold">
                       <Shield className="w-4 h-4" /> Admin Panel
@@ -370,6 +386,8 @@ const Navbar = () => {
                       <Shield className="w-4 h-4" /> Manager Panel
                     </Link>
                   )}
+                </>
+              )}
                   <div className="mt-auto pt-8">
                     <button onClick={() => { logout(); setUserMenuOpen(false); }} className="w-full flex items-center gap-3 p-4 text-red-400 hover:bg-red-500/10 rounded-2xl transition-all font-bold">
                       <LogOut className="w-5 h-5" /> Sign Out
