@@ -552,15 +552,15 @@ export default function Checkout() {
                             <label className="block text-[10px] text-gray-500 uppercase font-bold tracking-widest ml-1">Transaction / UTR ID</label>
                             <input 
                               type="text" 
-                              placeholder="12-digit UPI Transaction ID"
+                              placeholder="Transaction / Reference ID"
                               required
-                              maxLength={12}
-                              pattern="[A-Za-z0-9]{12}"
+                              maxLength={30}
+                              pattern="[A-Za-z0-9_-]{8,30}"
                               value={proof.transaction_id}
                               onChange={e => setProof({...proof, transaction_id: e.target.value.toUpperCase()})}
                               className="w-full bg-white/[0.03] border border-white/10 rounded-2xl px-6 py-4 text-sm focus:border-brand-primary focus:bg-white/[0.05] outline-none transition-all font-mono placeholder:text-gray-700 text-white"
                             />
-                            <p className="text-[9px] text-gray-600 mt-2 ml-1 italic">* Enter exactly 12 alphanumeric characters as shown in your UPI app.</p>
+                            <p className="text-[9px] text-gray-600 mt-2 ml-1 italic">* Enter the 8-30 character transaction reference ID from your payment receipt.</p>
                           </div>
 
                           <div className="space-y-3">
