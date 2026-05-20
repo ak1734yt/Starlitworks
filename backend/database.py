@@ -172,7 +172,18 @@ def init_db():
         used_count     INTEGER DEFAULT 0,
         expires_at     INTEGER,
         created_by     INTEGER REFERENCES users(id),
+        status         TEXT    DEFAULT 'active',
+        is_deleted     INTEGER DEFAULT 0,
         created_at     INTEGER DEFAULT (strftime('%s','now'))
+    );
+    """)
+    create_table_in_db(DB_SHOP, "coupon_uses", """
+    CREATE TABLE IF NOT EXISTS coupon_uses (
+        id             INTEGER PRIMARY KEY AUTOINCREMENT,
+        coupon_id      INTEGER REFERENCES coupons(id),
+        user_id        INTEGER REFERENCES users(id),
+        order_id       INTEGER REFERENCES orders(id),
+        used_at        INTEGER DEFAULT (strftime('%s','now'))
     );
     """)
     create_table_in_db(DB_SHOP, "feedbacks", """
@@ -194,6 +205,7 @@ def init_db():
         member_count TEXT    DEFAULT '0',
         link         TEXT    DEFAULT '',
         category     TEXT    DEFAULT 'custom',
+        custom_fields TEXT   DEFAULT '{}',
         sort_order   INTEGER DEFAULT 0,
         created_at   INTEGER DEFAULT (strftime('%s','now'))
     );
@@ -211,6 +223,20 @@ def init_db():
         # Migration for is_deleted
         try:
             conn_shop.execute("ALTER TABLE products ADD COLUMN is_deleted INTEGER DEFAULT 0")
+            conn_shop.commit()
+        except Exception:
+            pass
+        # Migration for coupons
+        try:
+            conn_shop.execute("ALTER TABLE coupons ADD COLUMN status TEXT DEFAULT 'active'")
+            conn_shop.execute("ALTER TABLE coupons ADD COLUMN is_deleted INTEGER DEFAULT 0")
+            conn_shop.commit()
+        except Exception:
+            pass
+
+        # Migration for portfolio
+        try:
+            conn_shop.execute("ALTER TABLE portfolio ADD COLUMN custom_fields TEXT DEFAULT '{}'")
             conn_shop.commit()
         except Exception:
             pass
@@ -256,6 +282,7 @@ def init_db():
         vault_data                 TEXT    DEFAULT '{}',
         credits_applied            REAL    DEFAULT 0,
         quantity                   INTEGER DEFAULT 1,
+        payment_verified_by        INTEGER REFERENCES users(id),
         admin_unread_count         INTEGER DEFAULT 0,
         client_unread_count        INTEGER DEFAULT 0
     );
@@ -321,6 +348,20 @@ def init_db():
         created_at INTEGER DEFAULT (strftime('%s','now'))
     );
     """)
+
+    # Check default settings and handle migrations in orders.db
+    conn_orders = sqlite3.connect(DB_ORDERS)
+    try:
+        # Migration for orders payment_verified_by
+        try:
+            conn_orders.execute("ALTER TABLE orders ADD COLUMN payment_verified_by INTEGER REFERENCES users(id)")
+            conn_orders.commit()
+        except Exception:
+            pass
+    except Exception as e:
+        print(f"Error checking orders migrations: {e}")
+    finally:
+        conn_orders.close()
 
     # ── 4. Migrate legacy combined data ──────────────────────────────────────────
     if has_legacy:

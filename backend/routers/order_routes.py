@@ -172,6 +172,19 @@ class NegotiationStatusBody(BaseModel):
 @router.post("/orders", status_code=201)
 async def create_order(body: OrderBody, user=Depends(get_current_user)):
     db = get_db()
+    
+    # Apply Role-based Discounts
+    client_role = user.get("role", "client")
+    discount_multiplier = 1.0
+    if client_role == "regular_client":
+        discount_multiplier = 0.95
+    elif client_role == "vip_client":
+        discount_multiplier = 0.92
+        
+    body.total_amount = round(body.total_amount * discount_multiplier, 2)
+    if body.quoted_price:
+        body.quoted_price = round(body.quoted_price * discount_multiplier, 2)
+        
     result = db.execute("""
         INSERT INTO orders.orders (user_id, service_id, service_name, server_link, description, timeline,
             discord_username, quoted_price, tax_rate, cgst, sgst, total_amount, payment_plan, quantity)
@@ -258,6 +271,16 @@ async def submit_payment_proof(order_id: str, body: PaymentProofBody, user=Depen
         coupon_row = db.execute("SELECT id FROM shop.coupons WHERE LOWER(code) = LOWER(?)", (body.coupon_code,)).fetchone()
         if coupon_row:
             db.execute("UPDATE shop.coupons SET used_count = used_count + 1 WHERE id = ?", (coupon_row["id"],))
+            
+            # Record performance tracking
+            actual_order_id = numeric_order_id if is_numeric_order else None
+            if not actual_order_id and str(order_id).startswith("INV-"):
+                try:
+                    actual_order_id = int(str(order_id).split("-")[1])
+                except: pass
+                
+            db.execute("INSERT INTO shop.coupon_uses (coupon_id, user_id, order_id) VALUES (?,?,?)", 
+                       (coupon_row["id"], user["id"], actual_order_id))
             db.commit()
     
     # 1. Fetch user details and validate credits
@@ -423,8 +446,12 @@ async def admin_update_order(order_id: int, body: AdminOrderUpdate, user=Depends
     row = db.execute("SELECT * FROM orders.orders WHERE id = ?", (order_id,)).fetchone()
     if not row: db.close(); raise HTTPException(404, "Order not found")
 
-    # ── Enforce min_price floor ──────────────────────────────────────────────
+    # Fetch client's role to apply automatic discount if admin updates quoted price
+    client_row = db.execute("SELECT role FROM auth.users WHERE id = ?", (row["user_id"],)).fetchone()
+    client_role = client_row["role"] if client_row else "client"
+    
     if body.quoted_price is not None and body.quoted_price > 0:
+        # Enforce min_price floor before discount
         product_row = db.execute(
             "SELECT min_price FROM shop.products WHERE (product_key = ? OR name = ?) AND is_deleted = 0",
             (row["service_id"], row["service_name"])
@@ -434,6 +461,14 @@ async def admin_update_order(order_id: int, body: AdminOrderUpdate, user=Depends
             if floor > 0 and body.quoted_price < floor:
                 db.close()
                 raise HTTPException(400, f"Quoted price ₹{body.quoted_price} is below the minimum allowed price of ₹{floor} set by the Manager.")
+                
+        # Apply role-based discount to quoted_price
+        discount_multiplier = 1.0
+        if client_role == "regular_client":
+            discount_multiplier = 0.95
+        elif client_role == "vip_client":
+            discount_multiplier = 0.92
+        body.quoted_price = round(body.quoted_price * discount_multiplier, 2)
     
     db.execute("UPDATE orders.orders SET status=?, quoted_price=?, admin_notes=?, accepted_by=COALESCE(?,accepted_by), updated_at=? WHERE id=?",
                (body.status, body.quoted_price, body.admin_notes, accepted_by, int(time.time()), order_id))
@@ -522,10 +557,9 @@ def verify_payment(order_id: int, body: VerifyPaymentBody, user=Depends(require_
                 current_credits = float(user_details.get("credits", 0.0))
                 user_details["credits"] = current_credits + credits_applied
                 db.execute("UPDATE auth.users SET details=? WHERE id=?", (json.dumps(user_details), user_id))
-            # Reset credits_applied on the order to 0 since they've been refunded
             db.execute("UPDATE orders.orders SET credits_applied=0 WHERE id=?", (order_id,))
 
-    db.execute("UPDATE orders.orders SET status=?, payment_status=?, updated_at=? WHERE id=?", (status, pay_status, int(time.time()), order_id))
+    db.execute("UPDATE orders.orders SET status=?, payment_status=?, payment_verified_by=?, updated_at=? WHERE id=?", (status, pay_status, user["id"], int(time.time()), order_id))
     db.commit(); db.close()
 
     log_activity(user["id"], "VERIFY_PAYMENT", f"Order {order_id} Approved={body.approved}")

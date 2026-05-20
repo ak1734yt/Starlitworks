@@ -52,6 +52,8 @@ export const deleteProduct = (id) => request(`/manager/prices/${id}`, { method: 
 export const updatePrice = (id, data) => request(`/manager/prices/${id}`, { method: 'PUT', body: JSON.stringify(data) });
 export const getCoupons = () => request('/manager/coupons');
 export const createCoupon = (data) => request('/manager/coupons', { method: 'POST', body: JSON.stringify(data) });
+export const deleteCoupon = (id) => request(`/manager/coupons/${id}`, { method: 'DELETE' });
+export const getCouponUses = (id) => request(`/manager/coupons/${id}/uses`);
 export const getManagerStats = () => request('/manager/stats/activity');
 export const getUserDetail = (id) => request(`/manager/users/${id}`);
 export const setUserBanned = (id, is_banned) => request(`/manager/users/${id}/status`, { method: 'PUT', body: JSON.stringify({ is_banned }) });
@@ -113,6 +115,7 @@ export const updateManagerReferralSettings = (data) => request('/manager/referra
 export const updateReferralTiers = (tiers) => request('/manager/referral-tiers', { method: 'PUT', body: JSON.stringify({ tiers }) });
 export const setUserReferralOverride = (uid, custom_reward) => request(`/manager/users/${uid}/referral-override`, { method: 'PUT', body: JSON.stringify({ custom_reward }) });
 export const grantManualBonus = (uid, amount, note) => request(`/manager/users/${uid}/manual-bonus`, { method: 'POST', body: JSON.stringify({ amount, note }) });
+export const getReferralTree = () => request('/manager/referral-tree');
 export const getUserReferralStats = (uid) => request(`/manager/users/${uid}/referrals`);
 export const requestWithdrawal = (amount, payment_info) => request('/referral/withdraw', { method: 'POST', body: JSON.stringify({ amount, payment_info }) });
 export const convertReferralPoints = (points) => request('/referral/convert-points', { method: 'POST', body: JSON.stringify({ points }) });

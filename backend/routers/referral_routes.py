@@ -1046,3 +1046,71 @@ def update_withdrawal_status(wid: int, body: WithdrawStatusBody, user=Depends(re
         
     log_activity(user["id"], "UPDATE_WITHDRAWAL", f"Updated withdrawal #{wid} to {body.status}")
     return {"success": True}
+
+@router.get("/manager/referral-tree")
+def get_referral_tree(user=Depends(require_manager)):
+    conn = sqlite3.connect(DB_ORDERS)
+    conn.row_factory = sqlite3.Row
+    referrals = conn.execute("SELECT referrer_id, referred_id FROM referrals").fetchall()
+    
+    # Get total earnings per user
+    transactions = conn.execute("SELECT user_id, amount FROM referral_transactions WHERE amount > 0").fetchall()
+    conn.close()
+
+    earnings = {}
+    for t in transactions:
+        uid = t["user_id"]
+        earnings[uid] = earnings.get(uid, 0.0) + t["amount"]
+
+    db = get_db()
+    users = db.execute("SELECT id, name, email, details FROM auth.users").fetchall()
+    db.close()
+
+    user_map = {}
+    for u in users:
+        try:
+            d = json.loads(u["details"] or "{}")
+        except:
+            d = {}
+        user_map[u["id"]] = {
+            "id": u["id"],
+            "name": u["name"],
+            "email": u["email"],
+            "referral_code": d.get("referral_code", ""),
+            "children": [],
+            "total_earned": round(earnings.get(u["id"], 0.0), 2),
+            "referral_count": 0
+        }
+
+    children_map = {}
+    all_referred = set()
+    for r in referrals:
+        rid = r["referrer_id"]
+        cid = r["referred_id"]
+        if rid not in children_map:
+            children_map[rid] = []
+        children_map[rid].append(cid)
+        all_referred.add(cid)
+        if rid in user_map:
+            user_map[rid]["referral_count"] += 1
+
+    # Roots: users who have referred others but weren't referred themselves
+    roots = [uid for uid in user_map.keys() if uid not in all_referred and uid in children_map]
+
+    def build_tree(uid, level=0):
+        # Stop at arbitrary depth to prevent infinite loops just in case
+        if level > 10:
+            return None
+        node = user_map.get(uid, {"id": uid, "name": f"Unknown #{uid}", "children": [], "total_earned": 0.0, "referral_count": 0}).copy()
+        
+        children = []
+        for child_id in children_map.get(uid, []):
+            child_node = build_tree(child_id, level + 1)
+            if child_node:
+                children.append(child_node)
+        
+        node["children"] = children
+        return node
+
+    tree = [build_tree(root_id) for root_id in roots]
+    return tree

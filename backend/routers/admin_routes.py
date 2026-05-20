@@ -62,6 +62,7 @@ class CouponBody(BaseModel):
     discount_value: float
     max_uses: int = 1
     expires_at: Optional[int] = None
+    days_valid: Optional[int] = None
 
 class BanBody(BaseModel):
     is_banned: bool
@@ -477,17 +478,40 @@ def create_coupon(body: CouponBody, user=Depends(require_manager)):
         code = "STYLIT_" + secrets.token_hex(4).upper()
     elif not code.startswith("STYLIT_"):
         code = "STYLIT_" + code.upper()
+        
+    expires_at = body.expires_at
+    if body.days_valid and body.days_valid > 0:
+        expires_at = int(time.time()) + (body.days_valid * 86400)
+        
     db = get_db()
     db.execute("INSERT INTO shop.coupons (code, discount_type, discount_value, max_uses, expires_at, created_by) VALUES (?,?,?,?,?,?)",
-               (code, body.discount_type, body.discount_value, body.max_uses, body.expires_at, user["id"]))
+               (code, body.discount_type, body.discount_value, body.max_uses, expires_at, user["id"]))
     db.commit(); db.close()
     log_activity(user["id"], "CREATE_COUPON", f"Created coupon {code}")
     return {"success": True, "code": code}
 
+@router.delete("/manager/coupons/{cid}")
+def delete_coupon(cid: int, user=Depends(require_manager)):
+    db = get_db()
+    db.execute("UPDATE shop.coupons SET is_deleted = 1, status = 'expired' WHERE id = ?", (cid,))
+    db.commit(); db.close()
+    log_activity(user["id"], "DELETE_COUPON", f"Deleted coupon ID {cid}")
+    return {"success": True}
+
+@router.get("/manager/coupons/{cid}/uses")
+def get_coupon_uses(cid: int, user=Depends(require_manager)):
+    db = get_db()
+    rows = db.execute(
+        "SELECT c.*, u.name as user_name, u.email as user_email FROM shop.coupon_uses c JOIN auth.users u ON c.user_id = u.id WHERE c.coupon_id = ? ORDER BY c.used_at DESC", 
+        (cid,)
+    ).fetchall()
+    db.close()
+    return [dict(r) for r in rows]
+
 @router.get("/manager/coupons")
 def manager_coupons(user=Depends(require_manager)):
     db = get_db()
-    rows = db.execute("SELECT * FROM shop.coupons ORDER BY created_at DESC").fetchall()
+    rows = db.execute("SELECT * FROM shop.coupons WHERE is_deleted = 0 ORDER BY created_at DESC").fetchall()
     db.close()
     return [dict(r) for r in rows]
 
@@ -554,12 +578,30 @@ def get_prices():
 @router.get("/coupons/{code}")
 def get_coupon(code: str, user=Depends(get_current_user)):
     db = get_db()
-    row = db.execute("SELECT * FROM shop.coupons WHERE LOWER(code) = LOWER(?)", (code,)).fetchone()
-    db.close()
-    if not row: raise HTTPException(404, "Coupon not found")
+    row = db.execute("SELECT * FROM shop.coupons WHERE LOWER(code) = LOWER(?) AND is_deleted = 0", (code,)).fetchone()
+    if not row: 
+        db.close()
+        raise HTTPException(404, "Coupon not found")
+        
     c = dict(row)
-    if c["used_count"] >= c["max_uses"]: raise HTTPException(400, "Coupon usage limit reached")
-    if c["expires_at"] and c["expires_at"] < int(time.time()): raise HTTPException(400, "Coupon expired")
+    
+    # Auto-expire logic if conditions met
+    is_expired = False
+    if c["used_count"] >= c["max_uses"]:
+        is_expired = True
+    elif c["expires_at"] and c["expires_at"] < int(time.time()):
+        is_expired = True
+        
+    if is_expired and c.get("status") != "expired":
+        c["status"] = "expired"
+        db.execute("UPDATE shop.coupons SET status = 'expired' WHERE id = ?", (c["id"],))
+        db.commit()
+        
+    db.close()
+    
+    if is_expired:
+        raise HTTPException(400, "Coupon has expired or reached usage limit")
+        
     return c
 
 @router.get("/feedbacks")

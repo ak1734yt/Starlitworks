@@ -22,7 +22,8 @@ import {
   getManagerReferrals, getManagerReferralSettings, updateManagerReferralSettings,
   updateReferralTiers, setUserReferralOverride, grantManualBonus,
   getUserReferralStats, getManagerRevenue, bulkUpdateOrderStatus,
-  deleteInvoice, adminEditInvoice, updateOrderStatus, updateOrderVault, managerSendTestEmail
+  deleteInvoice, adminEditInvoice, updateOrderStatus, updateOrderVault, managerSendTestEmail,
+  getCoupons, deleteCoupon, getCouponUses, getManagerWithdrawals, updateWithdrawalStatus
 } from '../services/api';
 import UserChat from '../components/UserChat';
 
@@ -41,6 +42,50 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-hot-toast';
+
+const ReferralTreeNode = ({ node, level }) => {
+  const [isExpanded, setIsExpanded] = useState(level < 1);
+  const hasChildren = node.children && node.children.length > 0;
+
+  return (
+    <div className="text-left font-mono text-xs">
+      <div 
+        className={`flex items-center gap-2 py-2 px-3 rounded-lg border border-white/5 bg-white/[0.02] hover:bg-white/[0.05] transition-colors ${hasChildren ? 'cursor-pointer' : ''}`}
+        style={{ marginLeft: `${level * 20}px` }}
+        onClick={() => hasChildren && setIsExpanded(!isExpanded)}
+      >
+        <div className="w-4 h-4 flex items-center justify-center">
+          {hasChildren ? (
+            <span className="text-brand-primary font-bold">{isExpanded ? '−' : '+'}</span>
+          ) : (
+            <span className="w-1 h-1 rounded-full bg-gray-600"></span>
+          )}
+        </div>
+        <div className="flex-1 flex justify-between items-center">
+          <div>
+            <span className="font-bold text-white">{node.name}</span>
+            <span className="text-gray-500 ml-2">#{node.id}</span>
+            {node.referral_code && <span className="text-brand-secondary ml-2 bg-brand-secondary/10 px-1.5 py-0.5 rounded text-[10px]">{node.referral_code}</span>}
+          </div>
+          <div className="text-right flex gap-4 text-[10px] text-gray-400">
+            <span>Refs: <strong className="text-white">{node.referral_count}</strong></span>
+            <span>Earned: <strong className="text-green-400">₹{node.total_earned}</strong></span>
+          </div>
+        </div>
+      </div>
+      
+      {isExpanded && hasChildren && (
+        <div className="mt-1 border-l border-white/10 ml-5 pl-2 space-y-1 relative before:absolute before:top-0 before:bottom-0 before:left-0 before:w-px before:bg-gradient-to-b before:from-brand-primary/50 before:to-transparent">
+          {node.children.map(child => (
+            <ReferralTreeNode key={child.id} node={child} level={level + 1} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+
 
 export default function Manager() {
   const { user, logout } = useAuth();
@@ -75,6 +120,7 @@ export default function Manager() {
     cashback_pct: 5
   });
   const [referralsList, setReferralsList] = useState([]);
+  const [referralTree, setReferralTree] = useState([]);
   const [referralTiers, setReferralTiers] = useState([]);
   const [overrideUser, setOverrideUser] = useState(null);
   const [overrideReward, setOverrideReward] = useState('');
@@ -105,12 +151,14 @@ export default function Manager() {
   const [saving, setSaving] = useState(false);
 
   // Coupon State
+  const [couponsList, setCouponsList] = useState([]);
   const [couponForm, setCouponForm] = useState({
     code: '',
     discount_type: 'percentage',
     discount_value: '',
     max_uses: 1,
-    expires_at: ''
+    expires_at: '',
+    days_valid: ''
   });
 
   useEffect(() => {
@@ -158,7 +206,7 @@ export default function Manager() {
         const data = await getInvoices();
         setInvoices(data);
       } else if (activeTab === 'referrals') {
-        const [refList, refSet, siteSet, wList] = await Promise.all([
+        const [refList, refSet, siteSet, wList, treeData] = await Promise.all([
           getManagerReferrals().catch(() => []),
           getManagerReferralSettings().catch(() => ({
             is_random: false,
@@ -169,9 +217,11 @@ export default function Manager() {
             cashback_pct: 5
           })),
           getSiteSettings().catch(() => ({})),
-          getManagerWithdrawals().catch(() => [])
+          getManagerWithdrawals().catch(() => []),
+          getReferralTree().catch(() => [])
         ]);
         setReferralsList(refList);
+        setReferralTree(treeData);
         setReferralSettings(refSet);
         setManagerWithdrawals(wList);
         
@@ -183,6 +233,9 @@ export default function Manager() {
         } catch (_) {
           setReferralTiers([]);
         }
+      } else if (activeTab === 'coupons') {
+        const data = await getCoupons();
+        setCouponsList(data);
       }
     } catch (err) {
       if (!silent) toast.error(err.message);
@@ -230,11 +283,24 @@ export default function Manager() {
     try {
       const data = {
         ...couponForm,
-        expires_at: couponForm.expires_at ? Math.floor(new Date(couponForm.expires_at).getTime() / 1000) : null
+        expires_at: couponForm.expires_at ? Math.floor(new Date(couponForm.expires_at).getTime() / 1000) : null,
+        days_valid: couponForm.days_valid ? parseInt(couponForm.days_valid) : null
       };
       await createCoupon(data);
       toast.success('Coupon created successfully');
-      setCouponForm({ code: '', discount_type: 'percentage', discount_value: '', max_uses: 1, expires_at: '' });
+      setCouponForm({ code: '', discount_type: 'percentage', discount_value: '', max_uses: 1, expires_at: '', days_valid: '' });
+      fetchData();
+    } catch (err) {
+      toast.error(err.message);
+    }
+  };
+
+  const handleDeleteCoupon = async (id) => {
+    if (!confirm('Are you sure you want to delete this coupon?')) return;
+    try {
+      await deleteCoupon(id);
+      toast.success('Coupon deleted successfully');
+      fetchData();
     } catch (err) {
       toast.error(err.message);
     }
@@ -798,8 +864,8 @@ export default function Manager() {
               <div className="flex bg-white/5 p-1 rounded-2xl border border-white/10 shrink-0">
                 {[
                   { id: 'pending', label: 'Verification Required' },
-                  { id: 'active', label: 'Active Orders' },
-                  { id: 'all', label: 'All Orders' }
+                  { id: 'verified', label: 'Payment Verified' },
+                  { id: 'completed', label: 'Payment Completed' }
                 ].map(opt => (
                   <button
                     key={opt.id}
@@ -819,7 +885,8 @@ export default function Manager() {
             {(() => {
               const filteredOrders = orders.filter(o => {
                 if (paymentFilter === 'pending') return o.status === 'payment_pending';
-                if (paymentFilter === 'active') return o.status === 'accepted';
+                if (paymentFilter === 'verified') return o.status === 'accepted' || o.status === 'in_progress';
+                if (paymentFilter === 'completed') return o.status === 'completed';
                 return true;
               });
 
@@ -842,6 +909,7 @@ export default function Manager() {
                           <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Category / Service</th>
                           <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Amount</th>
                           <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+                          <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Verified By</th>
                           <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Action</th>
                         </tr>
                       </thead>
@@ -867,6 +935,15 @@ export default function Manager() {
                               }`}>
                                 {order.status}
                               </span>
+                            </td>
+                            <td className="px-6 py-4">
+                              {order.payment_verified_by ? (
+                                <span className="text-xs font-mono text-gray-400 bg-white/5 px-2 py-1 rounded border border-white/10">
+                                  {order.payment_verified_by}
+                                </span>
+                              ) : (
+                                <span className="text-xs text-gray-600 italic">-</span>
+                              )}
                             </td>
                             <td className="px-6 py-4 text-right">
                               <button 
@@ -1603,14 +1680,25 @@ export default function Manager() {
                     />
                   </div>
                   <div>
-                    <label className="text-xs text-gray-500 uppercase tracking-widest font-semibold block mb-2">Expiry Date</label>
+                    <label className="text-xs text-gray-500 uppercase tracking-widest font-semibold block mb-2">Valid For (Days)</label>
                     <input 
-                      type="date" 
-                      value={couponForm.expires_at}
-                      onChange={(e) => setCouponForm({...couponForm, expires_at: e.target.value})}
-                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-brand-primary transition-all [color-scheme:dark]"
+                      type="number" 
+                      placeholder="e.g. 7 (Leave empty for fixed expiry)"
+                      value={couponForm.days_valid}
+                      onChange={(e) => setCouponForm({...couponForm, days_valid: e.target.value})}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-brand-primary transition-all"
                     />
                   </div>
+                </div>
+                
+                <div>
+                  <label className="text-xs text-gray-500 uppercase tracking-widest font-semibold block mb-2">OR Specific Expiry Date</label>
+                  <input 
+                    type="date" 
+                    value={couponForm.expires_at}
+                    onChange={(e) => setCouponForm({...couponForm, expires_at: e.target.value})}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-brand-primary transition-all [color-scheme:dark]"
+                  />
                 </div>
 
                 <button 
@@ -1632,12 +1720,39 @@ export default function Manager() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="p-4 bg-white/5 rounded-xl border border-white/5">
                     <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1">Total Redeemed</p>
-                    <p className="text-2xl font-bold">124</p>
+                    <p className="text-2xl font-bold">{couponsList.reduce((acc, curr) => acc + curr.used_count, 0)}</p>
                   </div>
                   <div className="p-4 bg-white/5 rounded-xl border border-white/5">
-                    <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1">Total Discount</p>
-                    <p className="text-2xl font-bold text-green-400">$2,400</p>
+                    <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1">Active Coupons</p>
+                    <p className="text-2xl font-bold text-green-400">{couponsList.filter(c => c.status !== 'expired').length}</p>
                   </div>
+                </div>
+              </div>
+              
+              <div className="bg-[#0A0A0A] border border-white/10 rounded-2xl p-6 shadow-2xl flex-1 max-h-[500px] overflow-y-auto">
+                <h4 className="font-bold flex items-center gap-2 mb-4 text-white">
+                  <ListOrdered className="w-5 h-5" />
+                  Active & Expired Coupons
+                </h4>
+                <div className="space-y-3">
+                  {couponsList.map(c => (
+                    <div key={c.id} className={`p-4 rounded-xl border flex flex-col gap-2 ${c.status === 'expired' ? 'bg-red-500/5 border-red-500/20' : 'bg-white/5 border-white/10'}`}>
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <p className="font-mono font-bold text-lg text-white tracking-widest">{c.code}</p>
+                          <p className="text-xs text-gray-400">Discount: {c.discount_type === 'percentage' ? `${c.discount_value}%` : `₹${c.discount_value}`}</p>
+                        </div>
+                        <button onClick={() => handleDeleteCoupon(c.id)} className="p-2 bg-red-500/10 text-red-400 rounded-lg hover:bg-red-500/20 transition-all">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                      <div className="flex justify-between text-xs text-gray-500 border-t border-white/5 pt-2 mt-1">
+                        <span>Used: {c.used_count} / {c.max_uses}</span>
+                        <span>{c.expires_at ? `Exp: ${new Date(c.expires_at * 1000).toLocaleDateString()}` : 'No Expiry'}</span>
+                      </div>
+                    </div>
+                  ))}
+                  {couponsList.length === 0 && <p className="text-center text-gray-500 text-sm py-8">No coupons generated yet.</p>}
                 </div>
               </div>
             </div>
@@ -2268,6 +2383,28 @@ export default function Manager() {
               </div>
 
             </div>
+
+            {/* MLM Referral Tree */}
+            <div className="bg-[#0A0A0A] border border-white/10 rounded-2xl p-6 shadow-2xl space-y-4 text-left mt-8">
+              <div className="flex justify-between items-center border-b border-white/5 pb-3">
+                <h3 className="font-display font-bold text-sm flex items-center gap-2">
+                  <Layers className="w-4 h-4 text-brand-secondary" />
+                  MLM Referral Tree
+                </h3>
+              </div>
+              <div className="overflow-auto max-h-[500px] p-4 bg-white/5 rounded-xl border border-white/10">
+                {referralTree.length === 0 ? (
+                  <p className="text-gray-500 italic text-sm text-center">No referrals made yet.</p>
+                ) : (
+                  <div className="space-y-4">
+                    {referralTree.map((node) => (
+                      <ReferralTreeNode key={node.id} node={node} level={0} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
           </motion.div>
         )}
       </AnimatePresence>
