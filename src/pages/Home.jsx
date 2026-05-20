@@ -9,7 +9,7 @@ import About from "../components/About";
 import Footer from "../components/Footer";
 import { motion } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
-import { ArrowRight, MessageCircle, Star, Send, Loader2, Sparkles } from "lucide-react";
+import { ArrowRight, MessageCircle, Star, Send, Loader2, Sparkles, ShoppingBag } from "lucide-react";
 import { getFeedbacks, submitFeedback, getSiteSettings, getBlogs, getFaqs } from "../services/api";
 import { toast } from "react-hot-toast";
 
@@ -108,92 +108,6 @@ function Home() {
         <Features />
         {siteSettings.show_portfolio !== 'false' && <Portfolio />}
 
-        {/* Reviews / Feedback Section */}
-        {siteSettings.show_feedbacks !== 'false' && (
-          <section className="py-24 bg-[#080808]">
-            <div className="max-w-7xl mx-auto px-6">
-              <div className="text-center mb-16">
-                <div className="flex items-center justify-center gap-2 mb-4">
-                  <div className="flex text-yellow-500">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} className={`w-5 h-5 ${i < Math.round(avgRating) ? 'fill-current' : ''}`} />
-                    ))}
-                  </div>
-                  <span className="text-xl font-bold">{avgRating} / 5.0</span>
-                </div>
-                <h2 className="text-4xl font-bold font-display">What Our <span className="text-gradient">Clients Say</span></h2>
-              </div>
-
-              <div className="grid md:grid-cols-3 gap-8 mb-20">
-                {feedbacks.length === 0 ? (
-                  [1,2,3].map(i => (
-                    <div key={i} className="glass-card p-8 opacity-20">
-                      <div className="h-4 w-32 bg-white/10 rounded mb-4" />
-                      <div className="h-20 w-full bg-white/10 rounded" />
-                    </div>
-                  ))
-                ) : feedbacks.map(f => (
-                  <motion.div 
-                    key={f.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    className="glass-card p-8 relative group hover:border-brand-primary/30 transition-all"
-                  >
-                    <div className="flex gap-1 text-yellow-500 mb-4">
-                      {[...Array(f.rating)].map((_, i) => <Star key={i} className="w-4 h-4 fill-current" />)}
-                    </div>
-                    <p className="text-gray-300 italic mb-6 leading-relaxed">"{f.comment}"</p>
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-brand-primary/10 flex items-center justify-center text-brand-primary font-bold">
-                        {f.name[0]}
-                      </div>
-                      <div>
-                        <p className="font-bold text-sm">{f.name}</p>
-                        <p className="text-[10px] text-gray-500 uppercase tracking-widest">Verified Client</p>
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-
-              {/* Feedback Form */}
-              <div className="max-w-2xl mx-auto bg-brand-card border border-brand-border rounded-3xl p-10">
-                <h3 className="text-2xl font-bold mb-6 text-center">Leave Your <span className="text-brand-secondary">Feedback</span></h3>
-                <form onSubmit={handleFeedbackSubmit} className="space-y-6">
-                  <div className="flex justify-center gap-2 mb-4">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <button
-                        key={star}
-                        type="button"
-                        onClick={() => setRating(star)}
-                        className={`p-1 transition-all ${rating >= star ? 'text-yellow-500 scale-125' : 'text-gray-600'}`}
-                      >
-                        <Star className={`w-8 h-8 ${rating >= star ? 'fill-current' : ''}`} />
-                      </button>
-                    ))}
-                  </div>
-                  <textarea
-                    placeholder="Share your experience working with us..."
-                    value={comment}
-                    onChange={(e) => setComment(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-sm focus:border-brand-primary outline-none transition-all resize-none h-32"
-                    required
-                  />
-                  <button 
-                    type="submit" 
-                    disabled={submitting}
-                    className="w-full py-4 bg-brand-primary rounded-xl font-bold text-sm shadow-[0_0_20px_rgba(124,58,237,0.3)] hover:shadow-[0_0_30px_rgba(124,58,237,0.5)] transition-all flex items-center justify-center gap-2"
-                  >
-                    {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                    Submit Feedback
-                  </button>
-                </form>
-              </div>
-            </div>
-          </section>
-        )}
-
         {/* Blogs Section */}
         <section className="py-24 bg-brand-bg relative overflow-hidden border-t border-white/5">
           <div className="max-w-7xl mx-auto px-6">
@@ -277,6 +191,92 @@ function Home() {
           </div>
         </section>
 
+        {/* Reviews / Feedback Section */}
+        {siteSettings.show_feedbacks !== 'false' && (
+          <section className="py-24 bg-brand-bg border-t border-white/5">
+            <div className="max-w-7xl mx-auto px-6">
+              <div className="text-center mb-16">
+                <div className="flex items-center justify-center gap-2 mb-4">
+                  <div className="flex text-yellow-500">
+                    {[...Array(5)].map((_, i) => (
+                      <Star key={i} className={`w-5 h-5 ${i < Math.round(avgRating) ? 'fill-current' : ''}`} />
+                    ))}
+                  </div>
+                  <span className="text-xl font-bold">{avgRating} / 5.0</span>
+                </div>
+                <h2 className="text-4xl font-bold font-display">What Our <span className="text-gradient">Clients Say</span></h2>
+              </div>
+
+              <div className="grid md:grid-cols-3 gap-8 mb-20">
+                {feedbacks.length === 0 ? (
+                  [1,2,3].map(i => (
+                    <div key={i} className="glass-card p-8 opacity-20">
+                      <div className="h-4 w-32 bg-white/10 rounded mb-4" />
+                      <div className="h-20 w-full bg-white/10 rounded" />
+                    </div>
+                  ))
+                ) : feedbacks.map(f => (
+                  <motion.div 
+                    key={f.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    className="glass-card p-8 relative group hover:border-brand-primary/30 transition-all"
+                  >
+                    <div className="flex gap-1 text-yellow-500 mb-4">
+                      {[...Array(f.rating)].map((_, i) => <Star key={i} className="w-4 h-4 fill-current" />)}
+                    </div>
+                    <p className="text-gray-300 italic mb-6 leading-relaxed">"{f.comment}"</p>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-brand-primary/10 flex items-center justify-center text-brand-primary font-bold">
+                        {f.name[0]}
+                      </div>
+                      <div>
+                        <p className="font-bold text-sm">{f.name}</p>
+                        <p className="text-[10px] text-gray-500 uppercase tracking-widest">Verified Client</p>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+
+              {/* Feedback Form */}
+              <div className="max-w-2xl mx-auto bg-brand-card border border-brand-border rounded-3xl p-10">
+                <h3 className="text-2xl font-bold mb-6 text-center">Leave Your <span className="text-brand-secondary">Feedback</span></h3>
+                <form onSubmit={handleFeedbackSubmit} className="space-y-6">
+                  <div className="flex justify-center gap-2 mb-4">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        type="button"
+                        onClick={() => setRating(star)}
+                        className={`p-1 transition-all ${rating >= star ? 'text-yellow-500 scale-125' : 'text-gray-600'}`}
+                      >
+                        <Star className={`w-8 h-8 ${rating >= star ? 'fill-current' : ''}`} />
+                      </button>
+                    ))}
+                  </div>
+                  <textarea
+                    placeholder="Share your experience working with us..."
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-sm focus:border-brand-primary outline-none transition-all resize-none h-32"
+                    required
+                  />
+                  <button 
+                    type="submit" 
+                    disabled={submitting}
+                    className="w-full py-4 bg-brand-primary rounded-xl font-bold text-sm shadow-[0_0_20px_rgba(124,58,237,0.3)] hover:shadow-[0_0_30px_rgba(124,58,237,0.5)] transition-all flex items-center justify-center gap-2"
+                  >
+                    {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                    Submit Feedback
+                  </button>
+                </form>
+              </div>
+            </div>
+          </section>
+        )}
+
         {/* CTA / Contact Section */}
         <section id="contact" className="py-24 border-t border-white/5">
           <div className="max-w-7xl mx-auto px-6">
@@ -304,6 +304,10 @@ function Home() {
                   <button onClick={() => navigate('/portfolio')} className="btn-outline flex items-center gap-2 group">
                     <MessageCircle className="w-4 h-4" />
                     Our Work Portfolio
+                  </button>
+                  <button onClick={() => navigate('/shop')} className="btn-outline flex items-center gap-2 group border-brand-primary/50 text-brand-primary hover:bg-brand-primary/10">
+                    <ShoppingBag className="w-4 h-4" />
+                    Explore Shop (More Products)
                   </button>
                 </div>
               </motion.div>

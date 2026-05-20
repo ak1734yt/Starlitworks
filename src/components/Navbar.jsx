@@ -68,7 +68,7 @@ const Navbar = () => {
         <div className="flex items-center gap-8">
 
         {/* Nav links (Desktop) */}
-        <div className="hidden lg:flex items-center gap-8 text-sm font-medium text-gray-300">
+        <div className="hidden lg:flex items-center gap-4 xl:gap-6 text-xs xl:text-sm font-bold text-gray-300 whitespace-nowrap">
           <Link to="/" className="hover:text-brand-primary transition-colors">Home</Link>
           <Link to="/about" className="hover:text-brand-primary transition-colors">About Us</Link>
           <Link to="/portfolio" className="hover:text-brand-primary transition-colors">Our Work</Link>
