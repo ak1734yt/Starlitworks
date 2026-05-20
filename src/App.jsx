@@ -38,6 +38,7 @@ const Blog           = lazy(() => import("./pages/Blog"));
 const BlogDetail     = lazy(() => import("./pages/BlogDetail"));
 const FAQ            = lazy(() => import("./pages/FAQ"));
 const Onboarding     = lazy(() => import("./pages/Onboarding"));
+const TemplatePreview = lazy(() => import("./pages/TemplatePreview"));
 
 const RouteLoader = () => (
   <div className="fixed inset-0 z-[9999] bg-black flex flex-col items-center justify-center">
@@ -136,6 +137,7 @@ function AppInner() {
           <Route path="/portfolio"      element={<PortfolioPage />} />
           <Route path="/help"           element={<Help />} />
           <Route path="/templates"      element={<Templates />} />
+          <Route path="/template/:id"   element={<TemplatePreview />} />
           <Route path="/faq"            element={<FAQ />} />
           <Route path="/blog"           element={<Blog />} />
           <Route path="/blog/:slug"     element={<BlogDetail />} />
