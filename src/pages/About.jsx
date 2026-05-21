@@ -96,7 +96,7 @@ export default function About() {
         <section className="py-24 border-t border-white/5">
           <div className="max-w-4xl mx-auto px-6 text-gray-300 space-y-12">
             <article>
-              <h2 className="text-3xl md:text-4xl font-bold font-display text-white mb-6">Elevate Your Discord Experience By <span className="text-gradient">Starlit Siege</span></h2>
+              <h2 className="text-3xl md:text-4xl font-bold font-display text-white mb-6">Elevate Your Discord Experience With <span className="text-gradient">Starlit Siege</span></h2>
               <p className="leading-relaxed mb-6 text-lg">
                 Transform your Discord server into a powerful, engaging, and professional community hub with <strong>Starlit Siege</strong>. We specialize in premium Discord server design, advanced bot systems, community management, and creator-focused solutions tailored for streamers, YouTubers, gaming brands, businesses, and online communities.
               </p>
