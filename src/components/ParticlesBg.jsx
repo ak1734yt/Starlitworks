@@ -13,7 +13,7 @@ export default function ParticlesBg() {
     let height = (canvas.height = window.innerHeight);
 
     const particles = [];
-    const particleCount = 65;
+    const particleCount = 35;
     const connectionDistance = 150;
     const mouse = { x: null, y: null, radius: 180 };
 
@@ -104,11 +104,7 @@ export default function ParticlesBg() {
             ctx.moveTo(particles[i].x, particles[i].y);
             ctx.lineTo(particles[j].x, particles[j].y);
             
-            const grad = ctx.createLinearGradient(particles[i].x, particles[i].y, particles[j].x, particles[j].y);
-            grad.addColorStop(0, `rgba(139, 92, 246, ${alpha})`);
-            grad.addColorStop(1, `rgba(59, 130, 246, ${alpha})`);
-            
-            ctx.strokeStyle = grad;
+            ctx.strokeStyle = `rgba(139, 92, 246, ${alpha})`;
             ctx.lineWidth = 0.6;
             ctx.stroke();
           }
