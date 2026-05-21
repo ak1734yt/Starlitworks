@@ -6,10 +6,10 @@ import {
   ShieldAlert, Send, CreditCard, Zap, FileText, Download, Activity, 
   Globe, Monitor, MapPin, Sparkles, ChevronRight, UserCircle2, ArrowRight,
   Headphones, PlusCircle, HelpCircle, Layers, CreditCard as CardIcon, LayoutDashboard,
-  KeyRound, Lock, Gift, Users, Award, DollarSign, Copy, Eye, Info
+  KeyRound, Lock, Gift, Users, Award, DollarSign, Copy, Eye, Info, Loader2, Link2
 } from 'lucide-react';
 import UserChat from '../components/UserChat';
-import { negotiateOrder, acceptOrder, getUserInvoicesByAdmin, getMyOrders, getReferralInfo, getOrderUpdates, requestWithdrawal, convertReferralPoints } from '../services/api';
+import { negotiateOrder, acceptOrder, getUserInvoicesByAdmin, getMyOrders, getReferralInfo, getOrderUpdates, requestWithdrawal, convertReferralPoints, linkReferralCode, lookupReferralCode } from '../services/api';
 import Navbar from '../components/Navbar';
 import InvoicePreview from '../components/InvoicePreview';
 import { useNavigate } from 'react-router-dom';
@@ -79,6 +79,12 @@ export default function History() {
   const [withdrawPaymentInfo, setWithdrawPaymentInfo] = useState('');
   const [withdrawing, setWithdrawing] = useState(false);
   const [withdrawModalOpen, setWithdrawModalOpen] = useState(false);
+  const [referralLoading, setReferralLoading] = useState(false);
+
+  // Referral linking (for users who missed it at signup)
+  const [refCodeInput, setRefCodeInput] = useState('');
+  const [linkingRef, setLinkingRef] = useState(false);
+  const [referrerLookupName, setReferrerLookupName] = useState('');
 
   // Popout Invoice Details modal
   const [selectedInvoice, setSelectedInvoice] = useState(null);
@@ -187,14 +193,14 @@ export default function History() {
   };
 
   const loadReferrals = async (silent = false) => {
-    if (!silent) setLoading(true);
+    if (!silent) setReferralLoading(true);
     try {
       const ref = await getReferralInfo();
       setReferralInfo(ref);
     } catch (_) {
       if (!silent) toast.error('Failed to load referral details');
     } finally {
-      if (!silent) setLoading(false);
+      if (!silent) setReferralLoading(false);
     }
   };
 
@@ -202,6 +208,7 @@ export default function History() {
     if (portalTab === 'services') await loadOrders(silent);
     else if (portalTab === 'billing') await loadInvoices(silent);
     else if (portalTab === 'referrals') await loadReferrals(silent);
+    else if (portalTab === 'subscriptions') await loadOrders(silent);
     else {
       await loadOrders(silent);
       await loadInvoices(silent);
@@ -271,6 +278,27 @@ export default function History() {
     }
   };
 
+  // Debounced referral code lookup
+  useEffect(() => {
+    if (!refCodeInput || refCodeInput.length < 5) {
+      setReferrerLookupName('');
+      return;
+    }
+    const delayDebounce = setTimeout(async () => {
+      try {
+        const res = await lookupReferralCode(refCodeInput);
+        if (res.success) {
+          setReferrerLookupName(res.name);
+        } else {
+          setReferrerLookupName('');
+        }
+      } catch (err) {
+        setReferrerLookupName('');
+      }
+    }, 400);
+    return () => clearTimeout(delayDebounce);
+  }, [refCodeInput]);
+
   useEffect(() => {
     if (!user) return;
     if (portalTab === 'overview') {
@@ -282,6 +310,8 @@ export default function History() {
       loadInvoices();
     } else if (portalTab === 'referrals') {
       loadReferrals();
+    } else if (portalTab === 'subscriptions') {
+      loadOrders();
     }
   }, [portalTab, user]);
 
@@ -1023,6 +1053,12 @@ export default function History() {
 
             {/* ================= TAB 4: REFERRALS & REWARDS ================= */}
             {portalTab === 'referrals' && (
+              referralLoading ? (
+                <div className="flex flex-col items-center justify-center py-32 text-gray-500">
+                  <div className="w-12 h-12 border-2 border-brand-primary border-t-transparent rounded-full animate-spin mb-4" />
+                  <p className="text-sm">Loading referral data...</p>
+                </div>
+              ) : (
               <motion.div
                 key="referrals"
                 initial={{ opacity: 0, y: 15 }}
@@ -1032,6 +1068,85 @@ export default function History() {
               >
                 {/* Left Side: Stats and Share */}
                 <div className="lg:col-span-4 space-y-6">
+
+                  {/* Link Referral Code Card (for users who didn't enter one at signup) */}
+                  {referralInfo && !referralInfo.referred_by && (
+                    <div className="bg-[#0b0c14] border border-brand-secondary/20 rounded-[2rem] p-6 shadow-xl relative overflow-hidden">
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-brand-secondary/5 blur-[50px] -mr-16 -mt-16" />
+                      
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-10 h-10 rounded-xl bg-brand-secondary/10 border border-brand-secondary/20 flex items-center justify-center">
+                          <Link2 className="w-5 h-5 text-brand-secondary" />
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-sm tracking-tight text-white">Link Referral Code</h3>
+                          <p className="text-[10px] text-gray-500">Missed it at signup? Link now!</p>
+                        </div>
+                      </div>
+
+                      <p className="text-xs text-gray-400 leading-relaxed mb-4">
+                        If a friend invited you but you didn't enter their referral code during signup, you can link it here to unlock your <span className="text-white font-bold">welcome bonus</span>!
+                      </p>
+
+                      <div className="flex gap-2">
+                        <input 
+                          type="text" 
+                          placeholder="e.g. REF1A2B3C4D" 
+                          value={refCodeInput}
+                          onChange={(e) => setRefCodeInput(e.target.value.toUpperCase())}
+                          maxLength={12}
+                          className="bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-xs font-mono font-bold text-white tracking-widest outline-none flex-1 uppercase focus:border-brand-secondary transition-all"
+                        />
+                        <button
+                          onClick={async () => {
+                            if (!refCodeInput) return;
+                            setLinkingRef(true);
+                            try {
+                              const res = await linkReferralCode(refCodeInput);
+                              if (res.success) {
+                                toast.success('🎉 Referral code linked successfully! Welcome bonus applied.');
+                                setRefCodeInput('');
+                                setReferrerLookupName('');
+                                loadReferrals();
+                                refreshMe();
+                              }
+                            } catch (err) {
+                              toast.error(err.message || 'Failed to link referral code');
+                            } finally {
+                              setLinkingRef(false);
+                            }
+                          }}
+                          disabled={linkingRef || !refCodeInput || refCodeInput.length < 5}
+                          className="px-4 py-2.5 bg-brand-secondary text-white rounded-xl text-xs font-bold hover:bg-brand-secondary/90 transition-all shrink-0 disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1.5"
+                        >
+                          {linkingRef ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Link'}
+                        </button>
+                      </div>
+
+                      {referrerLookupName && (
+                        <p className="text-xs text-brand-secondary mt-3 flex items-center gap-1.5 font-medium">
+                          <span className="w-1.5 h-1.5 rounded-full bg-brand-secondary animate-pulse"></span>
+                          Referred by: <strong className="text-white font-bold">{referrerLookupName}</strong>
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Already referred info */}
+                  {referralInfo && referralInfo.referred_by && (
+                    <div className="bg-[#0b0c14] border border-green-500/20 rounded-[2rem] p-6 shadow-xl relative overflow-hidden">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center justify-center">
+                          <Check className="w-5 h-5 text-green-500" />
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-sm tracking-tight text-white">Referral Linked</h3>
+                          <p className="text-[10px] text-gray-500">You were referred by: <span className="text-green-400 font-bold">{referralInfo.referred_by_name || referralInfo.referred_by}</span></p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Share Card */}
                   <div className="bg-[#0b0c14] border border-white/10 rounded-[2rem] p-6 shadow-xl relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-brand-primary/5 blur-[50px] -mr-16 -mt-16" />
@@ -1465,6 +1580,7 @@ export default function History() {
                   </div>
                 </div>
               </motion.div>
+              )
             )}
 
             {/* ================= TAB 5: ACTIVE SUBSCRIPTIONS HUB ================= */}
