@@ -185,6 +185,44 @@ def manager_revenue(user=Depends(require_manager)):
     total_orders = db.execute("SELECT COUNT(*) as c FROM orders.orders").fetchone()["c"]
     completed = db.execute("SELECT COUNT(*) as c FROM orders.orders WHERE status='completed'").fetchone()["c"]
     db.close()
+
+    # Include Invoices in Revenue
+    import datetime, os, json
+    INVOICES_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "invoices")
+    if os.path.exists(INVOICES_DIR):
+        for fname in os.listdir(INVOICES_DIR):
+            if not fname.endswith(".json"): continue
+            try:
+                with open(os.path.join(INVOICES_DIR, fname)) as f:
+                    inv = json.load(f)
+                
+                # Add recorded payments to revenue
+                for p in inv.get("payments", []):
+                    try:
+                        p_date = p.get("date", "")
+                        if "T" in p_date:
+                            dt = datetime.datetime.fromisoformat(p_date.replace("Z", "+00:00"))
+                        else:
+                            dt = datetime.datetime.strptime(p_date, "%Y-%m-%d")
+                        ptime = int(dt.timestamp())
+                        
+                        amt = float(p.get("amount", 0))
+                        if ptime >= week_ago:
+                            week_rev += amt
+                        if ptime >= month_ago:
+                            month_rev += amt
+                    except:
+                        pass
+                
+                # Add unpaid invoice balance to pending
+                status = inv.get("paymentStatus", "pending").lower()
+                if status in ["pending", "partial"]:
+                    grand = float(inv.get("grandTotal", 0))
+                    paid = sum(float(p.get("amount", 0)) for p in inv.get("payments", []))
+                    pending += max(0, grand - paid)
+            except Exception:
+                pass
+
     return {
         "week_revenue": week_rev,
         "month_revenue": month_rev,
