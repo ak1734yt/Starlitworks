@@ -107,25 +107,63 @@ const Hero = ({ settings = {} }) => {
               <span className="text-[10px] font-bold text-white uppercase tracking-widest">
                 Now Available For Commissions
               </span>
+              <div className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.8)] ml-1"></div>
             </div>
 
             {/* Main Copy */}
             <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-black leading-[1.15] mb-5 text-white tracking-tight">
               Build Discord <br className="hidden md:block" />
-              Communities <br className="hidden md:block" />
-              With <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-primary to-blue-400">Starlit Siege</span>
+              <span className="text-[#a855f7]">Communities</span> <br className="hidden md:block" />
+              With Starlit Siege
             </h1>
+
+            {/* Sub-heading Banner */}
+            <div className="inline-flex items-center gap-3 px-5 py-3 rounded-xl bg-gradient-to-r from-[#5865F2]/20 to-brand-primary/20 border border-[#5865F2]/30 shadow-[0_0_20px_rgba(88,101,242,0.2)] mb-8">
+              <svg className="w-6 h-6 text-white" viewBox="0 0 127.14 96.36" fill="currentColor">
+                <path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77.7,77.7,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.31,60,73.31,53s5-12.74,11.43-12.74S96.33,46,96.22,53,91.08,65.69,84.69,65.69Z"/>
+              </svg>
+              <span className="text-white font-bold text-lg md:text-xl tracking-tight">That People Never Want to Leave.</span>
+            </div>
 
             <p className="text-gray-400 text-sm md:text-base leading-relaxed mb-8 max-w-lg">
               Premium server architecture, custom bots, and community growth systems for creators, brands, and gaming organizations.
             </p>
 
             {/* Feature Pills */}
-            <div className="flex flex-wrap gap-3 mb-10">
-              <div className="feature-pill"><ShieldCheck className="w-3.5 h-3.5 text-brand-primary"/> Secure Infrastructure</div>
-              <div className="feature-pill"><Zap className="w-3.5 h-3.5 text-brand-secondary"/> Lightning Performance</div>
-              <div className="feature-pill"><Bot className="w-3.5 h-3.5 text-brand-accent"/> Custom Bots & Automation</div>
-              <div className="feature-pill"><Users className="w-3.5 h-3.5 text-teal-400"/> Community Growth</div>
+            <div className="flex flex-wrap items-center gap-4 mb-10">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-brand-primary/20 flex items-center justify-center border border-brand-primary/30 shadow-[0_0_10px_rgba(124,58,237,0.2)]">
+                  <ShieldCheck className="w-4 h-4 text-[#a855f7]" />
+                </div>
+                <span className="text-[11px] font-bold text-white">Secure & Reliable</span>
+              </div>
+              
+              <div className="w-px h-6 bg-white/10 hidden sm:block"></div>
+              
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-brand-secondary/20 flex items-center justify-center border border-brand-secondary/30 shadow-[0_0_10px_rgba(59,130,246,0.2)]">
+                  <Zap className="w-4 h-4 text-brand-secondary" />
+                </div>
+                <span className="text-[11px] font-bold text-white">24/7 Support</span>
+              </div>
+              
+              <div className="w-px h-6 bg-white/10 hidden lg:block"></div>
+              
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-brand-primary/20 flex items-center justify-center border border-brand-primary/30 shadow-[0_0_10px_rgba(124,58,237,0.2)]">
+                  <Rocket className="w-4 h-4 text-[#a855f7]" />
+                </div>
+                <span className="text-[11px] font-bold text-white">Custom Bots</span>
+              </div>
+              
+              <div className="w-px h-6 bg-white/10 hidden lg:block"></div>
+              
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-brand-primary/20 flex items-center justify-center border border-brand-primary/30 shadow-[0_0_10px_rgba(124,58,237,0.2)]">
+                  <Users className="w-4 h-4 text-[#a855f7]" />
+                </div>
+                <span className="text-[11px] font-bold text-white">Growth Focused</span>
+              </div>
             </div>
 
             {/* CTA Buttons */}
