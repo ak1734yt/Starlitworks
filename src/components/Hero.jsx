@@ -154,11 +154,11 @@ const Hero = ({ settings = {} }) => {
 
             <h1
               className="font-display text-5xl md:text-7xl font-extrabold leading-[1.1] mb-6"
-              dangerouslySetInnerHTML={{ __html: settings.hero_title || 'Elevate Your <br /> <span class="text-gradient">Discord Experience</span> <br /> <span class="text-3xl md:text-5xl text-white">By Starlit Siege</span>' }}
+              dangerouslySetInnerHTML={{ __html: 'Elevate Your <br /> <span class="text-gradient">Discord Experience</span> <br /> <span class="text-3xl md:text-5xl text-white mt-4 block">By Starlit Siege</span>' }}
             />
 
             <p className="text-lg text-gray-400 mb-10 max-w-lg leading-relaxed">
-              {settings.hero_subtitle || 'Transform your Discord server into a powerful, engaging, and professional community hub with Starlit Siege. We specialize in premium Discord server design, advanced bot systems, community management, and creator-focused solutions tailored for streamers, YouTubers, gaming brands, businesses, and online communities. From custom Discord server setups to scalable community infrastructure, our services are built to help creators grow faster, improve member engagement, and establish a strong digital presence in 2026.'}
+              Transform your Discord server into a powerful, engaging, and professional community hub with Starlit Siege. We specialize in premium Discord server design, advanced bot systems, community management, and creator-focused solutions tailored for streamers, YouTubers, gaming brands, businesses, and online communities. From custom Discord server setups to scalable community infrastructure, our services are built to help creators grow faster, improve member engagement, and establish a strong digital presence in 2026.
             </p>
 
             <div className="flex flex-wrap gap-4">
