@@ -75,7 +75,17 @@ export async function apiGetMe() {
 }
 
 export async function apiGetOAuthStatus() {
-  return request('/status');
+  const res = await fetch(`${API}/status`, {
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Starlit-Key': import.meta.env.VITE_STARLIT_KEY || atob('U3RhcmxpdF9TaWVnZV9Xb3Jrc19WMl8yMDI2X1NlY3VyZV9LZXk='),
+    }
+  });
+  
+  if (res.ok) {
+    return await res.json();
+  }
+  throw new Error("Failed to fetch status");
 }
 
 export async function apiLogin2FA(userId, code) {

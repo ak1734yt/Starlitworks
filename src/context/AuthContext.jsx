@@ -28,7 +28,10 @@ export function AuthProvider({ children }) {
           setUser(user);
         })
         .catch((err) => {
-          if (err.status === 401) localStorage.removeItem('ssw_token');
+          if (err.status === 401) {
+            localStorage.removeItem('ssw_token');
+            setUser(null);
+          }
         })
         .finally(() => setLoading(false));
     } else {
@@ -37,7 +40,10 @@ export function AuthProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    apiGetOAuthStatus().then(setOauthStatus).catch(() => {});
+    apiGetOAuthStatus().then(setOauthStatus).catch((err) => {
+      console.warn("Failed to fetch OAuth status, defaulting to enabled.", err);
+      setOauthStatus({ google: true, discord: true, microsoft: true, apple: true });
+    });
   }, []);
 
   // ── OAuth token in URL ────────────────────────────────────────────────────────
@@ -51,7 +57,10 @@ export function AuthProvider({ children }) {
         window.history.replaceState({}, '', window.location.pathname);
         triggerTransition('/');
       }).catch((err) => {
-        if (err.status === 401) localStorage.removeItem('ssw_token');
+        if (err.status === 401) {
+          localStorage.removeItem('ssw_token');
+          setUser(null);
+        }
       });
     }
   }, []);
@@ -161,7 +170,12 @@ export function AuthProvider({ children }) {
     try {
       const { user } = await apiGetMe();
       setUser(user);
-    } catch (e) {}
+    } catch (e) {
+      if (e.status === 401) {
+        localStorage.removeItem('ssw_token');
+        setUser(null);
+      }
+    }
   }, []);
 
   return (
