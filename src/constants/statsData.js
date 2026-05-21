@@ -1,15 +1,15 @@
-import { Server, Bot, Users, Code, Wrench, Star, Shield, Clock } from "lucide-react";
+import { Server, Bot, Users, Code, Wrench, Shield, Clock } from "lucide-react";
 
 export const STATS_DATA = [
   { 
     label: "Bots Developed", 
-    value: "10", 
+    value: "10+", 
     icon: Bot,
     color: "from-violet-500 to-fuchsia-500",
     key: "bots_developed"
   },
   { 
-    label: "Dev Servers", 
+    label: "Servers Built", 
     value: "20+", 
     icon: Server,
     color: "from-blue-500 to-cyan-500",
@@ -17,7 +17,7 @@ export const STATS_DATA = [
   },
   { 
     label: "Total Users", 
-    value: "10,000+", 
+    value: "9,843+", 
     icon: Users,
     color: "from-emerald-500 to-teal-500",
     key: "member_count"
@@ -30,28 +30,21 @@ export const STATS_DATA = [
     key: "commands_written"
   },
   { 
-    label: "Projects Developed", 
+    label: "Projects Delivered", 
     value: "50+", 
     icon: Wrench,
     color: "from-pink-500 to-rose-500",
     key: "projects_developed"
   },
   { 
-    label: "Client Satisfaction", 
-    value: "100%", 
-    icon: Star,
-    color: "from-yellow-500 to-amber-500",
-    key: "client_satisfaction"
-  },
-  { 
     label: "Uptime", 
-    value: "99%", 
+    value: "99.9%", 
     icon: Shield,
     color: "from-teal-500 to-emerald-500",
     key: "uptime"
   },
   { 
-    label: "Support", 
+    label: "Expert Support", 
     value: "24/7", 
     icon: Clock,
     color: "from-indigo-500 to-purple-500",

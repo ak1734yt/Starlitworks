@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { STATS_DATA } from "../constants/statsData";
 import { getPublicStats } from "../services/api";
 
@@ -12,7 +12,7 @@ const parseValue = (valStr) => {
     return { number: 0, prefix: '', suffix: str, formatComma: false, isStatic: true };
   }
 
-  const match = str.match(/^([^\d]*)([\d,.]+)([^\d]*)$/);
+  const match = str.match(/^([^\d]*)([\\d,.]+)([^\d]*)$/);
   if (match) {
     const prefix = match[1];
     const numStr = match[2];
@@ -24,11 +24,15 @@ const parseValue = (valStr) => {
   return { number: 0, prefix: '', suffix: str, formatComma: false, isStatic: true };
 };
 
-const AnimatedNumber = ({ value }) => {
+const AnimatedNumber = ({ value, inView }) => {
   const { number, prefix, suffix, formatComma } = parseValue(value);
   const [currentValue, setCurrentValue] = useState(0);
+  const hasAnimated = useRef(false);
 
   useEffect(() => {
+    if (!inView || hasAnimated.current) return;
+    hasAnimated.current = true;
+
     let start = 0;
     const end = number;
     if (start === end) {
@@ -36,13 +40,14 @@ const AnimatedNumber = ({ value }) => {
       return;
     }
 
-    const duration = 1500;
+    const duration = 2000;
     const startTime = performance.now();
 
     const animate = (now) => {
       const elapsed = now - startTime;
       const progress = Math.min(elapsed / duration, 1);
-      const easeProgress = progress * (2 - progress);
+      // Ease out cubic for premium feel
+      const easeProgress = 1 - Math.pow(1 - progress, 3);
       const current = Math.floor(easeProgress * end);
       setCurrentValue(current);
 
@@ -54,7 +59,7 @@ const AnimatedNumber = ({ value }) => {
     };
 
     requestAnimationFrame(animate);
-  }, [number]);
+  }, [number, inView]);
 
   const formattedNum = formatComma ? currentValue.toLocaleString() : currentValue;
   
@@ -72,9 +77,20 @@ const AnimatedNumber = ({ value }) => {
 
 const Stats = () => {
   const [liveStats, setLiveStats] = useState(null);
+  const [inView, setInView] = useState(false);
+  const sectionRef = useRef(null);
 
   useEffect(() => {
     getPublicStats().then(setLiveStats).catch(console.error);
+  }, []);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) setInView(true); },
+      { threshold: 0.2 }
+    );
+    if (sectionRef.current) observer.observe(sectionRef.current);
+    return () => observer.disconnect();
   }, []);
 
   const getVal = (stat) => {
@@ -87,32 +103,61 @@ const Stats = () => {
   };
 
   return (
-    <section className="py-20 bg-black relative overflow-hidden">
-      <div className="max-w-[1400px] mx-auto px-4 relative z-10 w-full">
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-x-4 gap-y-12 justify-items-center w-full">
-          {STATS_DATA.map((stat, index) => (
-            <motion.div
-              key={index}
-              initial={{ opacity: 0, scale: 0.95 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              transition={{ delay: index * 0.05, duration: 0.5 }}
-              viewport={{ once: true }}
-              className="flex flex-col items-center justify-center gap-3 w-full group"
-            >
-              <stat.icon className="w-5 h-5 text-gray-500 transition-colors group-hover:text-gray-300" />
-              <h3 
-                className="text-3xl md:text-4xl lg:text-[2.5rem] xl:text-[2.75rem] font-black font-display text-white leading-none transition-all duration-300 group-hover:scale-105 whitespace-nowrap"
-                style={{ textShadow: '0 0 25px rgba(255,255,255,0.4), 0 0 10px rgba(255,255,255,0.2)' }}
+    <section ref={sectionRef} className="py-24 relative overflow-hidden" style={{ background: 'linear-gradient(180deg, #030305 0%, #050508 50%, #030305 100%)' }}>
+      {/* Ambient glow */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[300px] bg-brand-primary/[0.04] rounded-full blur-[100px] pointer-events-none" />
+      
+      <div className="max-w-[1300px] mx-auto px-6 relative z-10 w-full">
+        {/* Premium Glass Container */}
+        <motion.div
+          initial={{ opacity: 0, y: 40 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+          viewport={{ once: true }}
+          className="glass-stats-container px-8 py-10 md:px-12 md:py-14"
+        >
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-y-10">
+            {STATS_DATA.filter((_, i) => i < 7).map((stat, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.07, duration: 0.5 }}
+                viewport={{ once: true }}
+                className="flex flex-col items-center justify-center gap-3 group relative"
               >
-                <AnimatedNumber value={getVal(stat)} />
-              </h3>
-              
-              <p className="text-[#888888] font-bold uppercase tracking-[0.2em] text-[9px] text-center w-full mt-1 transition-colors group-hover:text-gray-400">
-                {stat.label}
-              </p>
-            </motion.div>
-          ))}
-        </div>
+                {/* Hover glow background */}
+                <div className="absolute inset-0 bg-brand-primary/0 group-hover:bg-brand-primary/[0.03] rounded-2xl transition-all duration-500 -m-2" />
+                
+                {/* Icon */}
+                <div className="relative">
+                  <stat.icon className="w-5 h-5 text-gray-600 group-hover:text-brand-primary transition-all duration-500 relative z-10" />
+                  <div className="absolute inset-0 bg-brand-primary/0 group-hover:bg-brand-primary/20 rounded-full blur-xl transition-all duration-500 scale-[3]" />
+                </div>
+                
+                {/* Number */}
+                <h3 
+                  className="text-3xl md:text-4xl lg:text-[2.5rem] font-black font-display text-white leading-none whitespace-nowrap relative z-10 transition-all duration-500"
+                  style={{ 
+                    textShadow: '0 0 20px rgba(255,255,255,0.25), 0 0 40px rgba(124,58,237,0.1)'
+                  }}
+                >
+                  <AnimatedNumber value={getVal(stat)} inView={inView} />
+                </h3>
+                
+                {/* Label */}
+                <p className="text-gray-600 font-bold uppercase tracking-[0.2em] text-[8px] md:text-[9px] text-center w-full relative z-10 group-hover:text-gray-400 transition-colors duration-500">
+                  {stat.label}
+                </p>
+
+                {/* Right-side divider (except last item) */}
+                {index < 6 && (
+                  <div className="absolute right-0 top-[15%] bottom-[15%] w-px bg-gradient-to-b from-transparent via-white/[0.06] to-transparent hidden lg:block" />
+                )}
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
       </div>
     </section>
   );
