@@ -114,7 +114,8 @@ const Hero = ({ settings = {} }) => {
 
             {/* Main Copy */}
             <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-black leading-[1.15] mb-5 text-white tracking-tight">
-              Build Discord Communities That <br className="hidden md:block" />
+              Build Discord Communities <br className="hidden md:block" />
+              With Starlit Siege That <br className="hidden md:block" />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-primary to-blue-400">People Never Want to Leave</span>
             </h1>
 
