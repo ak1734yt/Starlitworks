@@ -395,7 +395,7 @@ def generate_invoice_pdf(inv: dict, filepath: str):
     pdf.set_xy(stamp_x, stamp_y + 6.5)
     pdf.set_font("Helvetica", "B", 6)
     pdf.set_text_color(34, 197, 94) # Green success text
-    pdf.cell(stamp_w, 4.5, "● DIGITALLY SECURED & SIGNED", align="C", new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(stamp_w, 4.5, "* DIGITALLY SECURED & SIGNED", align="C", new_x="LMARGIN", new_y="NEXT")
     
     pdf.set_xy(stamp_x, stamp_y + 11)
     pdf.set_font("Helvetica", "BI", 10.5)
