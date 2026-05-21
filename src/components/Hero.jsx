@@ -102,7 +102,7 @@ const Hero = ({ settings = {} }) => {
             transition={{ duration: 0.8, ease: "easeOut" }}
           >
             {/* Live Status Badge */}
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass border-brand-primary/30 mb-8 hover:border-brand-primary/50 transition-colors cursor-pointer">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass bg-brand-primary/10 border-brand-primary/30 mb-8 hover:border-brand-primary/50 transition-colors cursor-pointer shadow-[0_0_15px_rgba(124,58,237,0.15)]">
               <span className="relative flex h-2.5 w-2.5">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-primary opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-brand-primary"></span>
@@ -115,7 +115,7 @@ const Hero = ({ settings = {} }) => {
             {/* Main Copy */}
             <h1 className="font-display text-5xl md:text-6xl lg:text-7xl font-black leading-[1.1] mb-6 text-white tracking-tight">
               Build Discord Communities That <br className="hidden md:block" />
-              <span className="text-gradient">People Never Want to Leave</span>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-primary to-blue-400 drop-shadow-[0_0_15px_rgba(124,58,237,0.5)]">People Never Want to Leave</span>
             </h1>
 
             <p className="text-gray-400 text-lg md:text-xl leading-relaxed mb-10 max-w-lg">
@@ -178,10 +178,13 @@ const Hero = ({ settings = {} }) => {
           >
             <div className="relative group aspect-[4/3] w-full max-w-lg ml-auto">
               {/* Animated Glow behind card */}
-              <div className="absolute -inset-4 bg-gradient-to-r from-brand-primary to-brand-secondary rounded-[2.5rem] blur-2xl opacity-20 group-hover:opacity-40 transition-opacity duration-700 animate-pulse" />
+              <div 
+                className="absolute -inset-4 bg-gradient-to-r from-brand-primary to-brand-secondary rounded-[2.5rem] blur-2xl opacity-20 group-hover:opacity-40 transition-opacity duration-700 animate-pulse"
+                style={{ willChange: 'opacity' }}
+              />
 
               {/* Card container */}
-              <div className="absolute inset-0 glass-card-premium p-0 bg-black/40">
+              <div className="absolute inset-0 glass-card-premium p-0 bg-black/40 overflow-hidden rounded-[2.5rem]">
                 <AnimatePresence mode="wait">
                   {currentSlide && (
                     <motion.div
@@ -197,8 +200,9 @@ const Hero = ({ settings = {} }) => {
                     </motion.div>
                   )}
                 </AnimatePresence>
+              </div>
 
-                {/* Floating Badges */}
+              {/* Floating Badges - Moved OUTSIDE the overflow-hidden container */}
                 <motion.div
                   animate={{ y: [0, -10, 0] }}
                   transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
@@ -226,7 +230,6 @@ const Hero = ({ settings = {} }) => {
                     <p className="text-[10px] text-gray-400">Custom bots deployed</p>
                   </div>
                 </motion.div>
-              </div>
 
               {/* Dot navigation */}
               {cardData.length > 1 && (

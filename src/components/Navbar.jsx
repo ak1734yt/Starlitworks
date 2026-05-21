@@ -105,33 +105,8 @@ const Navbar = () => {
             {isActive('/shop') && <motion.div layoutId="navbar-indicator" className="absolute -bottom-1 left-0 right-0 h-0.5 bg-brand-primary rounded-full shadow-[0_0_8px_rgba(124,58,237,0.8)]" />}
           </button>
           <NavLink to="/templates">Templates</NavLink>
-          
-          {user && (
-            <>
-              <NavLink to="/history" icon={History}>History</NavLink>
-              {hasInstallments && (
-                <NavLink to="/tracker" icon={CreditCard}>Tracker</NavLink>
-              )}
-            </>
-          )}
-
           <NavLink to="/blog">Blog</NavLink>
           <NavLink to="/faq">FAQ</NavLink>
-
-          {user && (
-            <>
-              {(user.role === 'admin' || user.role === 'manager') && (
-                <Link to="/admin" className="hover:text-yellow-400 transition-colors flex items-center gap-1.5 text-yellow-500">
-                  <Shield className="w-3.5 h-3.5"/>Admin
-                </Link>
-              )}
-              {user.role === 'manager' && (
-                <Link to="/manager" className="hover:text-brand-primary transition-colors flex items-center gap-1.5 text-brand-primary">
-                  <Shield className="w-3.5 h-3.5"/>Manager
-                </Link>
-              )}
-            </>
-          )}
         </div>
 
         {/* Right side */}

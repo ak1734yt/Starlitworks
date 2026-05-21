@@ -115,12 +115,13 @@
   }
   
   .gradient-mesh {
-    @apply absolute inset-0 opacity-30 pointer-events-none;
+    @apply absolute -inset-[20%] opacity-30 pointer-events-none;
     background: 
-      radial-gradient(circle at 0% 0%, rgba(124, 58, 237, 0.4) 0%, transparent 50%),
-      radial-gradient(circle at 100% 100%, rgba(59, 130, 246, 0.4) 0%, transparent 50%),
-      radial-gradient(circle at 100% 0%, rgba(236, 72, 153, 0.2) 0%, transparent 50%);
+      radial-gradient(circle at 20% 20%, rgba(124, 58, 237, 0.4) 0%, transparent 50%),
+      radial-gradient(circle at 80% 80%, rgba(59, 130, 246, 0.4) 0%, transparent 50%),
+      radial-gradient(circle at 80% 20%, rgba(236, 72, 153, 0.2) 0%, transparent 50%);
     filter: blur(60px);
+    transform: translateZ(0);
   }
 
   /* Dividers */
@@ -144,15 +145,16 @@
 }
 
 /* Animations */
+/* Hardware Accelerated Animations */
 @keyframes gradient-shift {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(-3%, 3%, 0) scale(1.05); }
+  100% { transform: translate3d(0, 0, 0) scale(1); }
 }
 
 .animate-gradient-shift {
-  background-size: 200% 200%;
-  animation: gradient-shift 15s ease infinite;
+  animation: gradient-shift 15s ease-in-out infinite;
+  will-change: transform;
 }
 
 @keyframes float {
@@ -163,15 +165,17 @@
 
 .animate-float {
   animation: float 6s ease-in-out infinite;
+  will-change: transform;
 }
 
 @keyframes scroll {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
+  0% { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(-50%, 0, 0); }
 }
 
 .animate-scroll {
   animation: scroll 40s linear infinite;
+  will-change: transform;
 }
 
 @layer utilities {
