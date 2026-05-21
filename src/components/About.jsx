@@ -49,11 +49,11 @@ const About = ({ settings = {} }) => {
           >
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full glass mb-6 text-brand-primary">
               <User className="w-4 h-4" />
-              <span className="text-xs font-bold uppercase tracking-wider">About Me</span>
+              <span className="text-xs font-bold uppercase tracking-wider">About Us</span>
             </div>
-            <h2 className="font-display text-4xl md:text-5xl font-bold mb-6" dangerouslySetInnerHTML={{ __html: settings.about_title || 'The Architect Behind <span class="text-gradient">Premium Communities</span>' }} />
+            <h2 className="font-display text-4xl md:text-5xl font-bold mb-6" dangerouslySetInnerHTML={{ __html: settings.about_title || 'The Team Behind <span class="text-gradient">Premium Communities</span>' }} />
             <p className="text-gray-400 text-lg leading-relaxed mb-8">
-              {settings.about_bio || 'I specialize in building high-performance Discord environments that combine security, automation, and engagement. With years of experience in bot development and server architecture, I transform basic channels into thriving professional ecosystems.'}
+              {settings.about_bio || 'We specialize in building high-performance Discord environments that combine security, automation, and engagement. With years of experience in bot development and server architecture, we transform basic channels into thriving professional ecosystems.'}
             </p>
 
             <div className="grid sm:grid-cols-2 gap-6 mb-8">

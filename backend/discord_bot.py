@@ -342,10 +342,14 @@ async def bot_help(ctx):
         e.set_thumbnail(url=bot.user.avatar.url)
     await ctx.send(embed=e)
 
-# ── !savetemplate ──────────────────────────────────────────────────────────────
-@bot.command(name="savetemplate")
+# ── !save ──────────────────────────────────────────────────────────────
+@bot.command(name="save")
 @commands.has_permissions(administrator=True)
-async def bot_savetemplate(ctx, *, title: str):
+async def bot_save(ctx, action: str, *, title: str):
+    if action.lower() != "ourwork":
+        await ctx.send(embed=discord.Embed(title="⚠️ Invalid Command", description="Usage: `!save ourwork <Template Name>`", color=0xf59e0b))
+        return
+
     price = 0.0
     template_link = ""
     guild = ctx.guild

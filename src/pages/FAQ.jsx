@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { getFaqs } from "../services/api";
 import { HelpCircle, ChevronDown, ChevronUp, Search, Sparkles } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 
@@ -98,13 +99,22 @@ export default function FAQ() {
                     )}
                   </button>
                   
-                  {isOpen && (
-                    <div className="px-6 pb-6 pt-2 border-t border-white/5 bg-white/[0.01]">
-                      <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-line">
-                        {faq.answer}
-                      </p>
-                    </div>
-                  )}
+                  <AnimatePresence>
+                    {isOpen && (
+                      <motion.div 
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="px-6 pb-6 pt-2 border-t border-white/5 bg-white/[0.01]">
+                          <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-line">
+                            {faq.answer}
+                          </p>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               );
             })}

@@ -9,7 +9,7 @@ import About from "../components/About";
 import Footer from "../components/Footer";
 import { motion } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
-import { ArrowRight, MessageCircle, Star, Send, Loader2, Sparkles, ShoppingBag } from "lucide-react";
+import { ArrowRight, MessageCircle, Star, Send, Loader2, Sparkles, ShoppingBag, Server, Bot, Users, Zap, Shield, Palette, Calendar, BarChart, ChevronLeft, ChevronRight } from "lucide-react";
 import { getFeedbacks, submitFeedback, getSiteSettings, getBlogs, getFaqs } from "../services/api";
 import { toast } from "react-hot-toast";
 
@@ -104,8 +104,49 @@ function Home() {
       <main>
         <Hero settings={siteSettings} />
         {siteSettings.show_stats !== 'false' && <Stats />}
-        <About settings={siteSettings} />
+        
+        {/* NEW SERVICES SECTION */}
+        <section className="py-24 bg-brand-bg relative overflow-hidden border-t border-white/5">
+          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-brand-primary/10 blur-[150px] rounded-full pointer-events-none" />
+          <div className="max-w-7xl mx-auto px-6 relative z-10">
+            <div className="text-center mb-16">
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-brand-primary/10 border border-brand-primary/20 rounded-full text-[10px] font-bold uppercase tracking-widest text-brand-primary mb-4">
+                <Sparkles className="w-3 h-3" /> Premium Capabilities
+              </div>
+              <h2 className="text-4xl md:text-5xl font-bold font-display">
+                Everything You Need To <br/>
+                <span className="text-gradient">Scale Your Community</span>
+              </h2>
+            </div>
+
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {[
+                { title: "Discord Server Setup", icon: Server, desc: "Professional architecture with role hierarchy, channels, and security" },
+                { title: "Bot Development", icon: Bot, desc: "Custom bots with moderation, economy, tickets, and automation" },
+                { title: "Community Management", icon: Users, desc: "Strategic growth, engagement systems, and ongoing support" },
+                { title: "Automation Systems", icon: Zap, desc: "Workflows, auto-moderation, welcome systems, and event automation" },
+                { title: "Security Systems", icon: Shield, desc: "Anti-raid, verification, audit logging, and permission hardening" },
+                { title: "Branding & Design", icon: Palette, desc: "Visual identity, custom emojis, banners, and server aesthetics" },
+                { title: "Event Systems", icon: Calendar, desc: "Tournament brackets, giveaways, and community event infrastructure" },
+                { title: "Analytics Dashboards", icon: BarChart, desc: "Real-time member metrics, growth tracking, and engagement analytics" }
+              ].map((service, i) => (
+                <div key={i} className="glass-card group hover:border-brand-primary/40 transition-all p-6 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                    <service.icon className="w-24 h-24 text-brand-primary transform rotate-12" />
+                  </div>
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-brand-primary/20 to-brand-secondary/20 flex items-center justify-center border border-white/10 mb-4 group-hover:scale-110 transition-transform">
+                    <service.icon className="w-6 h-6 text-brand-primary" />
+                  </div>
+                  <h3 className="text-lg font-bold text-white mb-2">{service.title}</h3>
+                  <p className="text-sm text-gray-400 leading-relaxed relative z-10">{service.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
         <Features />
+        
         {siteSettings.show_portfolio !== 'false' && <Portfolio />}
 
         {/* Blogs Section */}
@@ -193,66 +234,67 @@ function Home() {
 
         {/* Reviews / Feedback Section */}
         {siteSettings.show_feedbacks !== 'false' && (
-          <section className="py-24 bg-brand-bg border-t border-white/5">
+          <section className="py-24 bg-[#050505] relative overflow-hidden border-t border-white/5">
             <div className="max-w-7xl mx-auto px-6">
-              <div className="text-center mb-16">
-                <div className="flex items-center justify-center gap-2 mb-4">
-                  <div className="flex text-yellow-500">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} className={`w-5 h-5 ${i < Math.round(avgRating) ? 'fill-current' : ''}`} />
-                    ))}
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-16 gap-4">
+                <div>
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="flex text-yellow-500">
+                      {[...Array(5)].map((_, i) => (
+                        <Star key={i} className={`w-4 h-4 ${i < Math.round(avgRating) ? 'fill-current' : ''}`} />
+                      ))}
+                    </div>
+                    <span className="text-lg font-bold text-white">{avgRating} / 5.0</span>
                   </div>
-                  <span className="text-xl font-bold">{avgRating} / 5.0</span>
+                  <h2 className="text-4xl md:text-5xl font-bold font-display">Trusted By <span className="text-gradient">50+ Communities</span></h2>
                 </div>
-                <h2 className="text-4xl font-bold font-display">What Our <span className="text-gradient">Clients Say</span></h2>
               </div>
 
-              <div className="grid md:grid-cols-3 gap-8 mb-20">
-                {feedbacks.length === 0 ? (
-                  [1,2,3].map(i => (
-                    <div key={i} className="glass-card p-8 opacity-20">
-                      <div className="h-4 w-32 bg-white/10 rounded mb-4" />
-                      <div className="h-20 w-full bg-white/10 rounded" />
-                    </div>
-                  ))
-                ) : feedbacks.map(f => (
-                  <motion.div 
-                    key={f.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    className="glass-card p-8 relative group hover:border-brand-primary/30 transition-all"
-                  >
-                    <div className="flex gap-1 text-yellow-500 mb-4">
-                      {[...Array(f.rating)].map((_, i) => <Star key={i} className="w-4 h-4 fill-current" />)}
-                    </div>
-                    <p className="text-gray-300 italic mb-6 leading-relaxed">"{f.comment}"</p>
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-brand-primary/10 flex items-center justify-center text-brand-primary font-bold">
-                        {f.name[0]}
+              {/* Infinite Scroll Carousel wrapper */}
+              <div className="relative w-full overflow-hidden mb-20 mask-image-fade">
+                <div className="flex gap-6 animate-scroll w-max hover:pause">
+                  {[...feedbacks, ...feedbacks].map((f, i) => (
+                    <div key={`${f.id}-${i}`} className="glass-card p-8 w-[400px] shrink-0 border-white/5 hover:border-brand-primary/30 transition-all">
+                      <div className="flex gap-1 text-yellow-500 mb-6">
+                        {[...Array(f.rating)].map((_, j) => <Star key={j} className="w-4 h-4 fill-current drop-shadow-[0_0_8px_rgba(234,179,8,0.5)]" />)}
                       </div>
-                      <div>
-                        <p className="font-bold text-sm">{f.name}</p>
-                        <p className="text-[10px] text-gray-500 uppercase tracking-widest">Verified Client</p>
+                      <p className="text-gray-300 italic mb-8 leading-relaxed text-lg font-display">"{f.comment}"</p>
+                      <div className="flex items-center gap-4 mt-auto">
+                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-brand-primary/20 to-brand-secondary/20 flex items-center justify-center text-brand-primary font-bold border border-brand-primary/20">
+                          {f.name[0]}
+                        </div>
+                        <div>
+                          <p className="font-bold text-white text-base">{f.name}</p>
+                          <div className="flex items-center gap-1.5">
+                            <Shield className="w-3 h-3 text-brand-secondary" />
+                            <p className="text-[10px] text-gray-400 uppercase tracking-widest font-bold">Verified Client</p>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </motion.div>
-                ))}
+                  ))}
+                  {feedbacks.length === 0 && (
+                     <div className="text-center w-full py-12 text-gray-500">Reviews loading...</div>
+                  )}
+                </div>
               </div>
 
               {/* Feedback Form */}
-              <div className="max-w-2xl mx-auto bg-brand-card border border-brand-border rounded-3xl p-10">
-                <h3 className="text-2xl font-bold mb-6 text-center">Leave Your <span className="text-brand-secondary">Feedback</span></h3>
+              <div className="max-w-2xl mx-auto glass-card p-10 bg-black/40">
+                <div className="text-center mb-8">
+                  <h3 className="text-2xl font-bold mb-2">Leave Your <span className="text-gradient">Feedback</span></h3>
+                  <p className="text-gray-400 text-sm">Help us improve by sharing your experience.</p>
+                </div>
                 <form onSubmit={handleFeedbackSubmit} className="space-y-6">
-                  <div className="flex justify-center gap-2 mb-4">
+                  <div className="flex justify-center gap-2 mb-2">
                     {[1, 2, 3, 4, 5].map((star) => (
                       <button
                         key={star}
                         type="button"
                         onClick={() => setRating(star)}
-                        className={`p-1 transition-all ${rating >= star ? 'text-yellow-500 scale-125' : 'text-gray-600'}`}
+                        className={`p-2 transition-all hover:scale-110 ${rating >= star ? 'text-yellow-500' : 'text-gray-600'}`}
                       >
-                        <Star className={`w-8 h-8 ${rating >= star ? 'fill-current' : ''}`} />
+                        <Star className={`w-8 h-8 ${rating >= star ? 'fill-current drop-shadow-[0_0_10px_rgba(234,179,8,0.6)]' : ''}`} />
                       </button>
                     ))}
                   </div>
@@ -260,117 +302,54 @@ function Home() {
                     placeholder="Share your experience working with us..."
                     value={comment}
                     onChange={(e) => setComment(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-sm focus:border-brand-primary outline-none transition-all resize-none h-32"
+                    className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-sm focus:border-brand-primary outline-none transition-all resize-none h-32"
                     required
                   />
                   <button 
                     type="submit" 
                     disabled={submitting}
-                    className="w-full py-4 bg-brand-primary rounded-xl font-bold text-sm shadow-[0_0_20px_rgba(124,58,237,0.3)] hover:shadow-[0_0_30px_rgba(124,58,237,0.5)] transition-all flex items-center justify-center gap-2"
+                    className="btn-primary w-full flex items-center justify-center gap-2"
                   >
-                    {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                    {submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
                     Submit Feedback
                   </button>
                 </form>
               </div>
             </div>
           </section>
-        )}        {/* SEO Content Section */}
-        <section className="py-24 bg-[#080808] border-t border-white/5">
-          <div className="max-w-4xl mx-auto px-6 text-gray-300 space-y-12">
-            <article>
-              <h2 className="text-3xl md:text-4xl font-bold font-display text-white mb-6">Elevate Your Discord Experience With <span className="text-gradient">Starlit Siege</span></h2>
-              <p className="leading-relaxed mb-6 text-lg">
-                Transform your Discord server into a powerful, engaging, and professional community hub with <strong>Starlit Siege</strong>. We specialize in premium Discord server design, advanced bot systems, community management, and creator-focused solutions tailored for streamers, YouTubers, gaming brands, businesses, and online communities.
-              </p>
-              <p className="leading-relaxed text-lg">
-                From custom Discord server setups to scalable community infrastructure, our services are built to help creators grow faster, improve member engagement, and establish a strong digital presence in 2026.
-              </p>
-            </article>
-
-            <article>
-              <h3 className="text-2xl md:text-3xl font-bold font-display text-white mb-6">Professional Discord Services for Modern Communities</h3>
-              <p className="leading-relaxed mb-6 text-lg">
-                At Starlit Siege, we provide high-quality Discord solutions designed for:
-              </p>
-              <ul className="grid sm:grid-cols-2 gap-4 mb-8">
-                {["Gaming communities", "Streamer communities", "YouTuber fanbases", "Minecraft SMP servers", "Esports organizations", "Creator brands", "Business Discord servers", "International online communities"].map((item, i) => (
-                  <li key={i} className="flex items-center gap-3 bg-white/5 p-4 rounded-xl border border-white/10 hover:border-brand-primary/30 transition-colors">
-                    <Sparkles className="w-5 h-5 text-brand-primary" />
-                    <span className="font-bold text-white">{item}</span>
-                  </li>
-                ))}
-              </ul>
-
-              <p className="leading-relaxed mb-6 text-lg">Our expertise includes:</p>
-              <ul className="grid sm:grid-cols-2 gap-4">
-                {["Custom Discord server design", "Discord server setup and optimization", "Discord bot integration", "Community management systems", "Moderation and security setup", "Ticket systems and automation", "Role hierarchy and permissions", "Branding-focused server layouts", "Activity and engagement systems", "Long-term Discord management support"].map((item, i) => (
-                  <li key={i} className="flex items-start gap-3">
-                    <div className="mt-1.5 w-2 h-2 rounded-full bg-brand-secondary shrink-0 shadow-[0_0_8px_rgba(236,72,153,0.8)]" />
-                    <span className="text-gray-400">{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </article>
-
-            <article>
-              <h3 className="text-2xl md:text-3xl font-bold font-display text-white mb-6">Why Choose Starlit Siege?</h3>
-              <p className="leading-relaxed mb-6 text-lg">
-                Modern Discord communities require more than basic channels and bots. Successful servers need:
-              </p>
-              <div className="flex flex-wrap gap-3 mb-8">
-                {["Strong branding", "Smart server structure", "Member retention systems", "Professional management", "Engaging community experiences"].map((item, i) => (
-                  <span key={i} className="px-4 py-2 bg-brand-primary/10 text-brand-primary border border-brand-primary/20 rounded-full text-sm font-bold">
-                    {item}
-                  </span>
-                ))}
-              </div>
-              <p className="leading-relaxed mb-8 text-lg">
-                At Starlit Siege, we focus on building Discord communities that are visually immersive, highly organized, scalable, and optimized for long-term growth.
-              </p>
-              <div className="p-8 border-l-4 border-brand-primary bg-gradient-to-r from-brand-primary/10 to-transparent rounded-r-2xl">
-                <p className="leading-relaxed font-bold text-white text-xl md:text-2xl italic font-display">
-                  "Whether you are launching a new Discord server or upgrading an existing community, our goal is simple: Build a Discord experience people genuinely want to stay in."
-                </p>
-              </div>
-            </article>
-          </div>
-        </section>
+        )}
+        
+        <About settings={siteSettings} />
 
         {/* CTA / Contact Section */}
-        <section id="contact" className="py-24 border-t border-white/5">
-          <div className="max-w-7xl mx-auto px-6">
-            <div className="glass-card bg-gradient-to-br from-brand-primary/20 to-brand-secondary/10 border-brand-primary/20 p-12 text-center relative overflow-hidden">
-              <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none">
-                <div style={{ backgroundImage:'url(/banner.png)', backgroundSize:'cover', backgroundPosition:'center', opacity:0.1 }} className="absolute inset-0" />
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(124,58,237,0.15),transparent_70%)]" />
-              </div>
-
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true }}
-                className="relative z-10"
-              >
-                <h2 className="font-display text-4xl md:text-6xl font-bold mb-6" dangerouslySetInnerHTML={{ __html: siteSettings.contact_cta_title || 'Ready to <span class="text-gradient">Transform</span> Your Server?' }} />
-                <p className="text-gray-400 text-lg mb-10 max-w-2xl mx-auto">
-                  {siteSettings.contact_cta_subtext || "Join hundreds of successful communities using our premium Discord solutions. Let's build something amazing together."}
-                </p>
-                <div className="flex flex-wrap justify-center gap-4">
-                  <button onClick={() => navigate('/templates')} className="btn-primary flex items-center gap-2 group">
-                    Explore Templates
-                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                  </button>
-                  <button onClick={() => navigate('/portfolio')} className="btn-outline flex items-center gap-2 group">
-                    <MessageCircle className="w-4 h-4" />
-                    Our Work Portfolio
-                  </button>
-                  <button onClick={() => navigate('/shop')} className="btn-outline flex items-center gap-2 group border-brand-primary/50 text-brand-primary hover:bg-brand-primary/10">
-                    <ShoppingBag className="w-4 h-4" />
-                    Explore Shop (More Products)
-                  </button>
-                </div>
-              </motion.div>
+        <section id="contact" className="py-24 border-t border-white/5 relative overflow-hidden">
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(124,58,237,0.15),transparent_70%)]" />
+          <div className="max-w-5xl mx-auto px-6 relative z-10 text-center">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass border-brand-primary/30 mb-8">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-primary opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-brand-primary"></span>
+              </span>
+              <span className="text-[11px] font-bold text-white uppercase tracking-widest">
+                Taking New Clients
+              </span>
+            </div>
+            
+            <h2 className="font-display text-5xl md:text-7xl font-black mb-8 leading-[1.1]" dangerouslySetInnerHTML={{ __html: siteSettings.contact_cta_title || 'Ready to <span class="text-gradient">Transform</span> Your Server?' }} />
+            
+            <p className="text-gray-400 text-xl mb-12 max-w-2xl mx-auto leading-relaxed">
+              {siteSettings.contact_cta_subtext || "Join hundreds of successful communities using our premium Discord solutions. Let's build something amazing together."}
+            </p>
+            
+            <div className="flex flex-col sm:flex-row justify-center gap-4">
+              <button onClick={() => navigate('/shop')} className="btn-primary flex items-center justify-center gap-2 px-10 py-4 text-lg">
+                Get Your Free Quote
+                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              </button>
+              <button onClick={() => window.open('https://discord.gg/yourserver', '_blank')} className="btn-secondary flex items-center justify-center gap-2 px-8 py-4 text-lg">
+                <MessageCircle className="w-5 h-5" />
+                Join Our Discord
+              </button>
             </div>
           </div>
         </section>

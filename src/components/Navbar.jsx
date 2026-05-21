@@ -7,6 +7,7 @@ import { useTheme, THEMES, CURRENCIES } from "../context/ThemeContext";
 
 import NotificationCenter from "./NotificationCenter";
 import { getUserInvoicesByAdmin, getInvoices } from "../services/api";
+
 const Navbar = () => {
   const location = useLocation();
   const navigate  = useNavigate();
@@ -16,6 +17,14 @@ const Navbar = () => {
   const [themeOpen, setThemeOpen] = useState(false);
   const themeRef = useRef(null);
   const [hasInstallments, setHasInstallments] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  // Handle scroll for glass effect
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 20);
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   // Close theme dropdown on outside click
   useEffect(() => {
@@ -23,8 +32,6 @@ const Navbar = () => {
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
-
-  const isHome = location.pathname === "/";
 
   const handleProtectedLink = (path) => {
     if (!user) { openAuthModal(path, 'login'); return; }
@@ -45,21 +52,39 @@ const Navbar = () => {
     }
   }, [user]);
 
+  const isActive = (path) => {
+    if (path === '/' && location.pathname !== '/') return false;
+    return location.pathname.startsWith(path);
+  };
+
+  const NavLink = ({ to, children, icon: Icon }) => (
+    <Link 
+      to={to} 
+      className={`relative py-2 flex items-center gap-1.5 transition-colors duration-300 ${isActive(to) ? 'text-brand-primary' : 'text-gray-300 hover:text-white'}`}
+    >
+      {Icon && <Icon className="w-3.5 h-3.5" />}
+      {children}
+      {isActive(to) && (
+        <motion.div layoutId="navbar-indicator" className="absolute -bottom-1 left-0 right-0 h-0.5 bg-brand-primary rounded-full shadow-[0_0_8px_rgba(124,58,237,0.8)]" />
+      )}
+    </Link>
+  );
+
   return (
     <>
     <motion.nav
       initial={{ y: -100 }}
       animate={{ y: 0 }}
-      className="fixed top-0 left-0 right-0 z-50 px-6 py-4"
+      className={`fixed top-0 left-0 right-0 z-50 px-6 py-4 transition-all duration-300 ${scrolled ? 'py-2' : 'py-4'}`}
     >
-      <div className="max-w-7xl mx-auto glass rounded-2xl px-6 py-3 flex items-center justify-between">
+      <div className={`max-w-7xl mx-auto rounded-2xl px-6 py-3 flex items-center justify-between transition-all duration-300 ${scrolled ? 'bg-black/40 backdrop-blur-xl saturate-150 border border-white/10 shadow-2xl' : 'glass'}`}>
         {/* Logo */}
         <Link to="/" className="flex items-center gap-3 group">
           <div className="w-10 h-10 rounded-xl overflow-hidden shadow-lg shadow-brand-primary/20 group-hover:scale-110 transition-transform bg-white/5">
             <img src="/logo.png" alt="SSW Logo" className="w-full h-full object-cover" />
           </div>
           <div className="hidden sm:block">
-            <h1 className="font-display font-bold text-lg leading-tight">Starlit Siege Works</h1>
+            <h1 className="font-display font-bold text-lg leading-tight group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-brand-primary group-hover:to-brand-secondary transition-all">Starlit Siege Works</h1>
             <p className="text-[10px] text-brand-primary font-bold tracking-widest uppercase">Premium Solutions</p>
           </div>
         </Link>
@@ -68,26 +93,30 @@ const Navbar = () => {
         <div className="flex items-center gap-8">
 
         {/* Nav links (Desktop) */}
-        <div className="hidden lg:flex items-center gap-4 xl:gap-6 text-xs xl:text-sm font-bold text-gray-300 whitespace-nowrap">
-          <Link to="/" className="hover:text-brand-primary transition-colors">Home</Link>
-          <Link to="/about" className="hover:text-brand-primary transition-colors">About Us</Link>
-          <Link to="/portfolio" className="hover:text-brand-primary transition-colors">Our Work</Link>
-          <button onClick={() => handleProtectedLink('/shop')} className="hover:text-brand-primary transition-colors flex items-center gap-1.5">
+        <div className="hidden lg:flex items-center gap-4 xl:gap-6 text-xs xl:text-sm font-bold whitespace-nowrap">
+          <NavLink to="/">Home</NavLink>
+          <NavLink to="/about">About Us</NavLink>
+          <NavLink to="/portfolio">Our Work</NavLink>
+          <button 
+            onClick={() => handleProtectedLink('/shop')} 
+            className={`relative py-2 flex items-center gap-1.5 transition-colors duration-300 ${isActive('/shop') ? 'text-brand-primary' : 'text-gray-300 hover:text-white'}`}
+          >
             <ShoppingBag className="w-3.5 h-3.5" /> Shop
+            {isActive('/shop') && <motion.div layoutId="navbar-indicator" className="absolute -bottom-1 left-0 right-0 h-0.5 bg-brand-primary rounded-full shadow-[0_0_8px_rgba(124,58,237,0.8)]" />}
           </button>
-          <Link to="/templates" className="hover:text-brand-primary transition-colors">Templates</Link>
+          <NavLink to="/templates">Templates</NavLink>
           
           {user && (
             <>
-              <Link to="/history" className="hover:text-brand-primary transition-colors flex items-center gap-1.5"><History className="w-3.5 h-3.5"/>History</Link>
+              <NavLink to="/history" icon={History}>History</NavLink>
               {hasInstallments && (
-                <Link to="/tracker" className="hover:text-brand-primary transition-colors flex items-center gap-1.5"><CreditCard className="w-3.5 h-3.5"/>Tracker</Link>
+                <NavLink to="/tracker" icon={CreditCard}>Tracker</NavLink>
               )}
             </>
           )}
 
-          <Link to="/blog" className="hover:text-brand-primary transition-colors">Blog</Link>
-          <Link to="/faq" className="hover:text-brand-primary transition-colors">FAQ</Link>
+          <NavLink to="/blog">Blog</NavLink>
+          <NavLink to="/faq">FAQ</NavLink>
 
           {user && (
             <>

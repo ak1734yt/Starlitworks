@@ -119,31 +119,46 @@ export default function Blog() {
             {blogs.map((blog) => (
               <div
                 key={blog.id}
-                className="bg-brand-card border border-brand-border rounded-2xl p-6 flex flex-col justify-between hover:border-brand-primary/40 transition-all group duration-300"
+                className="glass-card p-0 flex flex-col justify-between hover:border-brand-primary/40 transition-all group duration-300 relative overflow-hidden"
               >
-                <div>
+                <div className="h-48 bg-gradient-to-br from-brand-primary/10 to-brand-secondary/10 relative border-b border-white/5 overflow-hidden">
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(124,58,237,0.2),transparent_70%)]" />
+                  <div className="absolute inset-0 flex items-center justify-center opacity-20 group-hover:scale-110 transition-transform duration-700">
+                     <BookOpen className="w-20 h-20 text-brand-primary" />
+                  </div>
+                  <div className="absolute top-4 left-4 glass px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider text-brand-primary border border-brand-primary/20">
+                    {blog.category}
+                  </div>
+                </div>
+
+                <div className="p-8 flex flex-col flex-grow">
                   <div className="flex items-center gap-3 text-xs text-brand-secondary font-bold uppercase tracking-wider mb-4">
-                    <span>{blog.category}</span>
-                    <span className="w-1.5 h-1.5 rounded-full bg-brand-border" />
                     <span className="flex items-center gap-1 font-normal text-gray-500">
                       <Calendar className="w-3.5 h-3.5" />
                       {new Date(blog.created_at * 1000).toLocaleDateString()}
+                    </span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-brand-border" />
+                    <span className="flex items-center gap-1 font-normal text-gray-500">
+                      {Math.max(1, Math.ceil(blog.content.length / 1000))} min read
                     </span>
                   </div>
                   <h3 className="font-display font-bold text-xl text-white mb-3 leading-snug group-hover:text-brand-primary transition-colors">
                     {blog.title}
                   </h3>
-                  <p className="text-gray-400 text-xs leading-relaxed line-clamp-3 mb-6">
+                  <p className="text-gray-400 text-sm leading-relaxed line-clamp-3 mb-6">
                     {blog.content.replace(/[#*`_-]/g, "")}
                   </p>
+
+                  <div className="mt-auto pt-6 border-t border-white/5">
+                    <Link
+                      to={`/blog/${blog.slug}`}
+                      className="inline-flex items-center gap-2 text-sm font-bold text-white group-hover:text-brand-primary transition-colors"
+                    >
+                      Read Full Guide
+                      <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                    </Link>
+                  </div>
                 </div>
-                <Link
-                  to={`/blog/${blog.slug}`}
-                  className="inline-flex items-center gap-2 text-xs font-bold text-white group-hover:text-brand-primary transition-colors"
-                >
-                  Read Full Guide
-                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-                </Link>
               </div>
             ))}
           </div>

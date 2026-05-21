@@ -92,65 +92,34 @@ export default function About() {
           </div>
         </section>
 
-        {/* SEO Content Section */}
+        {/* Journey / Milestones Section */}
         <section className="py-24 border-t border-white/5">
-          <div className="max-w-4xl mx-auto px-6 text-gray-300 space-y-12">
-            <article>
-              <h2 className="text-3xl md:text-4xl font-bold font-display text-white mb-6">Elevate Your Discord Experience With <span className="text-gradient">Starlit Siege</span></h2>
-              <p className="leading-relaxed mb-6 text-lg">
-                Transform your Discord server into a powerful, engaging, and professional community hub with <strong>Starlit Siege</strong>. We specialize in premium Discord server design, advanced bot systems, community management, and creator-focused solutions tailored for streamers, YouTubers, gaming brands, businesses, and online communities.
-              </p>
-              <p className="leading-relaxed text-lg">
-                From custom Discord server setups to scalable community infrastructure, our services are built to help creators grow faster, improve member engagement, and establish a strong digital presence in 2026.
-              </p>
-            </article>
-
-            <article>
-              <h3 className="text-2xl md:text-3xl font-bold font-display text-white mb-6">Professional Discord Services for Modern Communities</h3>
-              <p className="leading-relaxed mb-6 text-lg">
-                At Starlit Siege, we provide high-quality Discord solutions designed for:
-              </p>
-              <ul className="grid sm:grid-cols-2 gap-4 mb-8">
-                {["Gaming communities", "Streamer communities", "YouTuber fanbases", "Minecraft SMP servers", "Esports organizations", "Creator brands", "Business Discord servers", "International online communities"].map((item, i) => (
-                  <li key={i} className="flex items-center gap-3 bg-white/5 p-4 rounded-xl border border-white/10 hover:border-brand-primary/30 transition-colors">
-                    <ShieldCheck className="w-5 h-5 text-brand-primary" />
-                    <span className="font-bold text-white">{item}</span>
-                  </li>
-                ))}
-              </ul>
-
-              <p className="leading-relaxed mb-6 text-lg">Our expertise includes:</p>
-              <ul className="grid sm:grid-cols-2 gap-4">
-                {["Custom Discord server design", "Discord server setup and optimization", "Discord bot integration", "Community management systems", "Moderation and security setup", "Ticket systems and automation", "Role hierarchy and permissions", "Branding-focused server layouts", "Activity and engagement systems", "Long-term Discord management support"].map((item, i) => (
-                  <li key={i} className="flex items-start gap-3">
-                    <div className="mt-1.5 w-2 h-2 rounded-full bg-brand-secondary shrink-0 shadow-[0_0_8px_rgba(236,72,153,0.8)]" />
-                    <span className="text-gray-400">{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </article>
-
-            <article>
-              <h3 className="text-2xl md:text-3xl font-bold font-display text-white mb-6">Why Choose Starlit Siege?</h3>
-              <p className="leading-relaxed mb-6 text-lg">
-                Modern Discord communities require more than basic channels and bots. Successful servers need:
-              </p>
-              <div className="flex flex-wrap gap-3 mb-8">
-                {["Strong branding", "Smart server structure", "Member retention systems", "Professional management", "Engaging community experiences"].map((item, i) => (
-                  <span key={i} className="px-4 py-2 bg-brand-primary/10 text-brand-primary border border-brand-primary/20 rounded-full text-sm font-bold">
-                    {item}
-                  </span>
-                ))}
+          <div className="max-w-5xl mx-auto px-6">
+            <div className="text-center mb-16">
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-brand-primary/10 border border-brand-primary/20 rounded-full text-[10px] font-bold uppercase tracking-widest text-brand-primary mb-4">
+                Our Journey
               </div>
-              <p className="leading-relaxed mb-8 text-lg">
-                At Starlit Siege, we focus on building Discord communities that are visually immersive, highly organized, scalable, and optimized for long-term growth.
-              </p>
-              <div className="p-8 border-l-4 border-brand-primary bg-gradient-to-r from-brand-primary/10 to-transparent rounded-r-2xl">
-                <p className="leading-relaxed font-bold text-white text-xl md:text-2xl italic font-display">
-                  "Whether you are launching a new Discord server or upgrading an existing community, our goal is simple: Build a Discord experience people genuinely want to stay in."
-                </p>
-              </div>
-            </article>
+              <h2 className="text-4xl font-bold font-display">Building The <span className="text-gradient">Future</span> of Discord</h2>
+            </div>
+
+            <div className="space-y-12 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-white/10 before:to-transparent">
+              {[
+                { year: "2023", title: "The Beginning", desc: "Started as a small group of passionate Discord enthusiasts helping friends build gaming communities." },
+                { year: "2024", title: "Automation Era", desc: "Developed our first proprietary bot systems, introducing hyper-automation to moderate servers efficiently." },
+                { year: "2025", title: "Enterprise Scaling", desc: "Partnered with massive content creators and eSports orgs, scaling our infrastructure to support 100k+ member servers." },
+                { year: "2026", title: "Starlit Siege Works", desc: "Rebranded and expanded into a full-suite premium agency, setting the gold standard for Discord experiences." }
+              ].map((milestone, i) => (
+                <div key={i} className={`relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active`}>
+                  <div className="flex items-center justify-center w-10 h-10 rounded-full border border-white/10 bg-brand-card shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 group-hover:border-brand-primary group-hover:bg-brand-primary/20 transition-all z-10">
+                    <span className="text-[10px] font-bold text-brand-primary">{milestone.year}</span>
+                  </div>
+                  <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] glass-card p-6 rounded-2xl border border-white/5 hover:border-brand-primary/30 transition-all">
+                    <h3 className="font-bold text-lg mb-2 text-white">{milestone.title}</h3>
+                    <p className="text-sm text-gray-400 leading-relaxed">{milestone.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </section>
 
