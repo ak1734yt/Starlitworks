@@ -101,17 +101,6 @@ const Hero = ({ settings = {} }) => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: "easeOut" }}
           >
-            {/* Live Status Badge */}
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass bg-brand-primary/10 border-brand-primary/30 mb-8 hover:border-brand-primary/50 transition-colors cursor-pointer shadow-[0_0_15px_rgba(124,58,237,0.15)]">
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-primary opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-brand-primary"></span>
-              </span>
-              <span className="text-[11px] font-bold text-white uppercase tracking-widest">
-                {settings.hero_status_text || 'Now Accepting New Projects'}
-              </span>
-            </div>
-
             {/* Main Copy */}
             <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-black leading-[1.15] mb-5 text-white tracking-tight">
               Build Discord Communities <br className="hidden md:block" />
@@ -204,6 +193,16 @@ const Hero = ({ settings = {} }) => {
               </div>
 
               {/* Floating Badges - Moved OUTSIDE the overflow-hidden container */}
+              <div className="absolute top-4 right-4 z-40 inline-flex items-center gap-2 px-4 py-2 rounded-full glass bg-brand-primary/20 border border-brand-primary/40 hover:border-brand-primary/60 transition-colors cursor-pointer shadow-[0_0_20px_rgba(124,58,237,0.2)] backdrop-blur-xl animate-float" style={{ animationDelay: '0.5s' }}>
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-primary opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-brand-primary"></span>
+                </span>
+                <span className="text-[10px] font-bold text-white uppercase tracking-widest">
+                  {settings.hero_status_text || 'Now Available For Commissions'}
+                </span>
+              </div>
+
               <div className="absolute -top-4 -left-6 glass-heavy px-4 py-3 rounded-2xl flex items-center gap-3 z-30 shadow-xl animate-float">
                 <div className="w-10 h-10 rounded-xl bg-brand-primary/20 flex items-center justify-center">
                   <ShieldCheck className="w-5 h-5 text-brand-primary" />
