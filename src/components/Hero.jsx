@@ -1,4 +1,4 @@
-import { ArrowRight, Bot, Server, Sparkles, Users, ArrowUpRight, ShieldCheck, Zap } from "lucide-react";
+import { ArrowRight, Bot, Server, Sparkles, Users, ArrowUpRight, ShieldCheck, Zap, PlayCircle, Activity, Code, Rocket, Headphones, LineChart } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { HERO_STATS } from "../constants/heroStats";
 import { useNavigate } from "react-router-dom";
@@ -101,60 +101,60 @@ const Hero = ({ settings = {} }) => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: "easeOut" }}
           >
+            {/* Top Badge */}
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#7c3aed]/50 bg-[#0a0a0c]/80 shadow-[0_0_15px_rgba(124,58,237,0.3)] mb-8">
+              <Sparkles className="w-3 h-3 text-[#ec4899]" />
+              <span className="text-[10px] font-bold text-white uppercase tracking-widest">
+                Now Available For Commissions
+              </span>
+            </div>
+
             {/* Main Copy */}
             <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-black leading-[1.15] mb-5 text-white tracking-tight">
-              Build Discord Communities <br className="hidden md:block" />
-              With Starlit Siege That <br className="hidden md:block" />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-primary to-blue-400">People Never Want to Leave</span>
+              Build Discord <br className="hidden md:block" />
+              Communities <br className="hidden md:block" />
+              With <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-primary to-blue-400">Starlit Siege</span>
             </h1>
 
-            <p className="text-gray-400 text-base md:text-lg leading-relaxed mb-8 max-w-lg">
+            <p className="text-gray-400 text-sm md:text-base leading-relaxed mb-8 max-w-lg">
               Premium server architecture, custom bots, and community growth systems for creators, brands, and gaming organizations.
             </p>
 
+            {/* Feature Pills */}
+            <div className="flex flex-wrap gap-3 mb-10">
+              <div className="feature-pill"><ShieldCheck className="w-3.5 h-3.5 text-brand-primary"/> Secure Infrastructure</div>
+              <div className="feature-pill"><Zap className="w-3.5 h-3.5 text-brand-secondary"/> Lightning Performance</div>
+              <div className="feature-pill"><Bot className="w-3.5 h-3.5 text-brand-accent"/> Custom Bots & Automation</div>
+              <div className="feature-pill"><Users className="w-3.5 h-3.5 text-teal-400"/> Community Growth</div>
+            </div>
+
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row gap-4 mb-10">
-              <button onClick={() => navigate('/shop')} className="btn-primary flex items-center justify-center gap-2 group text-base px-10">
+              <button onClick={() => navigate('/shop')} className="btn-primary flex items-center justify-center gap-2 group text-base px-8 shadow-[0_0_30px_rgba(124,58,237,0.4)]">
+                <Sparkles className="w-4 h-4" />
                 Get Started Free
-                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </button>
-              <button onClick={() => navigate('/portfolio')} className="btn-secondary flex items-center justify-center gap-2 group text-base">
-                <Sparkles className="w-5 h-5" />
+              <button onClick={() => navigate('/portfolio')} className="btn-secondary flex items-center justify-center gap-2 group text-base px-8">
+                <PlayCircle className="w-5 h-5 text-gray-300 group-hover:text-white transition-colors" />
                 View Our Work
               </button>
             </div>
 
             {/* Trust Metrics */}
-            <div className="flex flex-col sm:flex-row sm:items-center gap-8 pt-8 border-t border-white/10">
-              <div className="flex items-center gap-4">
-                <div className="flex -space-x-3">
-                  {HERO_STATS.avatars.map((url, i) => (
-                    <div key={i} className="w-10 h-10 rounded-full border-2 border-brand-bg bg-brand-card overflow-hidden">
-                      <img src={url} alt="avatar" />
-                    </div>
-                  ))}
-                </div>
-                <div>
-                  <div className="flex gap-1 mb-0.5">
-                    {[...Array(Math.floor(HERO_STATS.rating))].map((_, i) => (
-                      <span key={i} className="text-yellow-500 text-xs drop-shadow-[0_0_5px_rgba(234,179,8,0.4)]">★</span>
-                    ))}
+            <div className="flex items-center gap-4 pt-4">
+              <div className="flex -space-x-3">
+                {[...HERO_STATS.avatars, "https://i.pravatar.cc/150?u=a042581f4e29026704d"].map((url, i) => (
+                  <div key={i} className="w-8 h-8 rounded-full border-2 border-[#050505] bg-brand-card overflow-hidden">
+                    <img src={url} alt="avatar" className="w-full h-full object-cover" />
                   </div>
-                  <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">{HERO_STATS.trustedText}</p>
-                </div>
+                ))}
               </div>
-              
-              <div className="hidden sm:block w-px h-10 bg-white/10" />
-              
-              <div className="flex gap-6">
-                <div>
-                  <h4 className="text-2xl font-black text-white font-display">50+</h4>
-                  <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Projects</p>
-                </div>
-                <div>
-                  <h4 className="text-2xl font-black text-white font-display">10k+</h4>
-                  <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Members</p>
-                </div>
+              <div>
+                <p className="text-xs text-gray-300 mb-0.5">Trusted by <span className="font-bold text-white">9,843+</span> communities worldwide</p>
+                <p className="text-xs font-bold text-transparent bg-clip-text bg-gradient-to-r from-brand-secondary to-brand-primary">
+                  24/7 Expert Support • 99.9% Uptime
+                </p>
               </div>
             </div>
           </motion.div>
@@ -173,8 +173,16 @@ const Hero = ({ settings = {} }) => {
                 style={{ willChange: 'opacity' }}
               />
 
+              {/* Orbital Rings Background */}
+              <div className="absolute -inset-[50%] animate-[spin_40s_linear_infinite] pointer-events-none opacity-40 z-0">
+                <svg viewBox="0 0 100 100" className="w-full h-full stroke-brand-primary/30" fill="none" strokeWidth="0.2">
+                  <ellipse cx="50" cy="50" rx="45" ry="15" transform="rotate(30 50 50)" />
+                  <ellipse cx="50" cy="50" rx="45" ry="15" transform="rotate(-30 50 50)" />
+                </svg>
+              </div>
+
               {/* Card container */}
-              <div className="absolute inset-0 glass-card-premium p-0 bg-black/40 overflow-hidden rounded-[2.5rem]">
+              <div className="absolute inset-0 neon-border-glow p-0 overflow-hidden z-10">
                 <AnimatePresence mode="wait">
                   {currentSlide && (
                     <motion.div
@@ -192,34 +200,30 @@ const Hero = ({ settings = {} }) => {
                 </AnimatePresence>
               </div>
 
-              {/* Floating Badges - Moved OUTSIDE the overflow-hidden container */}
-              <div className="absolute top-4 right-4 z-40 inline-flex items-center gap-2 px-4 py-2 rounded-full glass bg-brand-primary/20 border border-brand-primary/40 hover:border-brand-primary/60 transition-colors cursor-pointer shadow-[0_0_20px_rgba(124,58,237,0.2)] backdrop-blur-xl animate-float" style={{ animationDelay: '0.5s' }}>
-                <span className="relative flex h-2.5 w-2.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-primary opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-brand-primary"></span>
-                </span>
-                <span className="text-[10px] font-bold text-white uppercase tracking-widest">
-                  {settings.hero_status_text || 'Now Available For Commissions'}
-                </span>
-              </div>
-
-              <div className="absolute -top-4 -left-6 glass-heavy px-4 py-3 rounded-2xl flex items-center gap-3 z-30 shadow-xl animate-float">
+              {/* Floating Badges */}
+              <div className="absolute -top-6 left-4 glass-heavy px-4 py-3 rounded-2xl flex items-center gap-3 z-30 shadow-[0_0_20px_rgba(124,58,237,0.2)] animate-float border border-brand-primary/30 bg-[#0a0a0c]/80 backdrop-blur-xl">
                 <div className="w-10 h-10 rounded-xl bg-brand-primary/20 flex items-center justify-center">
                   <ShieldCheck className="w-5 h-5 text-brand-primary" />
                 </div>
                 <div>
-                  <p className="text-xs font-bold text-white">24/7 Security</p>
-                  <p className="text-[10px] text-gray-400">Raid protection active</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs font-bold text-white">24/7 Security</p>
+                    <div className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.8)]"></div>
+                  </div>
+                  <p className="text-[10px] text-gray-400">Real-time protection</p>
                 </div>
               </div>
 
-              <div className="absolute -bottom-6 -right-4 glass-heavy px-4 py-3 rounded-2xl flex items-center gap-3 z-30 shadow-xl animate-float" style={{ animationDelay: '1s' }}>
+              <div className="absolute -bottom-6 -right-4 glass-heavy px-4 py-3 rounded-2xl flex items-center gap-3 z-30 shadow-[0_0_20px_rgba(59,130,246,0.2)] animate-float border border-brand-secondary/30 bg-[#0a0a0c]/80 backdrop-blur-xl" style={{ animationDelay: '1s' }}>
                 <div className="w-10 h-10 rounded-xl bg-brand-secondary/20 flex items-center justify-center">
                   <Zap className="w-5 h-5 text-brand-secondary" />
                 </div>
                 <div>
                   <p className="text-xs font-bold text-white">Hyper Automation</p>
-                  <p className="text-[10px] text-gray-400">Custom bots deployed</p>
+                  <p className="text-[10px] text-gray-400 flex items-center gap-2">
+                    Custom bots deployed
+                    <Activity className="w-3 h-3 text-brand-secondary" />
+                  </p>
                 </div>
               </div>
 
@@ -243,6 +247,68 @@ const Hero = ({ settings = {} }) => {
             </div>
           </motion.div>
         </div>
+
+        {/* Bottom Stats Bar */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.4 }}
+          className="mt-20"
+        >
+          <div className="glass-stats-bar">
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-6 text-center">
+              <div className="flex flex-col items-center gap-2">
+                <Bot className="w-6 h-6 text-brand-primary" />
+                <div>
+                  <h4 className="text-xl font-bold text-white">10+</h4>
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wider">Bots Developed</p>
+                </div>
+              </div>
+              <div className="flex flex-col items-center gap-2">
+                <Server className="w-6 h-6 text-brand-secondary" />
+                <div>
+                  <h4 className="text-xl font-bold text-white">20+</h4>
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wider">Servers Built</p>
+                </div>
+              </div>
+              <div className="flex flex-col items-center gap-2">
+                <Users className="w-6 h-6 text-brand-accent" />
+                <div>
+                  <h4 className="text-xl font-bold text-white">9,843+</h4>
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wider">Total Users</p>
+                </div>
+              </div>
+              <div className="flex flex-col items-center gap-2">
+                <Code className="w-6 h-6 text-teal-400" />
+                <div>
+                  <h4 className="text-xl font-bold text-white">900+</h4>
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wider">Commands Written</p>
+                </div>
+              </div>
+              <div className="flex flex-col items-center gap-2">
+                <Rocket className="w-6 h-6 text-purple-400" />
+                <div>
+                  <h4 className="text-xl font-bold text-white">50+</h4>
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wider">Projects Delivered</p>
+                </div>
+              </div>
+              <div className="flex flex-col items-center gap-2">
+                <ShieldCheck className="w-6 h-6 text-blue-400" />
+                <div>
+                  <h4 className="text-xl font-bold text-white">99.9%</h4>
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wider">Uptime</p>
+                </div>
+              </div>
+              <div className="flex flex-col items-center gap-2">
+                <Headphones className="w-6 h-6 text-pink-400" />
+                <div>
+                  <h4 className="text-xl font-bold text-white">24/7</h4>
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wider">Expert Support</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </motion.div>
       </div>
     </section>
   );
