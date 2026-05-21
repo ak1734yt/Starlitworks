@@ -87,10 +87,7 @@ const Stats = () => {
   };
 
   return (
-    <section className="py-24 border-y border-white/5 bg-[#030303] relative overflow-hidden">
-      {/* Subtle radial glow in the center to highlight the glowing text */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-4xl h-64 bg-white/[0.02] rounded-full blur-[100px] pointer-events-none" />
-      
+    <section className="py-20 bg-black relative overflow-hidden">
       <div className="max-w-[1400px] mx-auto px-4 relative z-10 w-full">
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-x-4 gap-y-12 justify-items-center w-full">
           {STATS_DATA.map((stat, index) => (

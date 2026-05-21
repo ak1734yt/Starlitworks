@@ -285,57 +285,6 @@ const Hero = ({ settings = {} }) => {
             </div>
           </motion.div>
         </div>
-
-        {/* Bottom Stats Bar */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.4 }}
-          className="mt-20 border-t border-white/5 pt-16 pb-8"
-        >
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-8 text-center">
-            <div className="flex flex-col items-center gap-3">
-              <Bot className="w-5 h-5 text-gray-400" />
-              <h4 className="text-4xl font-black text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.4)]">10+</h4>
-              <p className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Bots Developed</p>
-            </div>
-            <div className="flex flex-col items-center gap-3">
-              <Server className="w-5 h-5 text-gray-400" />
-              <h4 className="text-4xl font-black text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.4)]">20+</h4>
-              <p className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Dev Servers</p>
-            </div>
-            <div className="flex flex-col items-center gap-3">
-              <Users className="w-5 h-5 text-gray-400" />
-              <h4 className="text-4xl font-black text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.4)]">9,846+</h4>
-              <p className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Total Users</p>
-            </div>
-            <div className="flex flex-col items-center gap-3">
-              <Code className="w-5 h-5 text-gray-400" />
-              <h4 className="text-4xl font-black text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.4)]">900+</h4>
-              <p className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Commands Written</p>
-            </div>
-            <div className="flex flex-col items-center gap-3">
-              <Wrench className="w-5 h-5 text-gray-400" />
-              <h4 className="text-4xl font-black text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.4)]">50+</h4>
-              <p className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Projects Developed</p>
-            </div>
-            <div className="flex flex-col items-center gap-3">
-              <Star className="w-5 h-5 text-gray-400" />
-              <h4 className="text-4xl font-black text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.4)]">100%</h4>
-              <p className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Client Satisfaction</p>
-            </div>
-            <div className="flex flex-col items-center gap-3">
-              <ShieldCheck className="w-5 h-5 text-gray-400" />
-              <h4 className="text-4xl font-black text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.4)]">99%</h4>
-              <p className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Uptime</p>
-            </div>
-            <div className="flex flex-col items-center gap-3">
-              <Clock className="w-5 h-5 text-gray-400" />
-              <h4 className="text-4xl font-black text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.4)]">24/7</h4>
-              <p className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Support</p>
-            </div>
-          </div>
-        </motion.div>
       </div>
     </section>
   );
