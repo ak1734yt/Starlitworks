@@ -30,12 +30,10 @@ bearer_scheme = HTTPBearer(auto_error=False)
 
 # ── Password Helpers ──────────────────────────────────────────────────────────
 def sanitize_password(password: str) -> str:
-    # Strip leading/trailing whitespaces and control characters
     return password.strip()
 
 def get_peppered_password(password: str) -> bytes:
     sanitized = sanitize_password(password)
-    # Concatenate the password and the system-wide JWT_SECRET as a pepper
     pepper = JWT_SECRET or "default_starlit_pepper_constant"
     hasher = hashlib.sha256()
     hasher.update(sanitized.encode('utf-8'))
