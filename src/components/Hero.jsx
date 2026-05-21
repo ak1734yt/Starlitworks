@@ -154,8 +154,8 @@ const Hero = ({ settings = {} }) => {
 
             <h1 className="font-display text-5xl md:text-7xl font-extrabold leading-[1.1] mb-8 text-white">
               Elevate Your <br />
-              <span className="text-gradient">Discord Experience</span>
-              <span className="block text-2xl md:text-4xl text-gray-400 font-bold tracking-tight mt-3">With <span className="text-white">Starlit Siege</span></span>
+              <span className="text-gradient">Discord Experience</span> <br />
+              With Starlit Siege
             </h1>
 
             <div className="relative mb-12 max-w-xl pl-6">
