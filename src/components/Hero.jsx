@@ -113,17 +113,17 @@ const Hero = ({ settings = {} }) => {
             </div>
 
             {/* Main Copy */}
-            <h1 className="font-display text-5xl md:text-6xl lg:text-7xl font-black leading-[1.1] mb-6 text-white tracking-tight">
+            <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-black leading-[1.15] mb-5 text-white tracking-tight">
               Build Discord Communities That <br className="hidden md:block" />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-primary to-blue-400 drop-shadow-[0_0_15px_rgba(124,58,237,0.5)]">People Never Want to Leave</span>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-primary to-blue-400">People Never Want to Leave</span>
             </h1>
 
-            <p className="text-gray-400 text-lg md:text-xl leading-relaxed mb-10 max-w-lg">
+            <p className="text-gray-400 text-base md:text-lg leading-relaxed mb-8 max-w-lg">
               Premium server architecture, custom bots, and community growth systems for creators, brands, and gaming organizations.
             </p>
 
             {/* CTA Buttons */}
-            <div className="flex flex-col sm:flex-row gap-4 mb-14">
+            <div className="flex flex-col sm:flex-row gap-4 mb-10">
               <button onClick={() => navigate('/shop')} className="btn-primary flex items-center justify-center gap-2 group text-base px-10">
                 Get Started Free
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
@@ -177,9 +177,9 @@ const Hero = ({ settings = {} }) => {
             className="relative hidden lg:block"
           >
             <div className="relative group aspect-[4/3] w-full max-w-lg ml-auto">
-              {/* Animated Glow behind card */}
+              {/* Animated Glow behind card (Optimized: No blur filter) */}
               <div 
-                className="absolute -inset-4 bg-gradient-to-r from-brand-primary to-brand-secondary rounded-[2.5rem] blur-2xl opacity-20 group-hover:opacity-40 transition-opacity duration-700 animate-pulse"
+                className="absolute -inset-10 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-brand-primary/30 via-brand-secondary/10 to-transparent opacity-40 group-hover:opacity-70 transition-opacity duration-700 animate-pulse"
                 style={{ willChange: 'opacity' }}
               />
 
@@ -203,33 +203,25 @@ const Hero = ({ settings = {} }) => {
               </div>
 
               {/* Floating Badges - Moved OUTSIDE the overflow-hidden container */}
-                <motion.div
-                  animate={{ y: [0, -10, 0] }}
-                  transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                  className="absolute -top-4 -left-8 glass-heavy px-4 py-3 rounded-2xl flex items-center gap-3 z-30 shadow-2xl"
-                >
-                  <div className="w-10 h-10 rounded-xl bg-brand-primary/20 flex items-center justify-center">
-                    <ShieldCheck className="w-5 h-5 text-brand-primary" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-white">24/7 Security</p>
-                    <p className="text-[10px] text-gray-400">Raid protection active</p>
-                  </div>
-                </motion.div>
+              <div className="absolute -top-4 -left-6 glass-heavy px-4 py-3 rounded-2xl flex items-center gap-3 z-30 shadow-xl animate-float">
+                <div className="w-10 h-10 rounded-xl bg-brand-primary/20 flex items-center justify-center">
+                  <ShieldCheck className="w-5 h-5 text-brand-primary" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-white">24/7 Security</p>
+                  <p className="text-[10px] text-gray-400">Raid protection active</p>
+                </div>
+              </div>
 
-                <motion.div
-                  animate={{ y: [0, 10, 0] }}
-                  transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-                  className="absolute -bottom-6 -right-6 glass-heavy px-4 py-3 rounded-2xl flex items-center gap-3 z-30 shadow-2xl"
-                >
-                  <div className="w-10 h-10 rounded-xl bg-brand-secondary/20 flex items-center justify-center">
-                    <Zap className="w-5 h-5 text-brand-secondary" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-white">Hyper Automation</p>
-                    <p className="text-[10px] text-gray-400">Custom bots deployed</p>
-                  </div>
-                </motion.div>
+              <div className="absolute -bottom-6 -right-4 glass-heavy px-4 py-3 rounded-2xl flex items-center gap-3 z-30 shadow-xl animate-float" style={{ animationDelay: '1s' }}>
+                <div className="w-10 h-10 rounded-xl bg-brand-secondary/20 flex items-center justify-center">
+                  <Zap className="w-5 h-5 text-brand-secondary" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-white">Hyper Automation</p>
+                  <p className="text-[10px] text-gray-400">Custom bots deployed</p>
+                </div>
+              </div>
 
               {/* Dot navigation */}
               {cardData.length > 1 && (
