@@ -155,7 +155,7 @@ const Hero = ({ settings = {} }) => {
             <h1 className="font-display text-5xl md:text-7xl font-extrabold leading-[1.1] mb-8 text-white">
               Elevate Your <br />
               <span className="text-gradient">Discord Experience</span>
-              <span className="block text-2xl md:text-4xl text-gray-400 font-bold tracking-tight mt-3">By <span className="text-white">Starlit Siege</span></span>
+              <span className="block text-2xl md:text-4xl text-gray-400 font-bold tracking-tight mt-3">With <span className="text-white">Starlit Siege</span></span>
             </h1>
 
             <div className="relative mb-12 max-w-xl pl-6">
@@ -164,7 +164,10 @@ const Hero = ({ settings = {} }) => {
               
               <div className="space-y-4 text-gray-300 leading-relaxed text-base md:text-lg">
                 <p>
-                  <strong className="text-white font-semibold">Transform your Discord server into a powerful, engaging, and professional community hub with Starlit Siege.</strong> We specialize in premium Discord server design, advanced bot systems, community management, and creator-focused solutions tailored for streamers, YouTubers, gaming brands, businesses, and online communities.
+                  <strong className="text-white font-semibold">Transform your Discord server into a powerful, engaging, and professional community hub with Starlit Siege.</strong>
+                </p>
+                <p>
+                  We specialize in premium Discord server design, advanced bot systems, community management, and creator-focused solutions tailored for streamers, YouTubers, gaming brands, businesses, and online communities.
                 </p>
                 <p className="text-sm md:text-base text-gray-400">
                   From custom Discord server setups to scalable community infrastructure, our services are built to help creators grow faster, improve member engagement, and establish a strong digital presence in 2026.
