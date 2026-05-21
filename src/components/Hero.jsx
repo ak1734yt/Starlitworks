@@ -152,18 +152,24 @@ const Hero = ({ settings = {} }) => {
               </span>
             </div>
 
-            <h1
-              className="font-display text-5xl md:text-7xl font-extrabold leading-[1.1] mb-6"
-              dangerouslySetInnerHTML={{ __html: 'Elevate Your <br /> <span class="text-gradient">Discord Experience</span> <span class="block text-2xl md:text-4xl text-brand-secondary/90 font-bold mt-3 tracking-wide">By Starlit Siege</span>' }}
-            />
+            <h1 className="font-display text-5xl md:text-7xl font-extrabold leading-[1.1] mb-8 text-white">
+              Elevate Your <br />
+              <span className="text-gradient">Discord Experience</span>
+              <span className="block text-2xl md:text-4xl text-gray-400 font-bold tracking-tight mt-3">By <span className="text-white">Starlit Siege</span></span>
+            </h1>
 
-            <div className="text-base md:text-lg text-gray-400 mb-10 max-w-xl leading-relaxed space-y-4">
-              <p>
-                Transform your Discord server into a powerful, engaging, and professional community hub with Starlit Siege. We specialize in premium Discord server design, advanced bot systems, community management, and creator-focused solutions.
-              </p>
-              <p className="text-sm md:text-base text-gray-500">
-                Tailored for streamers, YouTubers, gaming brands, businesses, and online communities. From custom Discord server setups to scalable community infrastructure, our services are built to help creators grow faster, improve member engagement, and establish a strong digital presence in 2026.
-              </p>
+            <div className="relative mb-12 max-w-xl pl-6">
+              {/* Decorative accent line */}
+              <div className="absolute left-0 top-1 bottom-1 w-1 bg-gradient-to-b from-brand-primary via-brand-secondary to-transparent rounded-full opacity-70" />
+              
+              <div className="space-y-4 text-gray-300 leading-relaxed text-base md:text-lg">
+                <p>
+                  <strong className="text-white font-semibold">Transform your Discord server into a powerful, engaging, and professional community hub with Starlit Siege.</strong> We specialize in premium Discord server design, advanced bot systems, community management, and creator-focused solutions tailored for streamers, YouTubers, gaming brands, businesses, and online communities.
+                </p>
+                <p className="text-sm md:text-base text-gray-400">
+                  From custom Discord server setups to scalable community infrastructure, our services are built to help creators grow faster, improve member engagement, and establish a strong digital presence in 2026.
+                </p>
+              </div>
             </div>
 
             <div className="flex flex-wrap gap-4">
