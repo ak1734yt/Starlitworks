@@ -103,7 +103,7 @@ const Stats = () => {
   };
 
   return (
-    <section ref={sectionRef} className="py-24 relative overflow-hidden" style={{ background: 'linear-gradient(180deg, #030305 0%, #050508 50%, #030305 100%)' }}>
+    <section ref={sectionRef} className="py-16 md:py-20 relative overflow-hidden section-transparent" style={{ background: 'linear-gradient(180deg, rgba(3,3,5,0.7) 0%, rgba(5,5,8,0.7) 50%, rgba(3,3,5,0.7) 100%)' }}>
       {/* Ambient glow */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[300px] bg-brand-primary/[0.04] rounded-full blur-[100px] pointer-events-none" />
       

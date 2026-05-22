@@ -94,7 +94,7 @@ const Hero = ({ settings = {} }) => {
   ];
 
   return (
-    <section className="relative pt-36 pb-24 overflow-hidden min-h-[90vh] flex items-center">
+    <section className="relative pt-28 pb-16 md:pt-32 md:pb-20 overflow-hidden md:min-h-[80vh] flex items-center section-transparent">
       {/* ═══ Background Layers ═══ */}
       <div className="gradient-mesh animate-gradient-shift" />
       <div className="starlit-pattern absolute inset-0 opacity-40 pointer-events-none" />
@@ -105,7 +105,7 @@ const Hero = ({ settings = {} }) => {
       <div className="absolute top-[50%] left-[60%] w-[300px] h-[300px] bg-brand-accent/5 rounded-full blur-[100px] pointer-events-none animate-float-slow" style={{ animationDelay: '3s' }} />
 
       <div className="max-w-7xl mx-auto px-6 relative z-10 w-full">
-        <div className="grid lg:grid-cols-2 gap-16 lg:gap-20 items-center">
+        <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
           
           {/* ═══════════ LEFT: Text Content ═══════════ */}
           <motion.div
@@ -135,7 +135,7 @@ const Hero = ({ settings = {} }) => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-              className="font-display text-4xl md:text-5xl lg:text-[3.5rem] xl:text-[3.75rem] font-black leading-[1.1] mb-6 text-white tracking-tight"
+              className="font-display text-3xl md:text-4xl lg:text-[3.2rem] xl:text-[3.5rem] font-black leading-[1.1] mb-6 text-white tracking-tight"
             >
               Build Discord{" "}
               <br className="hidden md:block" />

@@ -342,6 +342,11 @@
   .hover\:pause:hover {
     animation-play-state: paused;
   }
+  
+  .section-transparent {
+    background-color: transparent !important;
+    backdrop-filter: blur(5px);
+  }
 }
 
 html {

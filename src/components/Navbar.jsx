@@ -107,6 +107,12 @@ const Navbar = () => {
           <NavLink to="/templates">Templates</NavLink>
           <NavLink to="/blog">Blog</NavLink>
           <NavLink to="/faq">FAQ</NavLink>
+          {(user?.role === 'admin' || user?.role === 'manager') && (
+            <NavLink to="/admin" icon={Shield}>Admin</NavLink>
+          )}
+          {user?.role === 'manager' && (
+            <NavLink to="/manager" icon={Activity}>Manager</NavLink>
+          )}
         </div>
 
         {/* Right side */}

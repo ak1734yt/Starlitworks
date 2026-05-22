@@ -39,7 +39,7 @@ const About = ({ settings = {} }) => {
   const finalProjects = customProjects.length > 0 ? customProjects : defaultProjects;
 
   return (
-    <section id="about" className="py-24 relative overflow-hidden">
+    <section id="about" className="py-16 md:py-20 relative overflow-hidden section-transparent">
       <div className="max-w-7xl mx-auto px-6">
         <div className="grid lg:grid-cols-2 gap-16 items-start">
           <motion.div

@@ -25,7 +25,7 @@ const Portfolio = () => {
     })) : [];
 
   return (
-    <section id="portfolio" className="py-24 relative overflow-hidden bg-[#0a0a0a] border-t border-white/5">
+    <section id="portfolio" className="py-16 md:py-20 relative overflow-hidden section-transparent border-t border-white/5 bg-[#0a0a0a]/60">
       {/* Background glow */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-brand-primary/5 blur-[120px] rounded-full pointer-events-none" />
       

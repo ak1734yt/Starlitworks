@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from "../components/Navbar";
 import Hero from "../components/Hero";
-import Features from "../components/Features";
 import Stats from "../components/Stats";
 import Portfolio from "../components/Portfolio";
 import About from "../components/About";
@@ -106,7 +105,7 @@ function Home() {
         {siteSettings.show_stats !== 'false' && <Stats />}
         
         {/* NEW SERVICES SECTION */}
-        <section className="py-24 bg-brand-bg relative overflow-hidden border-t border-white/5">
+        <section className="py-16 md:py-20 relative overflow-hidden section-transparent border-t border-white/5 bg-brand-bg/60">
           <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-brand-primary/10 blur-[150px] rounded-full pointer-events-none" />
           <div className="max-w-7xl mx-auto px-6 relative z-10">
             <div className="text-center mb-16">
@@ -145,12 +144,10 @@ function Home() {
           </div>
         </section>
 
-        <Features />
-        
         {siteSettings.show_portfolio !== 'false' && <Portfolio />}
 
         {/* Blogs Section */}
-        <section className="py-24 bg-brand-bg relative overflow-hidden border-t border-white/5">
+        <section className="py-16 md:py-20 relative overflow-hidden section-transparent border-t border-white/5 bg-brand-bg/60">
           <div className="max-w-7xl mx-auto px-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-16 gap-4">
               <div>
@@ -188,7 +185,7 @@ function Home() {
         </section>
 
         {/* FAQs Section */}
-        <section className="py-24 bg-[#080808] border-t border-white/5">
+        <section className="py-16 md:py-20 section-transparent border-t border-white/5 bg-[#080808]/60">
           <div className="max-w-4xl mx-auto px-6">
             <div className="text-center mb-16">
               <div className="inline-flex items-center gap-2 px-3 py-1 bg-brand-primary/10 border border-brand-primary/20 rounded-full text-[10px] font-bold uppercase tracking-widest text-brand-primary mb-4">
@@ -234,7 +231,7 @@ function Home() {
 
         {/* Reviews / Feedback Section */}
         {siteSettings.show_feedbacks !== 'false' && (
-          <section className="py-24 bg-[#050505] relative overflow-hidden border-t border-white/5">
+          <section className="py-16 md:py-20 relative overflow-hidden section-transparent border-t border-white/5 bg-[#050505]/60">
             <div className="max-w-7xl mx-auto px-6">
               <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-16 gap-4">
                 <div>
@@ -322,7 +319,7 @@ function Home() {
         <About settings={siteSettings} />
 
         {/* CTA / Contact Section */}
-        <section id="contact" className="py-24 border-t border-white/5 relative overflow-hidden">
+        <section id="contact" className="py-16 md:py-20 section-transparent border-t border-white/5 relative overflow-hidden">
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(124,58,237,0.15),transparent_70%)]" />
           <div className="max-w-5xl mx-auto px-6 relative z-10 text-center">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass border-brand-primary/30 mb-8">

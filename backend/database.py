@@ -426,6 +426,18 @@ def init_db():
     finally:
         conn_users_mig.close()
 
+    # ── Auto-promote owner to admin ──────────────────────────────────────────────
+    conn_users_promo = sqlite3.connect(DB_USERS)
+    try:
+        conn_users_promo.execute(
+            "UPDATE users SET role = 'admin' WHERE email = 'Akshatkumar945296@gmail.com' AND role = 'client'"
+        )
+        conn_users_promo.commit()
+    except Exception as e:
+        print(f"Error in auto-promotion: {e}")
+    finally:
+        conn_users_promo.close()
+
     # ── 4. Migrate legacy combined data ──────────────────────────────────────────
     if has_legacy:
         # Check if users already has data
