@@ -1925,14 +1925,18 @@ export default function Manager() {
                       <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Client</th>
                       <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Date</th>
                       <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Total</th>
+                      <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Left Amount</th>
                       <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
                       <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5">
                     {invoices.length === 0 ? (
-                      <tr><td colSpan="6" className="px-6 py-8 text-center text-gray-500 italic">No invoices found.</td></tr>
-                    ) : invoices.filter(inv => !searchTerm || inv.invoiceNumber?.toLowerCase().includes(searchTerm.toLowerCase()) || inv.client?.name?.toLowerCase().includes(searchTerm.toLowerCase())).map((inv, i) => (
+                      <tr><td colSpan="7" className="px-6 py-8 text-center text-gray-500 italic">No invoices found.</td></tr>
+                    ) : invoices.filter(inv => !searchTerm || inv.invoiceNumber?.toLowerCase().includes(searchTerm.toLowerCase()) || inv.client?.name?.toLowerCase().includes(searchTerm.toLowerCase())).map((inv, i) => {
+                      const ledgerTotal = (inv.payments || []).reduce((s, p) => s + (parseFloat(p.amount) || 0), 0);
+                      const outstanding = Math.max(0, parseFloat(inv.grandTotal || 0) - ledgerTotal);
+                      return (
                       <tr 
                         key={i} 
                         onClick={() => { setSelectedInvoice(inv); setShowInvoiceModal(true); }}
@@ -1942,6 +1946,7 @@ export default function Manager() {
                         <td className="px-6 py-4">{inv.client?.name}</td>
                         <td className="px-6 py-4 text-gray-400">{inv.invoiceDate}</td>
                         <td className="px-6 py-4 text-green-400 font-medium">{inv.currency}{inv.grandTotal}</td>
+                        <td className="px-6 py-4 text-orange-400 font-medium">{inv.currency}{outstanding.toFixed(2)}</td>
                         <td className="px-6 py-4">
                           <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold ${
                             inv.paymentStatus === 'paid' ? 'bg-green-500/10 text-green-400' : 
@@ -2000,7 +2005,7 @@ export default function Manager() {
                           </div>
                         </td>
                       </tr>
-                    ))}
+                    )})}
                   </tbody>
                 </table>
               </div>

@@ -1028,12 +1028,16 @@ export default function Admin() {
                           <th className="px-6 py-4 font-medium text-gray-400">Client</th>
                           <th className="px-6 py-4 font-medium text-gray-400">Date</th>
                           <th className="px-6 py-4 font-medium text-gray-400">Total</th>
+                          <th className="px-6 py-4 font-medium text-gray-400">Left Amount</th>
                           <th className="px-6 py-4 font-medium text-gray-400">Type</th>
                           <th className="px-6 py-4 text-right font-medium text-gray-400">Action</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-white/5">
-                        {data.invoices.map((inv, i) => (
+                        {data.invoices.map((inv, i) => {
+                          const ledgerTotal = (inv.payments || []).reduce((s, p) => s + (parseFloat(p.amount) || 0), 0);
+                          const outstanding = Math.max(0, parseFloat(inv.grandTotal || 0) - ledgerTotal);
+                          return (
                           <tr 
                             key={i} 
                             onClick={() => { setSelectedInvoice(inv); setShowInvoiceModal(true); }}
@@ -1043,6 +1047,7 @@ export default function Admin() {
                             <td className="px-6 py-4">{inv.client?.name}</td>
                             <td className="px-6 py-4 text-gray-400">{inv.invoiceDate}</td>
                             <td className="px-6 py-4 text-green-400 font-medium">{inv.currency}{inv.grandTotal}</td>
+                            <td className="px-6 py-4 text-orange-400 font-medium">{inv.currency}{outstanding.toFixed(2)}</td>
                             <td className="px-6 py-4">
                               <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold ${inv.paymentStatus === 'paid' ? 'bg-green-500/10 text-green-400' : 'bg-yellow-500/10 text-yellow-400'}`}>
                                 {inv.paymentStatus || 'Pending'}

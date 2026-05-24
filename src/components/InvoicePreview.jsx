@@ -13,6 +13,9 @@ export default function InvoicePreview({ invoice, onClose }) {
     return () => document.removeEventListener('mousedown', handler);
   }, [onClose]);
 
+  const ledgerTotal = (invoice.payments || []).reduce((s, p) => s + (parseFloat(p.amount) || 0), 0);
+  const outstanding = Math.max(0, parseFloat(invoice.grandTotal || 0) - ledgerTotal);
+
   const handlePrint = () => {
     const area = document.getElementById('print-area');
     const win = window.open('', '_blank');
@@ -199,6 +202,14 @@ export default function InvoicePreview({ invoice, onClose }) {
                   <tr className="text-[18px] font-black text-[#1e1b4b] border-t-2 border-[#1e1b4b]">
                     <td className="p-3 pt-4">Grand Total:</td>
                     <td className="p-3 pt-4 text-right">₹{invoice.grandTotal.toLocaleString()}</td>
+                  </tr>
+                  <tr className="text-[13px] text-green-600 font-bold">
+                    <td className="p-2 pt-4">Amount Paid:</td>
+                    <td className="p-2 pt-4 text-right">₹{ledgerTotal.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+                  </tr>
+                  <tr className="text-[14px] font-black text-orange-600">
+                    <td className="p-2">Due Balance:</td>
+                    <td className="p-2 text-right">₹{outstanding.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
                   </tr>
                 </tbody>
               </table>

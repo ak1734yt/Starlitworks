@@ -3,15 +3,18 @@ import { motion, AnimatePresence } from "framer-motion";
 import { HERO_STATS } from "../constants/heroStats";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
+import { getPublicStats } from "../services/api";
 
 const Hero = ({ settings = {} }) => {
   const navigate = useNavigate();
   const [portfolio, setPortfolio] = useState([]);
   const [activeSlide, setActiveSlide] = useState(0);
   const [cardData, setCardData] = useState([]);
+  const [realStats, setRealStats] = useState(null);
 
   useEffect(() => {
     fetch('/api/portfolio').then(r => r.json()).then(data => setPortfolio(data)).catch(() => {});
+    getPublicStats().then(setRealStats).catch(() => {});
   }, []);
 
   // Build carousel slides: banner + up to 4 portfolio cards
@@ -72,15 +75,16 @@ const Hero = ({ settings = {} }) => {
   );
 
   const BannerCard = () => (
-    <div className="absolute inset-0">
+    <div className="absolute inset-0 rounded-3xl overflow-hidden shadow-[0_0_50px_rgba(124,58,237,0.3)]">
       <img
         src={settings.hero_banner || "/banner.png"}
         alt="Starlit Siege Banner"
         loading="lazy"
-        className="absolute inset-0 w-full h-full object-cover opacity-85 hover:opacity-100 transition-opacity duration-500"
-        onError={(e) => { e.target.src = "/banner.png"; }}
+        className="absolute inset-0 w-full h-full object-cover transition-transform duration-1000 scale-105 hover:scale-100"
+        onError={(e) => { e.target.src = "/banner.jpg"; }}
       />
-      <div className="absolute inset-0 bg-gradient-to-t from-brand-bg/95 via-brand-bg/20 to-transparent" />
+      <div className="absolute inset-0 bg-gradient-to-t from-brand-bg via-brand-bg/50 to-transparent" />
+      <div className="absolute inset-0 bg-brand-primary/10 mix-blend-overlay" />
     </div>
   );
 
@@ -100,9 +104,9 @@ const Hero = ({ settings = {} }) => {
       <div className="starlit-pattern absolute inset-0 opacity-40 pointer-events-none" />
       
       {/* Ambient nebula glow spots */}
-      <div className="absolute top-[10%] left-[15%] w-[500px] h-[500px] bg-brand-primary/10 rounded-full blur-[150px] pointer-events-none animate-float-slow" />
-      <div className="absolute bottom-[10%] right-[10%] w-[400px] h-[400px] bg-brand-secondary/8 rounded-full blur-[120px] pointer-events-none animate-float-slow" style={{ animationDelay: '5s' }} />
-      <div className="absolute top-[50%] left-[60%] w-[300px] h-[300px] bg-brand-accent/5 rounded-full blur-[100px] pointer-events-none animate-float-slow" style={{ animationDelay: '3s' }} />
+      <div className="absolute top-[10%] left-[15%] w-[400px] h-[400px] bg-brand-primary/10 rounded-full blur-[100px] pointer-events-none" />
+      <div className="absolute bottom-[10%] right-[10%] w-[300px] h-[300px] bg-brand-secondary/8 rounded-full blur-[80px] pointer-events-none" />
+      <div className="absolute top-[50%] left-[60%] w-[200px] h-[200px] bg-brand-accent/5 rounded-full blur-[60px] pointer-events-none" />
 
       <div className="max-w-7xl mx-auto px-6 relative z-10 w-full">
         <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
@@ -203,11 +207,11 @@ const Hero = ({ settings = {} }) => {
                   </div>
                 ))}
                 <div className="w-8 h-8 rounded-full border-2 border-brand-bg bg-brand-primary/20 flex items-center justify-center text-[9px] font-bold text-brand-primary ring-1 ring-brand-primary/30">
-                  9k+
+                  {realStats && realStats.member_count ? (realStats.member_count >= 1000 ? `${(realStats.member_count / 1000).toFixed(1).replace('.0', '')}k+` : realStats.member_count) : '9k+'}
                 </div>
               </div>
               <div>
-                <p className="text-[13px] text-gray-300 mb-0.5"><span className="font-bold text-white">{settings.stat_projects_developed || '50+'}</span> Clients</p>
+                <p className="text-[13px] text-gray-300 mb-0.5"><span className="font-bold text-white">{realStats?.projects_developed || settings.stat_projects_developed || '50+'}</span> Clients</p>
                 <p className="text-[11px] font-bold text-transparent bg-clip-text bg-gradient-to-r from-brand-secondary to-brand-primary">
                   24/7 Expert Support • 99.9% Uptime
                 </p>
@@ -233,19 +237,19 @@ const Hero = ({ settings = {} }) => {
               />
 
               {/* Orbital Rings - Layer 1 */}
-              <div className="absolute -inset-[60%] animate-orbit pointer-events-none opacity-30 z-0">
+              <div className="absolute -inset-[60%] pointer-events-none opacity-40 z-0 drop-shadow-[0_0_15px_rgba(124,58,237,0.3)]">
                 <svg viewBox="0 0 100 100" className="w-full h-full" fill="none" strokeWidth="0.15">
                   <ellipse cx="50" cy="50" rx="45" ry="12" stroke="url(#orbit-grad-1)" transform="rotate(25 50 50)" />
                   <ellipse cx="50" cy="50" rx="40" ry="10" stroke="url(#orbit-grad-2)" transform="rotate(-35 50 50)" />
                   <defs>
                     <linearGradient id="orbit-grad-1" x1="0%" y1="0%" x2="100%" y2="0%">
                       <stop offset="0%" stopColor="rgba(124,58,237,0)" />
-                      <stop offset="50%" stopColor="rgba(124,58,237,0.6)" />
+                      <stop offset="50%" stopColor="rgba(124,58,237,0.8)" />
                       <stop offset="100%" stopColor="rgba(124,58,237,0)" />
                     </linearGradient>
                     <linearGradient id="orbit-grad-2" x1="0%" y1="0%" x2="100%" y2="0%">
                       <stop offset="0%" stopColor="rgba(59,130,246,0)" />
-                      <stop offset="50%" stopColor="rgba(59,130,246,0.5)" />
+                      <stop offset="50%" stopColor="rgba(59,130,246,0.7)" />
                       <stop offset="100%" stopColor="rgba(59,130,246,0)" />
                     </linearGradient>
                   </defs>
@@ -253,9 +257,9 @@ const Hero = ({ settings = {} }) => {
               </div>
 
               {/* Orbital Rings - Layer 2 (reverse) */}
-              <div className="absolute -inset-[45%] animate-orbit-reverse pointer-events-none opacity-20 z-0">
+              <div className="absolute -inset-[45%] pointer-events-none opacity-30 z-0">
                 <svg viewBox="0 0 100 100" className="w-full h-full" fill="none" strokeWidth="0.12">
-                  <ellipse cx="50" cy="50" rx="42" ry="8" stroke="rgba(236,72,153,0.4)" transform="rotate(60 50 50)" />
+                  <ellipse cx="50" cy="50" rx="42" ry="8" stroke="rgba(34,211,238,0.5)" transform="rotate(60 50 50)" />
                 </svg>
               </div>
 

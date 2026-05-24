@@ -980,12 +980,16 @@ export default function History() {
                           <th className="pb-3">Items</th>
                           <th className="pb-3">Billing Date</th>
                           <th className="pb-3">Grand Total</th>
+                          <th className="pb-3">Left Amount</th>
                           <th className="pb-3">Payment Status</th>
                           <th className="pb-3 text-right">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-white/5">
-                        {filteredInvoices.map((inv) => (
+                        {filteredInvoices.map((inv) => {
+                          const ledgerTotal = (inv.payments || []).reduce((s, p) => s + (parseFloat(p.amount) || 0), 0);
+                          const outstanding = Math.max(0, parseFloat(inv.grandTotal || 0) - ledgerTotal);
+                          return (
                           <tr 
                             key={inv.id} 
                             onClick={() => { setSelectedInvoice(inv); setShowInvoiceModal(true); }}
@@ -1002,6 +1006,9 @@ export default function History() {
                             </td>
                             <td className="py-4 text-xs font-mono font-bold text-white">
                               {inv.currency || '₹'}{inv.grandTotal?.toLocaleString()}
+                            </td>
+                            <td className="py-4 text-xs font-mono font-bold text-orange-400">
+                              {inv.currency || '₹'}{outstanding.toFixed(2)}
                             </td>
                             <td className="py-4 text-xs">
                               <span className={`text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${
@@ -1043,7 +1050,7 @@ export default function History() {
                               </div>
                             </td>
                           </tr>
-                        ))}
+                        )})}
                       </tbody>
                     </table>
                   </div>

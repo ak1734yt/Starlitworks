@@ -4,12 +4,12 @@ import ORG from '../constants/orgData';
 
 export default function Footer() {
   return (
-    <footer className="bg-[#050505] border-t border-white/5 pt-16 pb-8 relative overflow-hidden">
+    <footer className="bg-[#050505] border-t border-white/5 pt-10 pb-6 relative overflow-hidden">
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-px bg-gradient-to-r from-transparent via-brand-primary/50 to-transparent" />
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/4 h-32 bg-brand-primary/20 blur-[100px] pointer-events-none" />
       
       <div className="max-w-7xl mx-auto px-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16 relative z-10">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-10 relative z-10">
           
           <div className="md:col-span-2 space-y-4">
             <Link to="/" className="inline-flex items-center gap-2 mb-2">
