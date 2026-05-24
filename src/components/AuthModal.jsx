@@ -215,13 +215,16 @@ export default function AuthModal() {
                       </div>
                       
                       <input 
+                        name="otp"
                         type="text" 
                         value={otpCode} 
                         onChange={e => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        onKeyDown={e => e.key === 'Enter' && handleVerifyOTP(e)}
                         placeholder="000000" 
                         className="w-full bg-white/5 border border-white/10 rounded-xl py-3 text-2xl text-center font-mono tracking-[0.5em] text-white focus:border-emerald-400 outline-none transition-all"
                         required
                         autoFocus
+                        autoComplete="one-time-code"
                       />
 
                       <button type="submit" disabled={loading || otpCode.length < 6} className="w-full btn-primary flex items-center justify-center gap-2 py-2.5 disabled:opacity-60">
@@ -262,9 +265,9 @@ export default function AuthModal() {
                   ) : tab === 'login' ? (
                     <motion.form key="login-form" initial={{opacity:0,x:-10}} animate={{opacity:1,x:0}} exit={{opacity:0,x:10}} onSubmit={handleLogin} className="space-y-3">
                       <div className="relative"><Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none"/>
-                        <input id="modal-email" type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="Email address" required autoComplete="email" className={`${inputCls} pl-9 pr-3`}/></div>
+                        <input id="modal-email" name="email" type="email" value={email} onChange={e=>setEmail(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleLogin(e)} placeholder="Email address" required autoComplete="email" className={`${inputCls} pl-9 pr-3`}/></div>
                       <div className="relative"><Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none"/>
-                        <input id="modal-password" type={showPw?'text':'password'} value={password} onChange={e=>setPassword(e.target.value)} placeholder="Password" required autoComplete="current-password" className={`${inputCls} pl-9 pr-10`}/>
+                        <input id="modal-password" name="password" type={showPw?'text':'password'} value={password} onChange={e=>setPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleLogin(e)} placeholder="Password" required autoComplete="current-password" className={`${inputCls} pl-9 pr-10`}/>
                         <button type="button" onClick={()=>setShowPw(v=>!v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition-colors">{showPw?<EyeOff className="w-4 h-4"/>:<Eye className="w-4 h-4"/>}</button></div>
                       <div className="text-right"><Link to="/forgot-password" onClick={closeAuthModal} className="text-xs text-brand-primary hover:text-brand-secondary transition-colors">Forgot password?</Link></div>
                       <button id="modal-login-submit" type="submit" disabled={loading} className="w-full btn-primary flex items-center justify-center gap-2 py-2.5 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-none">
@@ -274,19 +277,19 @@ export default function AuthModal() {
                   ) : (
                     <motion.form key="signup-form" initial={{opacity:0,x:10}} animate={{opacity:1,x:0}} exit={{opacity:0,x:-10}} onSubmit={handleSignup} className="space-y-3">
                       <div className="relative"><User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none"/>
-                        <input id="modal-name" type="text" value={name} onChange={e=>setName(e.target.value)} placeholder="Full name" required autoComplete="name" className={`${inputCls} pl-9 pr-3`}/></div>
+                        <input id="modal-name" name="name" type="text" value={name} onChange={e=>setName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSignup(e)} placeholder="Full name" required autoComplete="name" className={`${inputCls} pl-9 pr-3`}/></div>
                       <div className="relative"><Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none"/>
-                        <input id="modal-signup-email" type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="Email address" required autoComplete="email" className={`${inputCls} pl-9 pr-3`}/></div>
+                        <input id="modal-signup-email" name="email" type="email" value={email} onChange={e=>setEmail(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSignup(e)} placeholder="Email address" required autoComplete="email" className={`${inputCls} pl-9 pr-3`}/></div>
                       <div>
                         <div className="relative"><Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none"/>
-                          <input id="modal-signup-pw" type={showPw?'text':'password'} value={password} onChange={e=>setPassword(e.target.value)} placeholder="Create password" required autoComplete="new-password" className={`${inputCls} pl-9 pr-10`}/>
+                          <input id="modal-signup-pw" name="password" type={showPw?'text':'password'} value={password} onChange={e=>setPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSignup(e)} placeholder="Create password" required autoComplete="new-password" className={`${inputCls} pl-9 pr-10`}/>
                           <button type="button" onClick={()=>setShowPw(v=>!v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition-colors">{showPw?<EyeOff className="w-4 h-4"/>:<Eye className="w-4 h-4"/>}</button></div>
                         {password.length>0&&<motion.div initial={{opacity:0}} animate={{opacity:1}} className="mt-1.5 space-y-0.5">
                           <div className="flex gap-1">{[1,2,3,4,5].map(i=><div key={i} className={`h-0.5 flex-1 rounded-full transition-all ${i<=strength?STR_COLORS[strength]:'bg-white/10'}`}/>)}</div>
                           <p className="text-[10px] text-gray-500">{STR_LABELS[strength]}</p></motion.div>}
                       </div>
                       <div className="relative"><Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none"/>
-                        <input id="modal-confirm-pw" type="password" value={confirm} onChange={e=>setConfirm(e.target.value)} placeholder="Confirm password" required autoComplete="new-password"
+                        <input id="modal-confirm-pw" name="confirm_password" type="password" value={confirm} onChange={e=>setConfirm(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSignup(e)} placeholder="Confirm password" required autoComplete="new-password"
                           className={`${inputCls} pl-9 pr-10 ${pwMismatch?'!border-red-500/60':pwMatch?'!border-green-500/60':''}`}/>
                         {pwMatch&&<CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-green-500"/>}</div>
                       <button id="modal-signup-submit" type="submit" disabled={loading} className="w-full btn-primary flex items-center justify-center gap-2 py-2.5 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-none">

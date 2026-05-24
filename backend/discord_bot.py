@@ -543,7 +543,7 @@ async def bot_catalog(ctx):
                 if emb: embeds.append(emb)
                 cur_cat = cat
                 emb = discord.Embed(title=f"{icon} {cat}", color=0x7c3aed)
-            price = "📋 Custom Quote" if p["is_manual_price"] else f"₹{p['price']:.2f}" + (f"/{p.get('unit_label') or 'mo'}" if p["is_recurring"] else "")
+            price = "📋 Price Request" if p["is_manual_price"] else f"₹{p['price']:.2f}" + (f"/{p.get('unit_label') or 'mo'}" if p["is_recurring"] else "")
             feats = json.loads(p.get("features","[]"))
             fbullet = "\n".join(f"✨ {f}" for f in feats[:3]) or "• Standard specs"
             tag = f" `{p['tag']}`" if p.get("tag") else ""

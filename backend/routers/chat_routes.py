@@ -119,7 +119,7 @@ async def send_chat(client_id: int, body: ChatBody, user=Depends(get_current_use
              "👋 Hey there! Thanks for reaching out to **Starlit Siege Works**. Our team will be with you shortly. In the meantime, feel free to share more details about your project!"),
             # Pricing questions
             (["price", "cost", "how much", "rate", "pricing", "budget", "charge", "fee", "quote"],
-             "💰 Pricing varies based on your project scope. You can view our standard packages on the Shop page, or our team will provide a custom quote once we review your requirements. Typically we respond within a few hours!"),
+             "💰 Pricing varies based on your project scope. You can view our standard packages on the Shop page, or our team will provide a price once we review your requirements. Typically we respond within a few hours!"),
             # Timeline questions
             (["timeline", "how long", "deadline", "delivery", "eta", "when", "time frame", "duration"],
              "📅 Project timelines depend on the scope of work. Most projects are completed within 3–14 days. Your admin will specify an estimated timeline after reviewing your request."),

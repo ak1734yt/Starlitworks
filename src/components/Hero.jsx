@@ -94,7 +94,7 @@ const Hero = ({ settings = {} }) => {
   ];
 
   return (
-    <section className="relative pt-28 pb-16 md:pt-32 md:pb-20 overflow-hidden md:min-h-[80vh] flex items-center section-transparent">
+    <section className="relative pt-20 pb-8 md:pt-24 md:pb-10 overflow-hidden md:min-h-[60vh] flex items-center section-transparent">
       {/* ═══ Background Layers ═══ */}
       <div className="gradient-mesh animate-gradient-shift" />
       <div className="starlit-pattern absolute inset-0 opacity-40 pointer-events-none" />
@@ -113,34 +113,16 @@ const Hero = ({ settings = {} }) => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
           >
-            {/* Top Badge */}
-            <motion.div 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2, duration: 0.6 }}
-              className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full border border-brand-primary/40 bg-brand-primary/[0.08] shadow-[0_0_20px_rgba(124,58,237,0.15)] mb-8 group hover:border-brand-primary/60 transition-all duration-500 cursor-default"
-            >
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.8)]"></span>
-              </span>
-              <span className="text-[10px] font-bold text-white/90 uppercase tracking-[0.2em]">
-                Now Available for Commissions
-              </span>
-              <Sparkles className="w-3 h-3 text-brand-accent" />
-            </motion.div>
+
 
             {/* Main Headline */}
             <motion.h1 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-              className="font-display text-3xl md:text-4xl lg:text-[3.2rem] xl:text-[3.5rem] font-black leading-[1.1] mb-6 text-white tracking-tight"
+              className="font-display text-4xl md:text-5xl lg:text-5xl xl:text-[3.2rem] font-black leading-[1.1] mb-5 text-white tracking-tight"
             >
-              Build Discord{" "}
-              <br className="hidden md:block" />
-              <span className="text-gradient-hero">Communities</span>{" "}
-              <br className="hidden md:block" />
+              Build Discord <span className="text-gradient-hero">Communities</span><br />
               With <span className="text-gradient-hero">Starlit Siege</span>
             </motion.h1>
 
@@ -162,7 +144,7 @@ const Hero = ({ settings = {} }) => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.6, duration: 0.7 }}
-              className="text-gray-400 text-sm md:text-[15px] leading-relaxed mb-8 max-w-lg"
+              className="text-gray-400 text-sm md:text-[15px] leading-relaxed mb-6 max-w-lg"
             >
               Premium server architecture, custom bots, automation systems, and scalable community growth infrastructure for creators, brands, and gaming organizations.
             </motion.p>
@@ -172,19 +154,12 @@ const Hero = ({ settings = {} }) => {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.7, duration: 0.6 }}
-              className="flex flex-wrap items-center gap-x-1 gap-y-3 mb-10"
+              className="flex flex-wrap items-center gap-2 mb-8"
             >
               {featurePills.map((pill, i) => (
-                <div key={i} className="flex items-center gap-1">
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/[0.03] border border-white/[0.06] hover:border-white/15 hover:bg-white/[0.06] transition-all duration-300 group/pill cursor-default">
-                    <div className={`w-7 h-7 rounded-lg bg-${pill.color}/15 flex items-center justify-center border border-${pill.color}/25 group-hover/pill:shadow-[0_0_12px_rgba(124,58,237,0.3)] transition-shadow`}>
-                      <pill.icon className={`w-3.5 h-3.5 text-${pill.color}`} />
-                    </div>
-                    <span className="text-[11px] font-semibold text-gray-300 group-hover/pill:text-white transition-colors whitespace-nowrap">{pill.label}</span>
-                  </div>
-                  {i < featurePills.length - 1 && (
-                    <div className="w-px h-5 bg-white/[0.06] mx-1 hidden sm:block" />
-                  )}
+                <div key={i} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.03] border border-white/[0.06] hover:border-white/15 hover:bg-white/[0.06] transition-all duration-300 group/pill cursor-default">
+                  <pill.icon className={`w-3.5 h-3.5 text-${pill.color}`} />
+                  <span className="text-[11px] font-semibold text-gray-300 group-hover/pill:text-white transition-colors whitespace-nowrap">{pill.label}</span>
                 </div>
               ))}
             </motion.div>
@@ -232,7 +207,7 @@ const Hero = ({ settings = {} }) => {
                 </div>
               </div>
               <div>
-                <p className="text-[13px] text-gray-300 mb-0.5">Trusted by <span className="font-bold text-white">9,843+</span> communities worldwide</p>
+                <p className="text-[13px] text-gray-300 mb-0.5"><span className="font-bold text-white">{settings.stat_projects_developed || '50+'}</span> Clients</p>
                 <p className="text-[11px] font-bold text-transparent bg-clip-text bg-gradient-to-r from-brand-secondary to-brand-primary">
                   24/7 Expert Support • 99.9% Uptime
                 </p>

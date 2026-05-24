@@ -68,7 +68,7 @@ const Pricing = () => {
 
             <div className="mb-6">
               {plan.is_manual_price ? (
-                <span className="text-2xl font-extrabold font-display text-brand-primary">Custom Quote</span>
+                <span className="text-2xl font-extrabold font-display text-brand-primary">Request for Price</span>
               ) : (
                 <div className="flex items-baseline gap-1">
                   <span className="text-3xl font-extrabold font-display">{convertPrice(plan.price)}</span>
@@ -188,7 +188,7 @@ const Pricing = () => {
         <p className="text-center text-xs text-gray-600 mt-10">
           Need something unique?{' '}
           <button onClick={handleOrder} className="text-brand-primary hover:text-brand-secondary transition-colors font-medium">
-            Contact us for a custom quote →
+            Contact us for a price request →
           </button>
         </p>
       </div>

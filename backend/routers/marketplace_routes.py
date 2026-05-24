@@ -179,7 +179,7 @@ def get_templates(user=Depends(get_optional_user)):
     return res
 
 @router.get("/marketplace/templates/{template_id}")
-def get_template_detail(template_id: int, user=Depends(get_current_user)):
+def get_template_detail(template_id: int, user=Depends(get_optional_user)):
     db = get_db()
     row = db.execute("SELECT * FROM shop.templates WHERE id = ? AND is_deleted = 0", (template_id,)).fetchone()
     
@@ -190,10 +190,12 @@ def get_template_detail(template_id: int, user=Depends(get_current_user)):
     template = dict(row)
     
     # Check purchase status
-    purchased = db.execute("""
-        SELECT id, payment_status, status FROM orders.orders 
-        WHERE user_id = ? AND service_id = ? AND (payment_status = 'verified' OR payment_status = 'completed' OR status = 'completed')
-    """, (user["id"], f"template_{template_id}")).fetchone()
+    purchased = None
+    if user:
+        purchased = db.execute("""
+            SELECT id, payment_status, status FROM orders.orders 
+            WHERE user_id = ? AND service_id = ? AND (payment_status = 'verified' OR payment_status = 'completed' OR status = 'completed')
+        """, (user["id"], f"template_{template_id}")).fetchone()
     db.close()
     
     try:
@@ -246,7 +248,7 @@ async def purchase_template(template_id: int, user=Depends(get_current_user)):
         f"template_{template_id}",
         f"Template: {title}",
         "",
-        f"Custom quote request for server layout template '{title}' (ID: {template_id}).",
+        f"Price request for server layout template '{title}' (ID: {template_id}).",
         "Flexible",
         user.get("name", "DiscordClient"),
         0.0,
@@ -262,7 +264,7 @@ async def purchase_template(template_id: int, user=Depends(get_current_user)):
     await send_modular_webhook("ORDERS", {
         "embeds": [{
             "title": f"🛒 Template Quote Requested: #{order_id}",
-            "description": f"**Client:** {user['name']}\n**Template:** {title}\n**Price:** Custom Quote (Talk to us)",
+            "description": f"**Client:** {user['name']}\n**Template:** {title}\n**Price:** Price Request (Talk to us)",
             "color": 3447003,
             "timestamp": __import__("datetime").datetime.utcnow().isoformat()
         }]

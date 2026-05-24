@@ -124,10 +124,10 @@ export default function Login() {
           ) : (
             <form id="login-form" onSubmit={handleSubmit} className="space-y-4 mt-4">
               <div className="relative"><Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none"/>
-                <input id="login-email" type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="Email address" required autoComplete="email"
+                <input id="login-email" name="email" type="email" value={email} onChange={e=>setEmail(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSubmit(e)} placeholder="Email address" required autoComplete="email"
                   className="w-full bg-white/5 border border-brand-border rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder:text-gray-600 focus:outline-none focus:border-brand-primary/60 focus:shadow-[0_0_0_3px_rgba(124,58,237,0.15)] transition-all"/></div>
               <div className="relative"><Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none"/>
-                <input id="login-password" type={showPass?'text':'password'} value={password} onChange={e=>setPassword(e.target.value)} placeholder="Password" required autoComplete="current-password"
+                <input id="login-password" name="password" type={showPass?'text':'password'} value={password} onChange={e=>setPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSubmit(e)} placeholder="Password" required autoComplete="current-password"
                   className="w-full bg-white/5 border border-brand-border rounded-xl pl-10 pr-11 py-3 text-sm text-white placeholder:text-gray-600 focus:outline-none focus:border-brand-primary/60 focus:shadow-[0_0_0_3px_rgba(124,58,237,0.15)] transition-all"/>
                 <button type="button" onClick={()=>setShowPass(v=>!v)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition-colors">
                   {showPass?<EyeOff className="w-4 h-4"/>:<Eye className="w-4 h-4"/>}</button></div>

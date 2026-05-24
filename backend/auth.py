@@ -23,7 +23,7 @@ JWT_SECRET = os.getenv("JWT_SECRET")
 if not JWT_SECRET:
     raise RuntimeError("FATAL: JWT_SECRET environment variable is not set.")
 JWT_ALGORITHM = "HS256"
-JWT_EXPIRE_MINUTES = 30
+JWT_EXPIRE_MINUTES = 10080
 STARLIT_API_KEY = os.getenv("STARLIT_API_KEY", "")
 
 bearer_scheme = HTTPBearer(auto_error=False)

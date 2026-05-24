@@ -14,7 +14,9 @@ import {
   getAdminOrders, getInvoices, getAdminFeedbacks, updateOrderStatus,
   verifyPayment, updateFeedbackStatus, getCoupons, createCoupon,
   adminUpdateInvoiceStatus, adminNotifyUserInvoice, adminEditInvoice, adminAddUserCredits,
-  deleteInvoice, recordInvoicePayment, deleteInvoicePayment
+  deleteInvoice, recordInvoicePayment, deleteInvoicePayment,
+  getPortfolio, createPortfolio, deletePortfolio,
+  getTemplates, createTemplate, deleteTemplate
 } from '../services/api';
 import UserChat from '../components/UserChat';
 
@@ -26,8 +28,10 @@ const TABS = [
   { id: 'invoices',     label: 'Invoices',         icon: FileText },
   { id: 'feedbacks',    label: 'Feedbacks',        icon: Star },
   { id: 'clients',      label: 'Clients',          icon: Users },
+  { id: 'portfolio',    label: 'Portfolio',        icon: LayoutDashboard },
+  { id: 'templates',    label: 'Templates',        icon: ShoppingBag },
   { id: 'coupons',      label: 'Coupons',          icon: Tag },
-  { id: 'pulse',        label: 'User Pulse',       icon: LayoutDashboard },
+  { id: 'pulse',        label: 'User Pulse',       icon: Activity },
 ];
 
 const getScreenshotUrl = (url) => {
@@ -46,13 +50,13 @@ export default function Admin() {
   const [activeTab, setActiveTab] = useState('orders');
   
   const allowedTabs = TABS.filter(tab => {
-    if (['clients', 'coupons', 'pulse'].includes(tab.id)) {
+    if (['clients', 'coupons', 'pulse', 'portfolio', 'templates'].includes(tab.id)) {
       return user?.role === 'manager' || user?.role === 'admin';
     }
     return true;
   });
   
-  const [data, setData] = useState({ orders: [], invoices: [], prices: [], clients: [], feedbacks: [], pulse: [], coupons: [] });
+  const [data, setData] = useState({ orders: [], invoices: [], prices: [], clients: [], feedbacks: [], pulse: [], coupons: [], portfolio: [], templates: [] });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   
@@ -81,6 +85,9 @@ export default function Admin() {
   const [addingCreditTo, setAddingCreditTo] = useState(null);
   const [creditAmount, setCreditAmount] = useState(0);
   const [submittingCredit, setSubmittingCredit] = useState(false);
+
+  const [newPortfolio, setNewPortfolio] = useState({ title: '', description: '', banner_url: '', member_count: '', link: '', category: 'custom' });
+  const [newTemplate, setNewTemplate] = useState({ title: '', description: '', price: 0, roles_json: '[]', channels_json: '[]', template_link: '' });
 
   const handleAddCredits = async (e) => {
     e.preventDefault();
@@ -208,6 +215,30 @@ export default function Admin() {
     }
   };
 
+  const loadPortfolio = async (silent = false) => {
+    if (!silent) setLoading(true);
+    try {
+      const portfolio = await getPortfolio();
+      setData(prev => ({ ...prev, portfolio: portfolio || [] }));
+    } catch (err) {
+      if (!silent) toast.error('Failed to load portfolio');
+    } finally {
+      if (!silent) setLoading(false);
+    }
+  };
+
+  const loadTemplates = async (silent = false) => {
+    if (!silent) setLoading(true);
+    try {
+      const templates = await getTemplates();
+      setData(prev => ({ ...prev, templates: templates || [] }));
+    } catch (err) {
+      if (!silent) toast.error('Failed to load templates');
+    } finally {
+      if (!silent) setLoading(false);
+    }
+  };
+
   const loadPrices = async (silent = false) => {
     if (!silent) setLoading(true);
     try {
@@ -233,6 +264,10 @@ export default function Admin() {
       await loadCoupons(silent);
     } else if (activeTab === 'pulse') {
       await loadPulse(silent);
+    } else if (activeTab === 'portfolio') {
+      await loadPortfolio(silent);
+    } else if (activeTab === 'templates') {
+      await loadTemplates(silent);
     }
     
     if (!data.prices || data.prices.length === 0) {
@@ -445,6 +480,52 @@ export default function Admin() {
       }
     } catch (err) {
       toast.error(err.message || 'Failed to delete payment');
+    }
+  };
+
+  const handleCreatePortfolio = async (e) => {
+    e.preventDefault();
+    try {
+      await createPortfolio(newPortfolio);
+      toast.success('Portfolio item created');
+      setNewPortfolio({ title: '', description: '', banner_url: '', member_count: '', link: '', category: 'custom' });
+      fetchData();
+    } catch (err) {
+      toast.error(err.message);
+    }
+  };
+
+  const handleDeletePortfolioItem = async (id) => {
+    if (!confirm('Delete this portfolio item?')) return;
+    try {
+      await deletePortfolio(id);
+      toast.success('Deleted successfully');
+      fetchData();
+    } catch (err) {
+      toast.error(err.message);
+    }
+  };
+
+  const handleCreateTemplate = async (e) => {
+    e.preventDefault();
+    try {
+      await createTemplate(newTemplate);
+      toast.success('Template created');
+      setNewTemplate({ title: '', description: '', price: 0, roles_json: '[]', channels_json: '[]', template_link: '' });
+      fetchData();
+    } catch (err) {
+      toast.error(err.message);
+    }
+  };
+
+  const handleDeleteTemplateItem = async (id) => {
+    if (!confirm('Delete this template?')) return;
+    try {
+      await deleteTemplate(id);
+      toast.success('Deleted successfully');
+      fetchData();
+    } catch (err) {
+      toast.error(err.message);
     }
   };
 
@@ -1143,6 +1224,141 @@ export default function Admin() {
                         </tbody>
                       </table>
                     </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* --- PORTFOLIO TAB --- */}
+            {activeTab === 'portfolio' && (
+              <motion.div key="portfolio" initial={{opacity:0, y:10}} animate={{opacity:1, y:0}} exit={{opacity:0, y:-10}}>
+                <div className="grid lg:grid-cols-3 gap-6">
+                  {/* Create Form */}
+                  <div className="lg:col-span-1 glass-card p-6 h-fit">
+                    <h3 className="text-lg font-bold mb-4 font-display">Add Portfolio Item</h3>
+                    <form onSubmit={handleCreatePortfolio} className="space-y-4">
+                      <div>
+                        <label className="block text-xs font-bold text-gray-400 mb-1">Title</label>
+                        <input type="text" required value={newPortfolio.title} onChange={e => setNewPortfolio({...newPortfolio, title: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-brand-primary" placeholder="Project Title" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-400 mb-1">Description</label>
+                        <textarea required value={newPortfolio.description} onChange={e => setNewPortfolio({...newPortfolio, description: e.target.value})} rows={3} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-brand-primary resize-none" placeholder="Brief description..." />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-400 mb-1">Banner Image URL</label>
+                        <input type="text" value={newPortfolio.banner_url} onChange={e => setNewPortfolio({...newPortfolio, banner_url: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-brand-primary" placeholder="https://..." />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-bold text-gray-400 mb-1">Member Count</label>
+                          <input type="text" value={newPortfolio.member_count} onChange={e => setNewPortfolio({...newPortfolio, member_count: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-brand-primary" placeholder="e.g. 5K+" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-gray-400 mb-1">Category</label>
+                          <input type="text" value={newPortfolio.category} onChange={e => setNewPortfolio({...newPortfolio, category: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-brand-primary" placeholder="custom, public..." />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-400 mb-1">Project Link (Optional)</label>
+                        <input type="text" value={newPortfolio.link} onChange={e => setNewPortfolio({...newPortfolio, link: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-brand-primary" placeholder="https://discord.gg/..." />
+                      </div>
+                      <button type="submit" className="w-full py-2.5 btn-primary rounded-xl text-sm font-bold mt-2">Publish to Portfolio</button>
+                    </form>
+                  </div>
+                  
+                  {/* List */}
+                  <div className="lg:col-span-2 space-y-4">
+                    {data.portfolio.length === 0 ? (
+                      <div className="glass-card py-12 text-center text-gray-500">No portfolio items published yet.</div>
+                    ) : data.portfolio.map(item => (
+                      <div key={item.id} className="glass-card p-4 flex gap-4 items-center">
+                        <div className="w-24 h-16 rounded-lg bg-black/40 border border-white/10 overflow-hidden shrink-0">
+                          {item.banner_url ? <img src={item.banner_url} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-[10px] text-gray-500">No Img</div>}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-bold text-sm truncate">{item.title}</h4>
+                          <p className="text-xs text-gray-400 truncate">{item.description}</p>
+                          <div className="flex items-center gap-3 mt-1">
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10">{item.category}</span>
+                            <span className="text-[10px] text-brand-primary font-bold">{item.member_count} Members</span>
+                          </div>
+                        </div>
+                        <button onClick={() => handleDeletePortfolioItem(item.id)} className="p-2 text-gray-500 hover:text-red-500 transition-colors bg-white/5 rounded-lg shrink-0">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* --- TEMPLATES TAB --- */}
+            {activeTab === 'templates' && (
+              <motion.div key="templates" initial={{opacity:0, y:10}} animate={{opacity:1, y:0}} exit={{opacity:0, y:-10}}>
+                <div className="grid lg:grid-cols-3 gap-6">
+                  {/* Create Form */}
+                  <div className="lg:col-span-1 glass-card p-6 h-fit">
+                    <h3 className="text-lg font-bold mb-4 font-display">Add Marketplace Template</h3>
+                    <form onSubmit={handleCreateTemplate} className="space-y-4">
+                      <div>
+                        <label className="block text-xs font-bold text-gray-400 mb-1">Template Title</label>
+                        <input type="text" required value={newTemplate.title} onChange={e => setNewTemplate({...newTemplate, title: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-brand-primary" placeholder="e.g. Premium Gaming Server" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-400 mb-1">Description</label>
+                        <textarea required value={newTemplate.description} onChange={e => setNewTemplate({...newTemplate, description: e.target.value})} rows={3} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-brand-primary resize-none" placeholder="What does this template include?" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-400 mb-1">Price (₹)</label>
+                        <input type="number" required min="0" step="0.01" value={newTemplate.price} onChange={e => setNewTemplate({...newTemplate, price: Number(e.target.value)})} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-brand-primary" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-400 mb-1">Roles JSON Array</label>
+                        <input type="text" required value={newTemplate.roles_json} onChange={e => setNewTemplate({...newTemplate, roles_json: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-brand-primary font-mono text-xs" placeholder='["Admin", "Mod"]' />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-400 mb-1">Channels JSON Array</label>
+                        <input type="text" required value={newTemplate.channels_json} onChange={e => setNewTemplate({...newTemplate, channels_json: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-brand-primary font-mono text-xs" placeholder='["#general", "#announcements"]' />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-400 mb-1">Discord Template Link</label>
+                        <input type="text" required value={newTemplate.template_link} onChange={e => setNewTemplate({...newTemplate, template_link: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-brand-primary" placeholder="https://discord.new/..." />
+                      </div>
+                      <button type="submit" className="w-full py-2.5 btn-primary rounded-xl text-sm font-bold mt-2">Publish Template</button>
+                    </form>
+                  </div>
+                  
+                  {/* List */}
+                  <div className="lg:col-span-2 space-y-4">
+                    {data.templates.length === 0 ? (
+                      <div className="glass-card py-12 text-center text-gray-500">No templates published yet.</div>
+                    ) : data.templates.map(tpl => (
+                      <div key={tpl.id} className="glass-card p-4 flex gap-4 items-center">
+                        <div className="w-12 h-12 rounded-lg bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center shrink-0">
+                          <ShoppingBag className="w-5 h-5 text-brand-primary" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <h4 className="font-bold text-sm truncate">{tpl.title}</h4>
+                              <p className="text-[10px] text-gray-400 truncate">{tpl.description}</p>
+                            </div>
+                            <div className="text-right ml-4">
+                              <p className="text-sm font-bold text-green-400">₹{tpl.price}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3 mt-2 text-[10px] text-gray-500 font-mono">
+                            <span>Roles: {(() => { try { return JSON.parse(tpl.roles_json).length; } catch(e){ return 0; }})()}</span>
+                            <span>Channels: {(() => { try { return JSON.parse(tpl.channels_json).length; } catch(e){ return 0; }})()}</span>
+                          </div>
+                        </div>
+                        <button onClick={() => handleDeleteTemplateItem(tpl.id)} className="p-2 text-gray-500 hover:text-red-500 transition-colors bg-white/5 rounded-lg shrink-0">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </motion.div>

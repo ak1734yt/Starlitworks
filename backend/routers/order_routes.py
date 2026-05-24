@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from typing import Optional
 from auth import get_current_user, require_admin, send_discord_webhook, send_modular_webhook, log_activity, create_notification, calculate_risk_score
-from mailer import send_order_confirm_email, send_invoice_email, send_payment_approval_email
+from mailer import send_order_confirm_email, send_invoice_email, send_payment_approval_email, send_quote_email
 from database import get_db
 from realtime import pubsub
 
@@ -567,6 +567,15 @@ async def admin_update_order(order_id: int, body: AdminOrderUpdate, user=Depends
     db_chat = get_db()
     if body.status in ("quoted", "accepted"):
         auto_generate_invoice(order_id)
+        if body.status == "quoted":
+            try:
+                db_conn = get_db()
+                user_row_q = db_conn.execute("SELECT name, email FROM auth.users WHERE id=?", (row["user_id"],)).fetchone()
+                if user_row_q and user_row_q["email"]:
+                    send_quote_email(user_row_q["name"], user_row_q["email"], order_id, row["service_name"], body.quoted_price or row["quoted_price"] or 0.0)
+                db_conn.close()
+            except Exception as e:
+                print(f"Failed to send quote email: {e}")
     elif body.status == "rejected":
         try:
             for fname in os.listdir(INVOICES_DIR):

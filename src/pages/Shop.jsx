@@ -102,7 +102,7 @@ export default function Shop() {
 
   const PriceDisplay = ({ product, isSmall = false }) => {
     if (product.is_manual_price) {
-      return <p className={`font-semibold text-brand-primary ${isSmall ? 'text-xs' : 'text-sm mb-6'}`}>Custom Quote</p>;
+      return <p className={`font-semibold text-brand-primary ${isSmall ? 'text-xs' : 'text-sm mb-6'}`}>Request for Price</p>;
     }
     return (
       <div className={`flex items-baseline gap-1 ${isSmall ? '' : 'mb-6'}`}>
@@ -162,7 +162,7 @@ export default function Shop() {
               <div>
                 <p className="text-xs text-gray-500 mb-1">Price</p>
                 {product.is_manual_price ? (
-                  <p className="text-lg font-bold text-brand-primary">Custom Quote</p>
+                  <p className="text-lg font-bold text-brand-primary">Request for Price</p>
                 ) : (
                   <div className="flex items-baseline gap-1">
                     <span className="text-2xl font-bold text-white font-display">{convertPrice(product.price)}</span>
@@ -593,7 +593,7 @@ export default function Shop() {
                     </div>
                     <p className="text-[10px] text-gray-500 mb-3 flex-grow leading-relaxed">{item.description.split('[Admin')[0].trim()}</p>
                     {item.is_manual_price ? (
-                      <p className={`text-xs font-semibold mb-3 ${accentClasses.check}`}>Custom Quote</p>
+                      <p className={`text-xs font-semibold mb-3 ${accentClasses.check}`}>Request for Price</p>
                     ) : (
                       <div className="flex items-baseline gap-1 mb-3">
                         <span className="font-bold text-white text-lg font-display">{convertPrice(item.price)}</span>
@@ -728,7 +728,7 @@ export default function Shop() {
                     )}
                     <h3 className="font-bold text-sm mb-1 leading-tight">{item.name}</h3>
                     <p className="text-[10px] text-gray-500 mb-3 flex-grow leading-relaxed">{item.description.split('[Admin')[0].trim()}</p>
-                    <p className="text-xs font-semibold text-purple-400 mb-3">Custom Quote</p>
+                    <p className="text-xs font-semibold text-purple-400 mb-3">Request for Price</p>
                     <ul className="space-y-1 mb-4">
                       {(Array.isArray(item.features) ? item.features : []).map((f, i) => (
                         <li key={i} className="flex items-center gap-1.5 text-[10px] text-gray-400">
@@ -776,7 +776,7 @@ export default function Shop() {
                     )}
                     <h3 className="font-bold text-sm mb-1 leading-tight">{item.name}</h3>
                     <p className="text-[10px] text-gray-500 mb-3 flex-grow leading-relaxed">{item.description.split('[Admin')[0].trim()}</p>
-                    <p className="text-xs font-semibold text-indigo-400 mb-3">Custom Quote</p>
+                    <p className="text-xs font-semibold text-indigo-400 mb-3">Request for Price</p>
                     <ul className="space-y-1 mb-4">
                       {(Array.isArray(item.features) ? item.features : []).map((f, i) => (
                         <li key={i} className="flex items-center gap-1.5 text-[10px] text-gray-400">
@@ -830,7 +830,7 @@ export default function Shop() {
                       {isSelected(key) && <Check className="w-5 h-5 text-cyan-400 shrink-0" />}
                     </div>
                     <p className="text-xs text-gray-500 mb-3 leading-relaxed">{item.description.split('[Admin')[0].trim()}</p>
-                    <p className="text-sm font-semibold text-cyan-400 mb-4">Custom Quote</p>
+                    <p className="text-sm font-semibold text-cyan-400 mb-4">Request for Price</p>
                     <ul className="space-y-2 mb-5">
                       {(Array.isArray(item.features) ? item.features : []).map((f, i) => (
                         <li key={i} className="flex items-center gap-2 text-xs text-gray-400">
@@ -878,7 +878,7 @@ export default function Shop() {
                     )}
                     <h3 className="font-bold text-sm mb-1 leading-snug">{item.name}</h3>
                     <p className="text-[10px] text-gray-500 mb-3 flex-grow leading-relaxed">{item.description.split('[Admin')[0].trim()}</p>
-                    <p className="text-xs font-semibold text-yellow-400 mb-3">Custom Quote</p>
+                    <p className="text-xs font-semibold text-yellow-400 mb-3">Request for Price</p>
                     <ul className="space-y-1 mb-4">
                       {(Array.isArray(item.features) ? item.features : []).map((f, i) => (
                         <li key={i} className="flex items-center gap-1.5 text-[10px] text-gray-400">
@@ -1023,7 +1023,7 @@ export default function Shop() {
                 </div>
                 <div>
                   <p className="text-sm font-bold text-white">{cart.length} item{cart.length !== 1 ? 's' : ''} selected</p>
-                  <p className="text-xs text-gray-400">Ready to get your custom quote?</p>
+                  <p className="text-xs text-gray-400">Ready to request a price?</p>
                 </div>
               </div>
               <button 

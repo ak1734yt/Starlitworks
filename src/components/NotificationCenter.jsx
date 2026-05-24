@@ -10,6 +10,8 @@ export default function NotificationCenter() {
   const [unreadCount, setUnreadCount] = useState(0);
   const intervalRef = useRef(null);
 
+  const prevIdsRef = useRef(new Set());
+
   const fetchNotifications = async () => {
     try {
       const token = localStorage.getItem('ssw_token');
@@ -19,8 +21,22 @@ export default function NotificationCenter() {
       });
       if (res.ok) {
         const data = await res.json();
+        
+        // Trigger browser notification for new items if in background
+        const unread = data.filter(n => !n.is_read);
+        unread.forEach(n => {
+          if (!prevIdsRef.current.has(n.id)) {
+            if (document.visibilityState === 'hidden' && Notification.permission === 'granted') {
+              new Notification(n.title, { body: n.message, icon: '/favicon.ico' });
+            }
+          }
+        });
+        
+        // Update seen IDs
+        data.forEach(n => prevIdsRef.current.add(n.id));
+        
         setNotifications(data);
-        setUnreadCount(data.filter(n => !n.is_read).length);
+        setUnreadCount(unread.length);
       } else if (res.status === 401) {
         // Token expired/invalid — stop polling to avoid log spam
         if (intervalRef.current) {
@@ -45,6 +61,10 @@ export default function NotificationCenter() {
   };
 
   useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+    
     fetchNotifications();
     
     // Fallback to simple polling (every 10s) to avoid Vercel edge disconnections

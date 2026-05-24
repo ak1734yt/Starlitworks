@@ -11,7 +11,7 @@ const FAQ_DATA = [
     items: [
       {
         q: 'How does billing work?',
-        a: 'After submitting a service request, our team reviews and sends you a custom quote. Once you accept the quote, you proceed to pay via UPI/QR code. Payment is confirmed after manual verification by our team.'
+        a: 'After submitting a service request, our team reviews and sends you a price. Once you accept the price, you proceed to pay via UPI/QR code. Payment is confirmed after manual verification by our team.'
       },
       {
         q: 'What payment methods do you accept?',
@@ -38,7 +38,7 @@ const FAQ_DATA = [
     items: [
       {
         q: 'How do I submit a service request?',
-        a: 'Browse our Shop, select the services you want, then click "Proceed". Fill in your project requirements on the Service Request form. Our team will review and reply with a custom quote within 24 hours.'
+        a: 'Browse our Shop, select the services you want, then click "Proceed". Fill in your project requirements on the Service Request form. Our team will review and reply with a price within 24 hours.'
       },
       {
         q: 'Can I negotiate the quoted price?',

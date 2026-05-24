@@ -137,7 +137,7 @@ export default function ServiceRequest() {
                         </div>
                         <div className="text-right min-w-[80px]">
                           {p.is_manual_price ? (
-                            <span className="text-brand-primary text-xs font-bold uppercase tracking-wide">Custom Quote</span>
+                            <span className="text-brand-primary text-xs font-bold uppercase tracking-wide">Request for Price</span>
                           ) : (
                             <span className="text-lg font-black text-white">₹{itemTotal.toLocaleString()}</span>
                           )}
@@ -152,7 +152,7 @@ export default function ServiceRequest() {
             </div>
 
               <p className="text-gray-400 text-sm mb-6 leading-relaxed">
-                Tell us about your server and what you need. We'll review your request and send a custom quote — no obligation.
+                Tell us about your server and what you need. We'll review your request and send a price — no obligation.
               </p>
 
               {error && (
@@ -191,7 +191,7 @@ export default function ServiceRequest() {
 
                 <div className="bg-white/5 border border-brand-border rounded-xl px-4 py-3 text-xs text-gray-500 space-y-1">
                   <p>✅ Submitting this form does <strong className="text-gray-400">not</strong> charge you anything.</p>
-                  <p>📩 You'll receive a custom quote for review before any payment.</p>
+                  <p>📩 You'll receive a price request response for review before any payment.</p>
                 </div>
 
                 <button type="submit" disabled={loading} className="w-full btn-primary flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-none">

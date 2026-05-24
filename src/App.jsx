@@ -100,7 +100,7 @@ function PulseTracker() {
 
 // Inner wrapper so we can access AuthContext for global overlays
 function AppInner() {
-  const { showTransition } = useAuth();
+  const { showTransition, user } = useAuth();
   const { pathname, hash } = useLocation();
 
   useEffect(() => {
@@ -122,12 +122,13 @@ function AppInner() {
       <AuthModal />
       <CookieConsent />
       <PulseTracker />
-      {!['/login', '/signup'].includes(pathname) && <ChatBubble />}
+      {user && !['/login', '/signup'].includes(pathname) && <ChatBubble />}
       <Suspense fallback={<RouteLoader />}>
         <Routes>
           {/* Public */}
           <Route path="/"               element={<Home />} />
           <Route path="/about"          element={<About />} />
+          <Route path="/shop"           element={<Shop />} />
           <Route path="/login"          element={<Login />} />
           <Route path="/signup"         element={<SignUp />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -143,7 +144,6 @@ function AppInner() {
           <Route path="/blog/:slug"     element={<BlogDetail />} />
   
           {/* Protected — client */}
-          <Route path="/shop"           element={<ProtectedRoute><Shop /></ProtectedRoute>} />
           <Route path="/service-request" element={<ProtectedRoute><ServiceRequest /></ProtectedRoute>} />
           <Route path="/create-invoice" element={<ProtectedRoute adminOnly><CreateInvoice /></ProtectedRoute>} />
           <Route path="/history"        element={<ProtectedRoute><History /></ProtectedRoute>} />
