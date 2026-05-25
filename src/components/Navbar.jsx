@@ -256,7 +256,7 @@ const Navbar = () => {
           ) : (
             <div className="flex items-center gap-2">
               <button onClick={() => openAuthModal('/shop', 'login')} className="text-sm text-gray-300 hover:text-white transition-colors px-3 py-2">Sign In</button>
-              <button onClick={() => openAuthModal('/shop', 'signup')} className="btn-primary py-2 px-5 text-sm flex items-center gap-2 group">
+              <button onClick={() => openAuthModal('/shop', 'signup')} className="bg-[#5865F2] hover:bg-[#4752C4] text-white py-2 px-5 rounded-full text-sm font-bold flex items-center gap-2 group transition-colors shadow-[0_0_20px_rgba(88,101,242,0.3)]">
                 <Sparkles className="w-4 h-4 group-hover:rotate-12 transition-transform" />
                 Get Started
               </button>

@@ -68,12 +68,12 @@ const Hero = ({ settings = {} }) => {
       ) : (
         <div className="absolute inset-0 bg-gradient-to-br from-brand-secondary/20 to-brand-primary/10" />
       )}
-      <div className="absolute inset-0 bg-gradient-to-t from-brand-bg/95 via-brand-bg/40 to-transparent" />
-      <div className="absolute top-4 left-4 glass-heavy px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider text-brand-primary">
+      <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-[#050505]/60 to-transparent" />
+      <div className="absolute top-4 left-4 bg-[#0a0a10]/80 border border-brand-primary/20 backdrop-blur-md px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider text-brand-primary">
         {project.category || 'Portfolio'}
       </div>
       {project.member_count && (
-        <div className="absolute top-4 right-4 glass-heavy px-3 py-1.5 rounded-full flex items-center gap-2 text-[10px] font-bold">
+        <div className="absolute top-4 right-4 bg-[#0a0a10]/80 border border-white/10 backdrop-blur-md px-3 py-1.5 rounded-full flex items-center gap-2 text-[10px] font-bold text-gray-300">
           <Users className="w-3.5 h-3.5 text-brand-secondary" />{project.member_count}
         </div>
       )}
@@ -85,7 +85,7 @@ const Hero = ({ settings = {} }) => {
           </div>
           {project.link && (
             <div className="ml-4 shrink-0">
-              <div className="w-10 h-10 rounded-xl glass flex items-center justify-center group-hover:bg-brand-primary group-hover:border-brand-primary group-hover:shadow-[0_0_20px_rgba(124,58,237,0.5)] transition-all">
+              <div className="w-10 h-10 rounded-xl bg-[#9d4edd] shadow-[0_0_20px_rgba(157,78,221,0.4)] flex items-center justify-center transition-all group-hover:scale-110">
                 <ArrowUpRight className="w-5 h-5 text-white" />
               </div>
             </div>
@@ -138,8 +138,8 @@ const Hero = ({ settings = {} }) => {
               {settings.hero_title ? (
                 <span dangerouslySetInnerHTML={{ __html: settings.hero_title }} />
               ) : (
-                <>Build Discord <span className="text-gradient-hero">Communities</span><br />
-                With <span className="text-gradient-hero">Starlit Siege</span></>
+                <>Elevate Your <br />
+                <span className="text-gradient-hero">Discord Experience</span></>
               )}
             </motion.h1>
 
@@ -154,7 +154,7 @@ const Hero = ({ settings = {} }) => {
                 <path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77.7,77.7,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.31,60,73.31,53s5-12.74,11.43-12.74S96.33,46,96.22,53,91.08,65.69,84.69,65.69Z"/>
               </svg>
               <span className="text-white/90 font-bold text-base md:text-lg tracking-tight">
-                {settings.hero_status_text || "That People Never Want to Leave."}
+                {settings.hero_status_text || "Now Available for Commissions"}
               </span>
             </motion.div>
 
@@ -165,7 +165,7 @@ const Hero = ({ settings = {} }) => {
               transition={{ delay: 0.6, duration: 0.7 }}
               className="text-gray-400 text-sm md:text-[15px] leading-relaxed mb-6 max-w-lg"
             >
-              {settings.hero_subtitle || "Premium server architecture, custom bots, automation systems, and scalable community growth infrastructure for creators, brands, and gaming organizations."}
+              {settings.hero_subtitle || "Professional Discord services crafted for communities, businesses, and creators. Custom bots, server setup, and ongoing support — all in one premium package."}
             </motion.p>
 
             {/* Feature Pills */}
@@ -192,7 +192,7 @@ const Hero = ({ settings = {} }) => {
             >
               <button 
                 onClick={() => navigate('/shop')} 
-                className="group relative flex items-center justify-center gap-2.5 text-base px-8 py-4 rounded-full font-bold text-white bg-gradient-to-r from-brand-primary via-[#6d5ce7] to-brand-secondary shadow-[0_0_30px_rgba(124,58,237,0.35),0_4px_15px_rgba(0,0,0,0.3)] hover:shadow-[0_0_50px_rgba(124,58,237,0.5),0_4px_20px_rgba(0,0,0,0.4)] transition-all duration-500 hover:scale-[1.03] active:scale-[0.97] overflow-hidden"
+                className="group relative flex items-center justify-center gap-2.5 text-base px-8 py-4 rounded-full font-bold text-white bg-[#5865F2] hover:bg-[#4752C4] shadow-[0_0_30px_rgba(88,101,242,0.35),0_4px_15px_rgba(0,0,0,0.3)] transition-all duration-500 hover:scale-[1.03] active:scale-[0.97] overflow-hidden"
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/10 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
                 <Sparkles className="w-4 h-4 relative z-10" />
@@ -277,13 +277,13 @@ const Hero = ({ settings = {} }) => {
                 transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
                 className="absolute -top-8 -left-2 z-30"
               >
-                <div className="px-4 py-3 rounded-2xl flex items-center gap-3 shadow-[0_8px_32px_rgba(0,0,0,0.4),0_0_20px_rgba(124,58,237,0.15)] border border-white/10 bg-[#0a0a10]/90 backdrop-blur-2xl">
-                  <div className="w-10 h-10 rounded-xl bg-brand-primary/15 border border-brand-primary/25 flex items-center justify-center">
+                <div className="px-4 py-3 rounded-2xl flex items-center gap-3 shadow-[0_8px_32px_rgba(0,0,0,0.6),0_0_20px_rgba(124,58,237,0.1)] border border-white/5 bg-[#0a0a10]">
+                  <div className="w-10 h-10 rounded-xl bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center">
                     <ShieldCheck className="w-5 h-5 text-brand-primary" />
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <p className="text-xs font-bold text-white">{settings.hero_badge_secure || "24/7 Security"}</p>
+                      <p className="text-xs font-bold text-white">{settings.hero_badge_secure || "Secure Hosting"}</p>
                       <span className="relative flex h-1.5 w-1.5">
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                         <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500"></span>
@@ -300,12 +300,12 @@ const Hero = ({ settings = {} }) => {
                 transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 1.5 }}
                 className="absolute -bottom-8 -right-6 z-30"
               >
-                <div className="px-4 py-3 rounded-2xl flex items-center gap-3 shadow-[0_8px_32px_rgba(0,0,0,0.4),0_0_20px_rgba(59,130,246,0.15)] border border-white/10 bg-[#0a0a10]/90 backdrop-blur-2xl">
-                  <div className="w-10 h-10 rounded-xl bg-brand-secondary/15 border border-brand-secondary/25 flex items-center justify-center">
+                <div className="px-4 py-3 rounded-2xl flex items-center gap-3 shadow-[0_8px_32px_rgba(0,0,0,0.6),0_0_20px_rgba(59,130,246,0.1)] border border-white/5 bg-[#0a0a10]">
+                  <div className="w-10 h-10 rounded-xl bg-brand-secondary/10 border border-brand-secondary/20 flex items-center justify-center">
                     <Zap className="w-5 h-5 text-brand-secondary" />
                   </div>
                   <div>
-                    <p className="text-xs font-bold text-white">{settings.hero_badge_live || "Hyper Automation"}</p>
+                    <p className="text-xs font-bold text-white">{settings.hero_badge_live || "Live Events"}</p>
                     <p className="text-[10px] text-gray-500 flex items-center gap-1.5">
                       Custom bots deployed
                       <Activity className="w-3 h-3 text-brand-secondary" />
