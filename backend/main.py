@@ -46,13 +46,16 @@ async def lifespan(app: FastAPI):
         from discord_stats import update_discord_member_count
         
         async def _self_bot_runner():
-            print("[2/3] Self Bot Infrastructure: Fetching stats in background...")
+            print("[2/3] Self Bot Infrastructure: Fetching stats in background (every 30 mins)...")
             def _fetch_stats():
                 try:
                     update_discord_member_count()
                 except Exception as e:
                     print(f"      ❌ Error fetching self bot stats: {e}")
-            await asyncio.to_thread(_fetch_stats)
+            
+            while True:
+                await asyncio.to_thread(_fetch_stats)
+                await asyncio.sleep(1800)  # 30 minutes interval
             
         task2 = asyncio.create_task(_self_bot_runner())
         background_tasks.add(task2)
