@@ -15,53 +15,48 @@ start_notification_service()
 
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
+# Keep strong references to background tasks so they aren't garbage collected
+background_tasks = set()
+
 # Lifespan context manager for startup and shutdown tasks
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("\n" + "=" * 60)
-    print("🚀 STARLIT SIEGE WORKS - BACKEND INITIALIZATION SEQUENCE")
+    print("🚀 STARLIT SIEGE WORKS - BACKEND INITIALIZATION SEQUENCE (PARALLEL)")
     print("=" * 60)
     
-    # 1. Discord Bot
+    # 1. Discord Bot (Background)
     if os.getenv("DISCORD_BOT_TOKEN"):
-        print("[1/3] Initializing Primary Discord Bot (discord.py)...")
         import asyncio
-        from discord_bot import start_discord_bot, bot
-        bot_task = asyncio.create_task(start_discord_bot())
+        from discord_bot import start_discord_bot
         
-        print("      ⏳ Waiting for Primary Discord Bot to connect and load data (max 30s)...")
-        for _ in range(60):  # 60 * 0.5s = 30 seconds
-            if bot.is_ready():
-                print("      ✓ Primary Discord Bot daemon launched successfully.")
-                break
-            if bot.is_closed() and getattr(bot, 'loop', None) and not bot.loop.is_running():
-                # Note: is_closed() might be true initially, so we check if task is done instead
-                pass
-            if bot_task.done():
-                print("      ⚠️ Primary Discord Bot task terminated unexpectedly (likely rate limited). Continuing anyway...")
-                break
-            await asyncio.sleep(0.5)
-        else:
-            print("      ⚠️ Primary Discord Bot connection timed out. Continuing anyway...")
+        async def _bot_runner():
+            print("[1/3] Primary Discord Bot: Launching daemon in background...")
+            await start_discord_bot()
+            
+        task1 = asyncio.create_task(_bot_runner())
+        background_tasks.add(task1)
+        task1.add_done_callback(background_tasks.discard)
     else:
         print("[1/3] Primary Discord Bot: SKIPPED (No Token Found)")
         
-    # 2. Self Bot
+    # 2. Self Bot (Background)
     if os.getenv("DISCORD_SELFBOT_TOKEN"):
-        print("[2/3] Initializing Self Bot Infrastructure...")
-        print("      ⏳ Fetching member stats via Self Bot...")
         import asyncio
         from discord_stats import update_discord_member_count
         
-        # Run the blocking network call in a thread so it doesn't block the FastAPI event loop
-        def _fetch_stats():
-            try:
-                update_discord_member_count()
-            except Exception as e:
-                print(f"      ❌ Error fetching self bot stats: {e}")
-                
-        await asyncio.to_thread(_fetch_stats)
-        print("      ✓ Self Bot credentials loaded and data synced.")
+        async def _self_bot_runner():
+            print("[2/3] Self Bot Infrastructure: Fetching stats in background...")
+            def _fetch_stats():
+                try:
+                    update_discord_member_count()
+                except Exception as e:
+                    print(f"      ❌ Error fetching self bot stats: {e}")
+            await asyncio.to_thread(_fetch_stats)
+            
+        task2 = asyncio.create_task(_self_bot_runner())
+        background_tasks.add(task2)
+        task2.add_done_callback(background_tasks.discard)
     else:
         print("[2/3] Self Bot: SKIPPED (No Token Found)")
         
@@ -72,7 +67,7 @@ async def lifespan(app: FastAPI):
     print("      ✓ Security Middlewares & API Routes Injected.")
     
     print("=" * 60)
-    print("✅ STARTUP COMPLETE! All systems nominal and ready to serve.")
+    print("✅ STARTUP COMPLETE! All systems nominal. Web server is online.")
     print("=" * 60 + "\n")
     
     yield
