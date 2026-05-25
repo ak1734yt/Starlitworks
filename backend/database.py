@@ -226,6 +226,8 @@ def init_db():
         category     TEXT    DEFAULT 'custom',
         custom_fields TEXT   DEFAULT '{}',
         sort_order   INTEGER DEFAULT 0,
+        is_visible   INTEGER DEFAULT 1,
+        growth_percentage TEXT DEFAULT '',
         created_at   INTEGER DEFAULT (strftime('%s','now'))
     );
     """)
@@ -280,6 +282,16 @@ def init_db():
         # Migration for portfolio
         try:
             conn_shop.execute("ALTER TABLE portfolio ADD COLUMN custom_fields TEXT DEFAULT '{}'")
+            conn_shop.commit()
+        except Exception:
+            pass
+        try:
+            conn_shop.execute("ALTER TABLE portfolio ADD COLUMN is_visible INTEGER DEFAULT 1")
+            conn_shop.commit()
+        except Exception:
+            pass
+        try:
+            conn_shop.execute("ALTER TABLE portfolio ADD COLUMN growth_percentage TEXT DEFAULT ''")
             conn_shop.commit()
         except Exception:
             pass

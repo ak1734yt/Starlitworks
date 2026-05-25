@@ -78,6 +78,9 @@ class PortfolioBody(BaseModel):
     member_count: str = "0"
     link: str = ""
     category: str = "custom"
+    is_visible: int = 1
+    sort_order: int = 0
+    growth_percentage: str = ""
 
 class FeedbackBody(BaseModel):
     rating: int
@@ -546,8 +549,31 @@ def get_portfolio():
 @router.post("/manager/portfolio", status_code=201)
 def add_portfolio(body: PortfolioBody, user=Depends(require_manager)):
     db = get_db()
-    db.execute("INSERT INTO shop.portfolio (title, description, banner_url, member_count, link, category) VALUES (?,?,?,?,?,?)",
-               (body.title, body.description, body.banner_url, body.member_count, body.link, body.category))
+    db.execute("INSERT INTO shop.portfolio (title, description, banner_url, member_count, link, category, is_visible, sort_order, growth_percentage) VALUES (?,?,?,?,?,?,?,?,?)",
+               (body.title, body.description, body.banner_url, body.member_count, body.link, body.category, body.is_visible, body.sort_order, body.growth_percentage))
+    db.commit(); db.close()
+    return {"success": True}
+
+@router.put("/manager/portfolio/{pid}")
+def update_portfolio(pid: int, body: PortfolioBody, user=Depends(require_manager)):
+    db = get_db()
+    db.execute("""
+        UPDATE shop.portfolio 
+        SET title = ?, description = ?, banner_url = ?, member_count = ?, link = ?, category = ?, is_visible = ?, sort_order = ?, growth_percentage = ?
+        WHERE id = ?
+    """, (body.title, body.description, body.banner_url, body.member_count, body.link, body.category, body.is_visible, body.sort_order, body.growth_percentage, pid))
+    db.commit(); db.close()
+    return {"success": True}
+
+@router.patch("/manager/portfolio/{pid}/visibility")
+def toggle_portfolio_visibility(pid: int, user=Depends(require_manager)):
+    db = get_db()
+    # Toggle logic: 1 -> 0, 0 -> 1
+    db.execute("""
+        UPDATE shop.portfolio 
+        SET is_visible = CASE WHEN is_visible = 1 THEN 0 ELSE 1 END
+        WHERE id = ?
+    """, (pid,))
     db.commit(); db.close()
     return {"success": True}
 

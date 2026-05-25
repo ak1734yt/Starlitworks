@@ -8,14 +8,14 @@ import {
   Star, MessageSquare, Palette, Globe, Megaphone, 
   Layers, ListOrdered, Share2, TrendingUp, Loader2, Gift,
   Edit, FileText, Download, CreditCard, History, Check, Bell, ExternalLink, DollarSign, X, ShoppingBag, Zap,
-  ArrowLeft, MoreVertical, Layout, PieChart, IndianRupee, Mail, Send, Sparkles, Eye
+  ArrowLeft, MoreVertical, Layout, PieChart, IndianRupee, Mail, Send, Sparkles, Eye, EyeOff
 } from 'lucide-react';
 import { 
   getManagerLogs, getManagerUsers, updateUserRole, 
   getManagerPrices, updatePrice, createCoupon,
   getAdminOrders, verifyPayment, getManagerStats,
   createProduct, deleteProduct, setUserBanned,
-  getPortfolio, createPortfolio, deletePortfolio,
+  getPortfolio, createPortfolio, deletePortfolio, togglePortfolioVisibility,
   getSiteSettings, updateSiteSettings, deleteOrder,
   getAnalyticsLogs, getInvoices, adminUpdateInvoiceStatus,
   adminNotifyUserInvoice, adminAddUserCredits, seedCatalog,
@@ -1333,6 +1333,7 @@ export default function Manager() {
                     </optgroup>
                   </select>
                   <input name="sort_order" type="number" placeholder="Sort Order (0-99)" defaultValue="0" className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-brand-primary transition-all" />
+                  <input name="growth_percentage" placeholder="Growth % (e.g. 50)" className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-brand-primary transition-all" />
                 </div>
                 <textarea name="description" placeholder="Short Description / Focus Area" className="md:col-span-2 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-brand-primary transition-all" />
                 <button type="submit" className="md:col-span-2 btn-primary py-4 rounded-xl font-bold">Post Item</button>
@@ -1373,17 +1374,29 @@ export default function Manager() {
                     <a href={item.link} target="_blank" rel="noreferrer" className="text-xs font-bold flex items-center gap-2 text-white hover:text-brand-primary transition-colors">
                       View Server <ExternalLink className="w-3 h-3" />
                     </a>
-                    <button 
-                      onClick={async () => {
-                        if (confirm('Delete this portfolio item?')) {
-                          await deletePortfolio(item.id);
+                    <div className="flex items-center gap-2">
+                      <button 
+                        onClick={async () => {
+                          await togglePortfolioVisibility(item.id);
                           fetchData();
-                        }
-                      }}
-                      className="p-2 bg-red-500/10 text-red-400 rounded-lg hover:bg-red-500 hover:text-white transition-all"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </button>
+                        }}
+                        className={`p-2 rounded-lg transition-all ${item.is_visible ? 'bg-green-500/10 text-green-400 hover:bg-green-500 hover:text-white' : 'bg-gray-500/10 text-gray-400 hover:bg-gray-500 hover:text-white'}`}
+                        title={item.is_visible ? 'Hide from public' : 'Show to public'}
+                      >
+                        {item.is_visible ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+                      </button>
+                      <button 
+                        onClick={async () => {
+                          if (confirm('Delete this portfolio item?')) {
+                            await deletePortfolio(item.id);
+                            fetchData();
+                          }
+                        }}
+                        className="p-2 bg-red-500/10 text-red-400 rounded-lg hover:bg-red-500 hover:text-white transition-all"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}

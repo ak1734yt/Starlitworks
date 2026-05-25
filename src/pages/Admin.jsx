@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LayoutDashboard, IndianRupee, FileText, Users, ShoppingBag, Loader2, Save, X, Edit, Plus, Trash2, Search, Filter, Star, CreditCard, MessageSquare, Check, ExternalLink, Download, Eye, Globe, MapPin, Activity, Zap, Tag, Bell, DollarSign, History, TrendingUp, Calendar, Receipt, Circle, CheckCircle2 } from 'lucide-react';
+import { LayoutDashboard, IndianRupee, FileText, Users, ShoppingBag, Loader2, Save, X, Edit, Plus, Trash2, Search, Filter, Star, CreditCard, MessageSquare, Check, ExternalLink, Download, Eye, Globe, MapPin, Activity, Zap, Tag, Bell, DollarSign, History, TrendingUp, Calendar, Receipt, Circle, CheckCircle2, EyeOff } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import Navbar from '../components/Navbar';
 import SystemHealth from '../components/SystemHealth';
@@ -15,7 +15,7 @@ import {
   verifyPayment, updateFeedbackStatus, getCoupons, createCoupon,
   adminUpdateInvoiceStatus, adminNotifyUserInvoice, adminEditInvoice, adminAddUserCredits,
   deleteInvoice, recordInvoicePayment, deleteInvoicePayment,
-  getPortfolio, createPortfolio, deletePortfolio,
+  getPortfolio, createPortfolio, deletePortfolio, togglePortfolioVisibility,
   getTemplates, createTemplate, deleteTemplate
 } from '../services/api';
 import UserChat from '../components/UserChat';
@@ -86,7 +86,7 @@ export default function Admin() {
   const [creditAmount, setCreditAmount] = useState(0);
   const [submittingCredit, setSubmittingCredit] = useState(false);
 
-  const [newPortfolio, setNewPortfolio] = useState({ title: '', description: '', banner_url: '', member_count: '', link: '', category: 'custom' });
+  const [newPortfolio, setNewPortfolio] = useState({ title: '', description: '', banner_url: '', member_count: '', link: '', category: 'custom', growth_percentage: '' });
   const [newTemplate, setNewTemplate] = useState({ title: '', description: '', price: 0, roles_json: '[]', channels_json: '[]', template_link: '' });
 
   const handleAddCredits = async (e) => {
@@ -488,7 +488,7 @@ export default function Admin() {
     try {
       await createPortfolio(newPortfolio);
       toast.success('Portfolio item created');
-      setNewPortfolio({ title: '', description: '', banner_url: '', member_count: '', link: '', category: 'custom' });
+      setNewPortfolio({ title: '', description: '', banner_url: '', member_count: '', link: '', category: 'custom', growth_percentage: '' });
       fetchData();
     } catch (err) {
       toast.error(err.message);
@@ -1264,6 +1264,10 @@ export default function Admin() {
                           <label className="block text-xs font-bold text-gray-400 mb-1">Category</label>
                           <input type="text" value={newPortfolio.category} onChange={e => setNewPortfolio({...newPortfolio, category: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-brand-primary" placeholder="custom, public..." />
                         </div>
+                        <div>
+                          <label className="block text-xs font-bold text-gray-400 mb-1">Growth %</label>
+                          <input type="text" value={newPortfolio.growth_percentage} onChange={e => setNewPortfolio({...newPortfolio, growth_percentage: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-brand-primary" placeholder="e.g. 50" />
+                        </div>
                       </div>
                       <div>
                         <label className="block text-xs font-bold text-gray-400 mb-1">Project Link (Optional)</label>
@@ -1290,9 +1294,21 @@ export default function Admin() {
                             <span className="text-[10px] text-brand-primary font-bold">{item.member_count} Members</span>
                           </div>
                         </div>
-                        <button onClick={() => handleDeletePortfolioItem(item.id)} className="p-2 text-gray-500 hover:text-red-500 transition-colors bg-white/5 rounded-lg shrink-0">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button 
+                            onClick={async () => {
+                              await togglePortfolioVisibility(item.id);
+                              loadPortfolio();
+                            }}
+                            className={`p-2 rounded-lg transition-colors shrink-0 ${item.is_visible ? 'text-green-500 hover:text-green-400 bg-green-500/10' : 'text-gray-500 hover:text-gray-400 bg-gray-500/10'}`}
+                            title={item.is_visible ? 'Hide from public' : 'Show to public'}
+                          >
+                            {item.is_visible ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                          </button>
+                          <button onClick={() => handleDeletePortfolioItem(item.id)} className="p-2 text-gray-500 hover:text-red-500 transition-colors bg-white/5 rounded-lg shrink-0">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>

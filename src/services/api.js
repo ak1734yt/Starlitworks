@@ -113,6 +113,10 @@ export const adminEditInvoice = (id, data) => request(`/invoices/${id}`, { metho
 export const adminAddUserCredits = (userId, amount) => request(`/admin/users/${userId}/credits`, { method: 'POST', body: JSON.stringify({ amount }) });
 export const seedCatalog = () => request('/manager/seed-catalog', { method: 'POST' });
 
+// Portfolio Management
+export const updatePortfolio = (pid, data) => request(`/manager/portfolio/${pid}`, { method: 'PUT', body: JSON.stringify(data) });
+export const togglePortfolioVisibility = (pid) => request(`/manager/portfolio/${pid}/visibility`, { method: 'PATCH' });
+
 // Order Progress Feed
 export const getOrderUpdates = (orderId) => request(`/orders/${orderId}/updates`);
 export const postOrderUpdate = (orderId, message) => request(`/admin/orders/${orderId}/update`, { method: 'POST', body: JSON.stringify({ message }) });
