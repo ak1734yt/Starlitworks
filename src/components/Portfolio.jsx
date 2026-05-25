@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Users, ArrowUpRight, TrendingUp, Sparkles, Activity } from "lucide-react";
+import { Users, ArrowUpRight, ArrowRight, TrendingUp, Sparkles, Activity } from "lucide-react";
 import { getPortfolio } from "../services/api";
 
 const Portfolio = () => {
