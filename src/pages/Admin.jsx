@@ -86,7 +86,7 @@ export default function Admin() {
   const [creditAmount, setCreditAmount] = useState(0);
   const [submittingCredit, setSubmittingCredit] = useState(false);
 
-  const [newPortfolio, setNewPortfolio] = useState({ title: '', description: '', banner_url: '', member_count: '', link: '', category: 'custom', growth_percentage: '' });
+  const [newPortfolio, setNewPortfolio] = useState({ title: '', description: '', banner_url: '', member_count: '', link: '', category: 'Server Developed', growth_percentage: '' });
   const [newTemplate, setNewTemplate] = useState({ title: '', description: '', price: 0, roles_json: '[]', channels_json: '[]', template_link: '' });
 
   const handleAddCredits = async (e) => {
@@ -488,7 +488,7 @@ export default function Admin() {
     try {
       await createPortfolio(newPortfolio);
       toast.success('Portfolio item created');
-      setNewPortfolio({ title: '', description: '', banner_url: '', member_count: '', link: '', category: 'custom', growth_percentage: '' });
+      setNewPortfolio({ title: '', description: '', banner_url: '', member_count: '', link: '', category: 'Server Developed', growth_percentage: '' });
       fetchData();
     } catch (err) {
       toast.error(err.message);
@@ -1262,7 +1262,11 @@ export default function Admin() {
                         </div>
                         <div>
                           <label className="block text-xs font-bold text-gray-400 mb-1">Category</label>
-                          <input type="text" value={newPortfolio.category} onChange={e => setNewPortfolio({...newPortfolio, category: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-brand-primary" placeholder="custom, public..." />
+                          <select value={newPortfolio.category} onChange={e => setNewPortfolio({...newPortfolio, category: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-brand-primary">
+                            <option value="Server Developed">Server Developed</option>
+                            <option value="Bot Developed">Bot Developed</option>
+                            <option value="Public Servers">Public Servers</option>
+                          </select>
                         </div>
                         <div>
                           <label className="block text-xs font-bold text-gray-400 mb-1">Growth %</label>
