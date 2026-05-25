@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { HERO_STATS } from "../constants/heroStats";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { getPublicStats } from "../services/api";
+import { getPublicStats, getPortfolio } from "../services/api";
 
 const Hero = ({ settings = {} }) => {
   const navigate = useNavigate();
@@ -13,7 +13,7 @@ const Hero = ({ settings = {} }) => {
   const [realStats, setRealStats] = useState(null);
 
   useEffect(() => {
-    fetch('/api/portfolio').then(r => r.json()).then(data => setPortfolio(data)).catch(() => {});
+    getPortfolio().then(data => setPortfolio(data || [])).catch(() => {});
     
     const fetchStats = () => getPublicStats().then(setRealStats).catch(() => {});
     fetchStats();
