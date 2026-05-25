@@ -29,20 +29,20 @@ async def lifespan(app: FastAPI):
         from discord_bot import start_discord_bot, bot
         bot_task = asyncio.create_task(start_discord_bot())
         
-        print("      ⏳ Waiting for Primary Discord Bot to connect and load data...")
-        # Wait until the bot is fully ready before proceeding, with a 30-second timeout
-        try:
-            async def wait_for_bot():
-                while not bot.is_ready() and not bot.is_closed() and not bot_task.done():
-                    await asyncio.sleep(0.5)
-                if not bot.is_ready():
-                    raise TimeoutError("Bot failed to connect or was rate limited.")
-            await asyncio.wait_for(wait_for_bot(), timeout=30.0)
-            print("      ✓ Primary Discord Bot daemon launched successfully.")
-        except asyncio.TimeoutError:
-            print("      ⚠️ Primary Discord Bot connection timed out (likely rate limited). Continuing anyway...")
-        except Exception as e:
-            print(f"      ⚠️ Primary Discord Bot connection failed: {e}. Continuing anyway...")
+        print("      ⏳ Waiting for Primary Discord Bot to connect and load data (max 30s)...")
+        for _ in range(60):  # 60 * 0.5s = 30 seconds
+            if bot.is_ready():
+                print("      ✓ Primary Discord Bot daemon launched successfully.")
+                break
+            if bot.is_closed() and getattr(bot, 'loop', None) and not bot.loop.is_running():
+                # Note: is_closed() might be true initially, so we check if task is done instead
+                pass
+            if bot_task.done():
+                print("      ⚠️ Primary Discord Bot task terminated unexpectedly (likely rate limited). Continuing anyway...")
+                break
+            await asyncio.sleep(0.5)
+        else:
+            print("      ⚠️ Primary Discord Bot connection timed out. Continuing anyway...")
     else:
         print("[1/3] Primary Discord Bot: SKIPPED (No Token Found)")
         
