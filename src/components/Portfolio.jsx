@@ -45,8 +45,8 @@ const Portfolio = () => {
         </div>
 
         <div className="relative w-full overflow-hidden mask-image-fade">
-          <div className="flex gap-10 animate-scroll w-max hover:pause">
-            {displayProjects.length > 0 ? [...displayProjects, ...displayProjects].map((project, index) => (
+          <div className={`flex gap-10 w-max ${displayProjects.length > 3 ? 'animate-scroll hover:pause' : 'mx-auto justify-center'}`}>
+            {displayProjects.length > 0 ? (displayProjects.length > 3 ? [...displayProjects, ...displayProjects] : displayProjects).map((project, index) => (
               <motion.div
                 key={`${project.id || index}-${index}`}
                 onClick={() => project.link && window.open(project.link, '_blank')}
