@@ -15,7 +15,11 @@ export async function request(path, options = {}) {
   const contentType = res.headers.get('content-type');
   if (contentType && contentType.includes('application/json')) {
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'An unexpected error occurred.');
+    if (!res.ok) {
+      const err = new Error(data.error || 'An unexpected error occurred.');
+      err.status = res.status;
+      throw err;
+    }
     return data;
   } else {
     const text = await res.text();
@@ -23,9 +27,13 @@ export async function request(path, options = {}) {
       const url = `${API}${path}`;
       // If it's HTML, it might be a 404/500 from the proxy or server
       if (text.includes('<!DOCTYPE html>')) {
-        throw new Error(`Server Error (${res.status}) at ${url}: The server returned an HTML page instead of JSON. This usually means the backend is down, the URL is incorrect, or the Vite proxy failed.`);
+        const err = new Error(`Server Error (${res.status}) at ${url}: The server returned an HTML page instead of JSON. This usually means the backend is down, the URL is incorrect, or the Vite proxy failed.`);
+        err.status = res.status;
+        throw err;
       }
-      throw new Error(`Error (${res.status}) at ${url}: ${text || 'An unexpected error occurred.'}`);
+      const err = new Error(`Error (${res.status}) at ${url}: ${text || 'An unexpected error occurred.'}`);
+      err.status = res.status;
+      throw err;
     }
     return text;
   }

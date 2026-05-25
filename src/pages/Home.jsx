@@ -352,7 +352,7 @@ function Home() {
             
             <div className="flex flex-col sm:flex-row justify-center gap-4">
               <button onClick={() => navigate('/shop')} className="btn-primary flex items-center justify-center gap-2 px-10 py-4 text-lg">
-                Get Your Free Quote
+                Request for Price
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </button>
               <button onClick={() => window.open('https://discord.gg/yourserver', '_blank')} className="btn-secondary flex items-center justify-center gap-2 px-8 py-4 text-lg">
