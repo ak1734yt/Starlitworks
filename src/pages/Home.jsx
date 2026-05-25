@@ -102,10 +102,15 @@ function Home() {
       {/* ═══ Global Fixed Background for Entire Home Page ═══ */}
       <div className="fixed inset-0 z-[-1] pointer-events-none">
         <img 
-          src={siteSettings.hero_banner || "/banner.jpg"} 
+          src={"/banner.jpg?v=2"} 
           alt="Site Background"
           className="w-full h-full object-cover object-center opacity-30"
-          onError={(e) => { e.target.src = "/banner.jpg"; }}
+          onError={(e) => { 
+            if (!e.target.dataset.failed) {
+              e.target.dataset.failed = true;
+              e.target.src = "/banner.jpg?v=2";
+            }
+          }}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-brand-bg via-brand-bg/90 to-brand-bg/40" />
         <div className="absolute inset-0 bg-gradient-to-r from-brand-bg via-brand-bg/70 to-transparent" />

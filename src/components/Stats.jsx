@@ -108,13 +108,13 @@ const Stats = () => {
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[300px] bg-brand-primary/[0.04] rounded-full blur-[100px] pointer-events-none" />
       
       <div className="max-w-[1300px] mx-auto px-6 relative z-10 w-full">
-        {/* Premium Glass Container */}
+        {/* Stats Container (Background Removed) */}
         <motion.div
           initial={{ opacity: 0, y: 40 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
           viewport={{ once: true }}
-          className="glass-stats-container px-8 py-10 md:px-12 md:py-14"
+          className="px-4 py-8 md:px-8 md:py-10 w-full"
         >
           <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-y-10">
             {STATS_DATA.filter((_, i) => i < 7).map((stat, index) => (
