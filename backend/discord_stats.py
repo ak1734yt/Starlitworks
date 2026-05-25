@@ -49,6 +49,7 @@ def update_discord_member_count():
                             guild_members[str(gid)] = r2.json().get("approximate_member_count", 0)
                 except Exception as e:
                     print(f"[DISCORD STATS] Error fetching bot guild {gid}: {e}")
+                time.sleep(2)  # Cooldown to prevent rate limiting
                     
     # 3. Fetch from selfbot (shelbot)
     if selfbot_token:
@@ -75,6 +76,7 @@ def update_discord_member_count():
                             guild_members[str(gid)] = r2.json().get("approximate_member_count", 0)
                 except Exception as e:
                     print(f"[DISCORD STATS] Error fetching selfbot guild {gid}: {e}")
+                time.sleep(2)  # Cooldown to prevent rate limiting
                     
     total_members = sum(guild_members.values())
     
@@ -97,7 +99,7 @@ def start_discord_stats_loop():
                 update_discord_member_count()
             except Exception as e:
                 print(f"[DISCORD STATS] Error in thread loop: {e}")
-            time.sleep(60)
+            time.sleep(3600)  # Update once per hour
             
     threading.Thread(target=_loop, daemon=True).start()
     print("[DISCORD STATS] Background sync loop started.")
