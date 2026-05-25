@@ -14,7 +14,12 @@ const Hero = ({ settings = {} }) => {
 
   useEffect(() => {
     fetch('/api/portfolio').then(r => r.json()).then(data => setPortfolio(data)).catch(() => {});
-    getPublicStats().then(setRealStats).catch(() => {});
+    
+    const fetchStats = () => getPublicStats().then(setRealStats).catch(() => {});
+    fetchStats();
+    
+    const interval = setInterval(fetchStats, 10000);
+    return () => clearInterval(interval);
   }, []);
 
   // Build carousel slides: up to 4 portfolio cards
@@ -85,17 +90,7 @@ const Hero = ({ settings = {} }) => {
 
   return (
     <section className="relative pt-20 pb-8 md:pt-24 md:pb-10 overflow-hidden md:min-h-[75vh] flex items-center section-transparent">
-      {/* ═══ Full Width Banner Background ═══ */}
-      <div className="absolute inset-0 z-0">
-        <img 
-          src={settings.hero_banner || "/banner.png"} 
-          alt="Hero Banner"
-          className="w-full h-full object-cover object-center opacity-40"
-          onError={(e) => { e.target.src = "/banner.jpg"; }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-brand-bg via-brand-bg/80 to-brand-bg/40" />
-        <div className="absolute inset-0 bg-gradient-to-r from-brand-bg via-brand-bg/50 to-transparent" />
-      </div>
+      {/* Background is now handled globally in Home.jsx */}
 
       {/* ═══ Background Layers ═══ */}
       <div className="gradient-mesh animate-gradient-shift opacity-50" />

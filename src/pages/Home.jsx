@@ -98,9 +98,21 @@ function Home() {
   }
 
   return (
-    <div className="min-h-screen overflow-x-hidden">
+    <div className="min-h-screen overflow-x-hidden relative">
+      {/* ═══ Global Fixed Background for Entire Home Page ═══ */}
+      <div className="fixed inset-0 z-[-1] pointer-events-none">
+        <img 
+          src={siteSettings.hero_banner || "/banner.jpg"} 
+          alt="Site Background"
+          className="w-full h-full object-cover object-center opacity-30"
+          onError={(e) => { e.target.src = "/banner.jpg"; }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-brand-bg via-brand-bg/90 to-brand-bg/40" />
+        <div className="absolute inset-0 bg-gradient-to-r from-brand-bg via-brand-bg/70 to-transparent" />
+      </div>
+
       <Navbar />
-      <main>
+      <main className="relative z-0">
         <Hero settings={siteSettings} />
         {siteSettings.show_stats !== 'false' && <Stats />}
         
