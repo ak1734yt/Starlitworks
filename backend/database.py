@@ -421,6 +421,24 @@ def init_db():
             print("Migration: Added email_verified column to users")
         except Exception:
             pass
+        try:
+            conn_users_mig.execute("ALTER TABLE users ADD COLUMN two_factor_secret TEXT")
+            conn_users_mig.commit()
+            print("Migration: Added two_factor_secret column to users")
+        except Exception:
+            pass
+        try:
+            conn_users_mig.execute("ALTER TABLE users ADD COLUMN two_factor_enabled INTEGER DEFAULT 0")
+            conn_users_mig.commit()
+            print("Migration: Added two_factor_enabled column to users")
+        except Exception:
+            pass
+        try:
+            conn_users_mig.execute("ALTER TABLE users ADD COLUMN backup_codes TEXT DEFAULT '[]'")
+            conn_users_mig.commit()
+            print("Migration: Added backup_codes column to users")
+        except Exception:
+            pass
     except Exception as e:
         print(f"Error in security migrations: {e}")
     finally:
