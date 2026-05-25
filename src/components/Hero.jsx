@@ -135,8 +135,12 @@ const Hero = ({ settings = {} }) => {
               transition={{ delay: 0.3, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
               className="font-display text-4xl md:text-5xl lg:text-5xl xl:text-[3.2rem] font-black leading-[1.1] mb-5 text-white tracking-tight"
             >
-              Build Discord <span className="text-gradient-hero">Communities</span><br />
-              With <span className="text-gradient-hero">Starlit Siege</span>
+              {settings.hero_title ? (
+                <span dangerouslySetInnerHTML={{ __html: settings.hero_title }} />
+              ) : (
+                <>Build Discord <span className="text-gradient-hero">Communities</span><br />
+                With <span className="text-gradient-hero">Starlit Siege</span></>
+              )}
             </motion.h1>
 
             {/* Discord Sub-Banner */}
@@ -149,7 +153,9 @@ const Hero = ({ settings = {} }) => {
               <svg className="w-6 h-6 text-[#5865F2]" viewBox="0 0 127.14 96.36" fill="currentColor">
                 <path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77.7,77.7,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.31,60,73.31,53s5-12.74,11.43-12.74S96.33,46,96.22,53,91.08,65.69,84.69,65.69Z"/>
               </svg>
-              <span className="text-white/90 font-bold text-base md:text-lg tracking-tight">That People Never Want to Leave.</span>
+              <span className="text-white/90 font-bold text-base md:text-lg tracking-tight">
+                {settings.hero_status_text || "That People Never Want to Leave."}
+              </span>
             </motion.div>
 
             {/* Description */}
@@ -159,7 +165,7 @@ const Hero = ({ settings = {} }) => {
               transition={{ delay: 0.6, duration: 0.7 }}
               className="text-gray-400 text-sm md:text-[15px] leading-relaxed mb-6 max-w-lg"
             >
-              Premium server architecture, custom bots, automation systems, and scalable community growth infrastructure for creators, brands, and gaming organizations.
+              {settings.hero_subtitle || "Premium server architecture, custom bots, automation systems, and scalable community growth infrastructure for creators, brands, and gaming organizations."}
             </motion.p>
 
             {/* Feature Pills */}
@@ -277,7 +283,7 @@ const Hero = ({ settings = {} }) => {
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <p className="text-xs font-bold text-white">24/7 Security</p>
+                      <p className="text-xs font-bold text-white">{settings.hero_badge_secure || "24/7 Security"}</p>
                       <span className="relative flex h-1.5 w-1.5">
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                         <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500"></span>
@@ -299,7 +305,7 @@ const Hero = ({ settings = {} }) => {
                     <Zap className="w-5 h-5 text-brand-secondary" />
                   </div>
                   <div>
-                    <p className="text-xs font-bold text-white">Hyper Automation</p>
+                    <p className="text-xs font-bold text-white">{settings.hero_badge_live || "Hyper Automation"}</p>
                     <p className="text-[10px] text-gray-500 flex items-center gap-1.5">
                       Custom bots deployed
                       <Activity className="w-3 h-3 text-brand-secondary" />
