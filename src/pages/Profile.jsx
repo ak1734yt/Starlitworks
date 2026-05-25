@@ -35,6 +35,7 @@ export default function Profile() {
   const [twoFactorSecret, setTwoFactorSecret] = useState('');
   const [backupCodes, setBackupCodes] = useState([]);
   const [twoFactorCode, setTwoFactorCode] = useState('');
+  const [is2FAVerified, setIs2FAVerified] = useState(false);
 
   // Tab 3: Credits Form Data
   const [creditAmount, setCreditAmount] = useState('5');
@@ -171,6 +172,8 @@ export default function Profile() {
       setQrCode(qrCodeUrl);
       setTwoFactorSecret(secret);
       setBackupCodes(backup_codes || []);
+      setIs2FAVerified(false);
+      setTwoFactorCode('');
       setShow2FAModal(true);
     } catch (err) {
       toast.error(err.message);
@@ -181,7 +184,7 @@ export default function Profile() {
     try {
       await confirm2FA(twoFactorCode);
       toast.success('Two-factor authentication activated!');
-      setShow2FAModal(false);
+      setIs2FAVerified(true);
       setTwoFactorCode('');
     } catch (err) {
       toast.error(err.message);
@@ -951,47 +954,82 @@ export default function Profile() {
                 <Shield className="w-8 h-8 text-brand-primary" />
               </div>
 
-              <h2 className="text-2xl font-bold mb-2 font-display">Enable 2FA</h2>
-              <p className="text-gray-500 text-xs mb-8">Scan this QR code with Google Authenticator or Authy to get started.</p>
+              {!is2FAVerified ? (
+                <>
+                  <h2 className="text-2xl font-bold mb-2 font-display">Enable 2FA</h2>
+                  <p className="text-gray-500 text-xs mb-8">Scan this QR code with Google Authenticator or Authy to get started.</p>
 
-              {qrCode && <img src={qrCode} alt="QR Code" className="mx-auto w-44 h-44 rounded-2xl border-4 border-white mb-6 shadow-xl" />}
-              
-              <div className="bg-white/5 p-4 rounded-xl border border-white/5 mb-6">
-                <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest mb-1">Secret Key</p>
-                <code className="text-brand-primary text-sm font-mono tracking-widest">{twoFactorSecret}</code>
-              </div>
-
-              {backupCodes.length > 0 && (
-                <div className="bg-red-500/10 p-4 rounded-xl border border-red-500/20 mb-8 text-left">
-                  <p className="text-[10px] text-red-400 uppercase font-black tracking-widest mb-2 flex items-center gap-1.5"><Shield className="w-3.5 h-3.5" /> Backup Codes</p>
-                  <p className="text-[10px] text-red-300 mb-3 leading-relaxed">Save these! You will need them if you lose access to your authenticator app.</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {backupCodes.map((code, idx) => (
-                      <code key={idx} className="bg-black/30 px-2 py-1.5 rounded text-white font-mono text-center tracking-widest text-[10px] border border-white/5">{code}</code>
-                    ))}
+                  {qrCode && <img src={qrCode} alt="QR Code" className="mx-auto w-44 h-44 rounded-2xl border-4 border-white mb-6 shadow-xl" />}
+                  
+                  <div className="bg-white/5 p-4 rounded-xl border border-white/5 mb-6">
+                    <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest mb-1">Secret Key</p>
+                    <code className="text-brand-primary text-sm font-mono tracking-widest">{twoFactorSecret}</code>
                   </div>
-                </div>
-              )}
 
-              <div className="space-y-4">
-                <div className="text-left">
-                  <label className="text-[10px] text-gray-500 uppercase font-black tracking-widest ml-1 mb-2 block">Enter Verification Code</label>
-                  <input 
-                    type="text" 
-                    placeholder="000000"
-                    value={twoFactorCode}
-                    onChange={(e) => setTwoFactorCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                    className="w-full bg-black/40 border border-white/10 rounded-xl py-3.5 text-2xl text-center font-mono tracking-[0.5em] text-white focus:border-brand-primary outline-none transition-all"
-                  />
-                </div>
-                <button 
-                  onClick={handleConfirm2FA}
-                  disabled={twoFactorCode.length < 6}
-                  className="w-full py-4 bg-brand-primary rounded-xl font-bold shadow-lg shadow-brand-primary/20 hover:shadow-brand-primary/40 transition-all disabled:opacity-50 disabled:grayscale"
-                >
-                  Verify & Enable
-                </button>
-              </div>
+                  <div className="space-y-4">
+                    <div className="text-left">
+                      <label className="text-[10px] text-gray-500 uppercase font-black tracking-widest ml-1 mb-2 block">Enter Verification Code</label>
+                      <input 
+                        type="text" 
+                        placeholder="000000"
+                        value={twoFactorCode}
+                        onChange={(e) => setTwoFactorCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        className="w-full bg-black/40 border border-white/10 rounded-xl py-3.5 text-2xl text-center font-mono tracking-[0.5em] text-white focus:border-brand-primary outline-none transition-all"
+                      />
+                    </div>
+                    <button 
+                      onClick={handleConfirm2FA}
+                      disabled={twoFactorCode.length < 6}
+                      className="w-full py-4 bg-brand-primary rounded-xl font-bold shadow-lg shadow-brand-primary/20 hover:shadow-brand-primary/40 transition-all disabled:opacity-50 disabled:grayscale"
+                    >
+                      Verify & Enable
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <h2 className="text-2xl font-bold mb-2 font-display text-green-400">2FA Verified!</h2>
+                  <p className="text-gray-400 text-xs mb-6">Your account is now secured. Please save your backup codes below.</p>
+                  
+                  {backupCodes.length > 0 && (
+                    <div className="bg-red-500/10 p-5 rounded-2xl border border-red-500/20 mb-8 text-left shadow-lg">
+                      <p className="text-xs text-red-400 uppercase font-black tracking-widest mb-2 flex items-center gap-2"><Shield className="w-4 h-4" /> Backup Codes</p>
+                      <p className="text-xs text-red-300 mb-4 leading-relaxed">Save these! You will need them if you lose access to your authenticator app.</p>
+                      <div className="grid grid-cols-2 gap-3">
+                        {backupCodes.map((code, idx) => (
+                          <code key={idx} className="bg-black/40 px-3 py-2 rounded-lg text-white font-mono text-center tracking-widest text-xs border border-white/10">{code}</code>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex gap-4">
+                    <button 
+                      onClick={() => {
+                        const blob = new Blob([backupCodes.join('\n')], { type: 'text/plain' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = 'ssw-backup-codes.txt';
+                        a.click();
+                        URL.revokeObjectURL(url);
+                      }}
+                      className="flex-1 py-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl font-bold transition-all text-xs"
+                    >
+                      Download .txt
+                    </button>
+                    <button 
+                      onClick={() => {
+                        setShow2FAModal(false);
+                        setIs2FAVerified(false);
+                      }}
+                      className="flex-1 py-4 bg-brand-primary rounded-xl font-bold shadow-lg hover:shadow-brand-primary/40 transition-all text-xs"
+                    >
+                      I have saved these
+                    </button>
+                  </div>
+                </>
+              )}
             </motion.div>
           </div>
         )}
