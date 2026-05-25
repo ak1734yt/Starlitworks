@@ -104,7 +104,7 @@ function Home() {
         <img 
           src={"/banner.jpg?v=2"} 
           alt="Site Background"
-          className="w-full h-full object-cover object-center opacity-30"
+          className="w-full h-full object-cover object-center opacity-50"
           onError={(e) => { 
             if (!e.target.dataset.failed) {
               e.target.dataset.failed = true;
@@ -112,8 +112,8 @@ function Home() {
             }
           }}
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-brand-bg via-brand-bg/90 to-brand-bg/40" />
-        <div className="absolute inset-0 bg-gradient-to-r from-brand-bg via-brand-bg/70 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-brand-bg via-brand-bg/80 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-r from-brand-bg via-brand-bg/60 to-transparent" />
       </div>
 
       <Navbar />

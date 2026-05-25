@@ -37,8 +37,7 @@ const Hero = ({ settings = {} }) => {
           description: "Premium Discord infrastructure and robust community systems.",
           category: "Featured",
           member_count: "1k+",
-          banner_url: "/banner.jpg?v=2",
-          link: "#"
+          banner_url: "/banner.jpg?v=2"
         }
       });
     }
@@ -82,13 +81,15 @@ const Hero = ({ settings = {} }) => {
         <div className="flex items-end justify-between">
           <div>
             <h3 className="text-2xl font-display font-black text-white mb-2">{project.title}</h3>
-            <p className="text-sm text-gray-300 line-clamp-1">{project.description}</p>
+            <p className="text-sm text-gray-300 line-clamp-2">{project.description}</p>
           </div>
-          <div className="ml-4 shrink-0">
-            <div className="w-10 h-10 rounded-xl glass flex items-center justify-center group-hover:bg-brand-primary group-hover:border-brand-primary group-hover:shadow-[0_0_20px_rgba(124,58,237,0.5)] transition-all">
-              <ArrowUpRight className="w-5 h-5 text-white" />
+          {project.link && (
+            <div className="ml-4 shrink-0">
+              <div className="w-10 h-10 rounded-xl glass flex items-center justify-center group-hover:bg-brand-primary group-hover:border-brand-primary group-hover:shadow-[0_0_20px_rgba(124,58,237,0.5)] transition-all">
+                <ArrowUpRight className="w-5 h-5 text-white" />
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

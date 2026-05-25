@@ -1028,7 +1028,7 @@ export default function Admin() {
                           <th className="px-6 py-4 font-medium text-gray-400">Client</th>
                           <th className="px-6 py-4 font-medium text-gray-400">Date</th>
                           <th className="px-6 py-4 font-medium text-gray-400">Total</th>
-                          <th className="px-6 py-4 font-medium text-gray-400">Left Amount</th>
+                          <th className="px-6 py-4 font-medium text-gray-400">Due Amount</th>
                           <th className="px-6 py-4 font-medium text-gray-400">Type</th>
                           <th className="px-6 py-4 text-right font-medium text-gray-400">Action</th>
                         </tr>
