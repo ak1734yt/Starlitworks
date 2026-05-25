@@ -26,8 +26,14 @@ async def lifespan(app: FastAPI):
     if os.getenv("DISCORD_BOT_TOKEN"):
         print("[1/3] Initializing Primary Discord Bot (discord.py)...")
         import asyncio
-        from discord_bot import start_discord_bot
+        from discord_bot import start_discord_bot, bot
         asyncio.create_task(start_discord_bot())
+        
+        print("      ⏳ Waiting for Primary Discord Bot to connect and load data...")
+        # Wait until the bot is fully ready before proceeding
+        while not bot.is_ready():
+            await asyncio.sleep(0.5)
+            
         print("      ✓ Primary Discord Bot daemon launched successfully.")
     else:
         print("[1/3] Primary Discord Bot: SKIPPED (No Token Found)")
@@ -35,7 +41,19 @@ async def lifespan(app: FastAPI):
     # 2. Self Bot
     if os.getenv("DISCORD_SELFBOT_TOKEN"):
         print("[2/3] Initializing Self Bot Infrastructure...")
-        print("      ✓ Self Bot credentials loaded and verified.")
+        print("      ⏳ Fetching member stats via Self Bot...")
+        import asyncio
+        from discord_stats import update_discord_member_count
+        
+        # Run the blocking network call in a thread so it doesn't block the FastAPI event loop
+        def _fetch_stats():
+            try:
+                update_discord_member_count()
+            except Exception as e:
+                print(f"      ❌ Error fetching self bot stats: {e}")
+                
+        await asyncio.to_thread(_fetch_stats)
+        print("      ✓ Self Bot credentials loaded and data synced.")
     else:
         print("[2/3] Self Bot: SKIPPED (No Token Found)")
         
