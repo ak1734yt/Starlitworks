@@ -22,27 +22,21 @@ const Hero = ({ settings = {} }) => {
     return () => clearInterval(interval);
   }, []);
 
-  // Build carousel slides: up to 4 portfolio cards
+  // Build carousel slides: always show Starlit Siege
   useEffect(() => {
     const slides = [];
-    if (portfolio && portfolio.length > 0) {
-      const featuredPortfolio = portfolio.slice(0, 4);
-      featuredPortfolio.forEach(p => slides.push({ type: 'portfolio', data: p }));
-    } else {
-      // Fallback if API fails or returns empty, to prevent blank dark box
-      slides.push({
-        type: 'portfolio',
-        data: {
-          title: "Starlit Siege",
-          description: "Premium Discord infrastructure and robust community systems.",
-          category: "Featured",
-          member_count: "1k+",
-          banner_url: settings?.hero_banner || "/banner.jpg?v=3"
-        }
-      });
-    }
+    slides.push({
+      type: 'portfolio',
+      data: {
+        title: "Starlit Siege",
+        description: "Premium Discord infrastructure and robust community systems.",
+        category: "Featured",
+        member_count: "1k+",
+        banner_url: settings?.hero_banner || "/banner.jpg?v=3"
+      }
+    });
     setCardData(slides);
-  }, [portfolio]);
+  }, [settings?.hero_banner]);
 
   // Auto-rotate every 4s
   useEffect(() => {
