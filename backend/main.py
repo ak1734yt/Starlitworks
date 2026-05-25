@@ -11,8 +11,7 @@ load_dotenv()
 init_db()
 start_notification_service()
 
-from discord_stats import start_discord_stats_loop
-start_discord_stats_loop()
+
 
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
