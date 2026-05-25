@@ -14,6 +14,7 @@ import { toast } from "react-hot-toast";
 
 function Home() {
   const navigate = useNavigate();
+  console.log("Starlit Siege Works - Home initialized"); // Cache bust to fix Vite chunking issue
   const { openAuthModal, user } = useAuth();
   const [feedbacks, setFeedbacks] = useState([]);
   const [blogs, setBlogs] = useState([]);
