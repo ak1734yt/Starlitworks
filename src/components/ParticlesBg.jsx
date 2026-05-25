@@ -13,9 +13,9 @@ export default function ParticlesBg() {
     let height = (canvas.height = window.innerHeight);
 
     const particles = [];
-    const particleCount = 90;
-    const connectionDistance = 150;
-    const mouse = { x: null, y: null, radius: 180 };
+    const particleCount = 25;
+    const connectionDistance = 120;
+    const mouse = { x: null, y: null, radius: 150 };
 
     class Particle {
       constructor() {

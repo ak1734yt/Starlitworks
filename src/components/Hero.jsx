@@ -17,9 +17,9 @@ const Hero = ({ settings = {} }) => {
     getPublicStats().then(setRealStats).catch(() => {});
   }, []);
 
-  // Build carousel slides: banner + up to 4 portfolio cards
+  // Build carousel slides: up to 4 portfolio cards
   useEffect(() => {
-    const slides = [{ type: 'banner' }];
+    const slides = [];
     const featuredPortfolio = portfolio.slice(0, 4);
     featuredPortfolio.forEach(p => slides.push({ type: 'portfolio', data: p }));
     setCardData(slides);
@@ -74,20 +74,6 @@ const Hero = ({ settings = {} }) => {
     </div>
   );
 
-  const BannerCard = () => (
-    <div className="absolute inset-0 rounded-3xl overflow-hidden shadow-[0_0_50px_rgba(124,58,237,0.3)]">
-      <img
-        src={settings.hero_banner || "/banner.png"}
-        alt="Starlit Siege Banner"
-        loading="lazy"
-        className="absolute inset-0 w-full h-full object-cover transition-transform duration-1000 scale-105 hover:scale-100"
-        onError={(e) => { e.target.src = "/banner.jpg"; }}
-      />
-      <div className="absolute inset-0 bg-gradient-to-t from-brand-bg via-brand-bg/50 to-transparent" />
-      <div className="absolute inset-0 bg-brand-primary/10 mix-blend-overlay" />
-    </div>
-  );
-
   const currentSlide = cardData[activeSlide];
 
   const featurePills = [
@@ -98,15 +84,27 @@ const Hero = ({ settings = {} }) => {
   ];
 
   return (
-    <section className="relative pt-20 pb-8 md:pt-24 md:pb-10 overflow-hidden md:min-h-[60vh] flex items-center section-transparent">
+    <section className="relative pt-20 pb-8 md:pt-24 md:pb-10 overflow-hidden md:min-h-[75vh] flex items-center section-transparent">
+      {/* ═══ Full Width Banner Background ═══ */}
+      <div className="absolute inset-0 z-0">
+        <img 
+          src={settings.hero_banner || "/banner.png"} 
+          alt="Hero Banner"
+          className="w-full h-full object-cover object-center opacity-40"
+          onError={(e) => { e.target.src = "/banner.jpg"; }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-brand-bg via-brand-bg/80 to-brand-bg/40" />
+        <div className="absolute inset-0 bg-gradient-to-r from-brand-bg via-brand-bg/50 to-transparent" />
+      </div>
+
       {/* ═══ Background Layers ═══ */}
-      <div className="gradient-mesh animate-gradient-shift" />
-      <div className="starlit-pattern absolute inset-0 opacity-40 pointer-events-none" />
+      <div className="gradient-mesh animate-gradient-shift opacity-50" />
+      <div className="starlit-pattern absolute inset-0 opacity-20 pointer-events-none" />
       
       {/* Ambient nebula glow spots */}
-      <div className="absolute top-[10%] left-[15%] w-[400px] h-[400px] bg-brand-primary/10 rounded-full blur-[100px] pointer-events-none" />
-      <div className="absolute bottom-[10%] right-[10%] w-[300px] h-[300px] bg-brand-secondary/8 rounded-full blur-[80px] pointer-events-none" />
-      <div className="absolute top-[50%] left-[60%] w-[200px] h-[200px] bg-brand-accent/5 rounded-full blur-[60px] pointer-events-none" />
+      <div className="absolute top-[0%] left-[10%] w-[600px] h-[600px] bg-[radial-gradient(circle_at_center,rgba(124,58,237,0.15),transparent_60%)] pointer-events-none" />
+      <div className="absolute bottom-[-10%] right-[5%] w-[500px] h-[500px] bg-[radial-gradient(circle_at_center,rgba(59,130,246,0.15),transparent_60%)] pointer-events-none" />
+      <div className="absolute top-[40%] left-[50%] w-[400px] h-[400px] bg-[radial-gradient(circle_at_center,rgba(34,211,238,0.1),transparent_60%)] pointer-events-none" />
 
       <div className="max-w-7xl mx-auto px-6 relative z-10 w-full">
         <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
@@ -219,7 +217,7 @@ const Hero = ({ settings = {} }) => {
             </motion.div>
           </motion.div>
 
-          {/* ═══════════ RIGHT: Glass Card Showcase ═══════════ */}
+          {/* ═══════════ RIGHT: Portfolio Showcase ═══════════ */}
           <motion.div
             initial={{ opacity: 0, scale: 0.9, x: 30 }}
             animate={{ opacity: 1, scale: 1, x: 0 }}
@@ -227,46 +225,18 @@ const Hero = ({ settings = {} }) => {
             className="relative hidden lg:block"
           >
             <div className="relative group aspect-[4/3] w-full max-w-lg ml-auto">
-              {/* Deep ambient glow behind the card */}
-              <div 
-                className="absolute -inset-16 opacity-40 group-hover:opacity-60 transition-opacity duration-1000 pointer-events-none"
+              {/* Ambient glow */}
+              <div
+                className="absolute -inset-16 opacity-40 pointer-events-none"
                 style={{
-                  background: 'radial-gradient(ellipse at center, rgba(124,58,237,0.35) 0%, rgba(59,130,246,0.15) 40%, transparent 70%)',
-                  willChange: 'opacity',
+                  background: 'radial-gradient(ellipse at center, rgba(124,58,237,0.3) 0%, rgba(59,130,246,0.12) 40%, transparent 70%)',
                 }}
               />
 
-              {/* Orbital Rings - Layer 1 */}
-              <div className="absolute -inset-[60%] pointer-events-none opacity-40 z-0 drop-shadow-[0_0_15px_rgba(124,58,237,0.3)]">
-                <svg viewBox="0 0 100 100" className="w-full h-full" fill="none" strokeWidth="0.15">
-                  <ellipse cx="50" cy="50" rx="45" ry="12" stroke="url(#orbit-grad-1)" transform="rotate(25 50 50)" />
-                  <ellipse cx="50" cy="50" rx="40" ry="10" stroke="url(#orbit-grad-2)" transform="rotate(-35 50 50)" />
-                  <defs>
-                    <linearGradient id="orbit-grad-1" x1="0%" y1="0%" x2="100%" y2="0%">
-                      <stop offset="0%" stopColor="rgba(124,58,237,0)" />
-                      <stop offset="50%" stopColor="rgba(124,58,237,0.8)" />
-                      <stop offset="100%" stopColor="rgba(124,58,237,0)" />
-                    </linearGradient>
-                    <linearGradient id="orbit-grad-2" x1="0%" y1="0%" x2="100%" y2="0%">
-                      <stop offset="0%" stopColor="rgba(59,130,246,0)" />
-                      <stop offset="50%" stopColor="rgba(59,130,246,0.7)" />
-                      <stop offset="100%" stopColor="rgba(59,130,246,0)" />
-                    </linearGradient>
-                  </defs>
-                </svg>
-              </div>
-
-              {/* Orbital Rings - Layer 2 (reverse) */}
-              <div className="absolute -inset-[45%] pointer-events-none opacity-30 z-0">
-                <svg viewBox="0 0 100 100" className="w-full h-full" fill="none" strokeWidth="0.12">
-                  <ellipse cx="50" cy="50" rx="42" ry="8" stroke="rgba(34,211,238,0.5)" transform="rotate(60 50 50)" />
-                </svg>
-              </div>
-
-              {/* Card Container with Neon Border */}
+              {/* Card Container */}
               <div className="absolute inset-0 neon-border-glow p-0 overflow-hidden z-10">
                 <AnimatePresence mode="wait">
-                  {currentSlide && (
+                  {currentSlide && currentSlide.type === 'portfolio' && (
                     <motion.div
                       key={activeSlide}
                       initial={{ opacity: 0, scale: 1.05 }}
@@ -275,8 +245,7 @@ const Hero = ({ settings = {} }) => {
                       transition={{ duration: 0.6, ease: 'easeOut' }}
                       className="absolute inset-0"
                     >
-                      {currentSlide.type === 'banner' && <BannerCard />}
-                      {currentSlide.type === 'portfolio' && <PortfolioCard project={currentSlide.data} />}
+                      <PortfolioCard project={currentSlide.data} />
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -286,7 +255,7 @@ const Hero = ({ settings = {} }) => {
               </div>
 
               {/* ─── Floating Badge: Top Left ─── */}
-              <motion.div 
+              <motion.div
                 animate={{ y: [0, -8, 0] }}
                 transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
                 className="absolute -top-8 -left-2 z-30"
