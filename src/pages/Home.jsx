@@ -8,7 +8,7 @@ import About from "../components/About";
 import Footer from "../components/Footer";
 import { motion } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
-import { ArrowRight, MessageCircle, Star, Send, Loader2, Sparkles, ShoppingBag, Server, Bot, Users, Zap, Shield, Palette, Calendar, BarChart, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowRight as ArrowRightIcon, MessageCircle, Star, Send, Loader2, Sparkles, ShoppingBag, Server, Bot, Users, Zap, Shield, Palette, Calendar, BarChart, ChevronLeft, ChevronRight } from "lucide-react";
 import { getFeedbacks, submitFeedback, getSiteSettings, getBlogs, getFaqs } from "../services/api";
 import { toast } from "react-hot-toast";
 
@@ -174,7 +174,7 @@ function Home() {
                 <h2 className="text-4xl font-bold font-display">From Our <span className="text-gradient">Knowledge Hub</span></h2>
               </div>
               <button onClick={() => navigate('/blog')} className="btn-outline flex items-center gap-2 group text-sm">
-                View All Articles <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                View All Articles <ArrowRightIcon className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </button>
             </div>
 
@@ -192,7 +192,7 @@ function Home() {
                       </p>
                     </div>
                     <button onClick={() => navigate(`/blog/${blog.slug}`)} className="inline-flex items-center gap-2 text-xs font-bold text-white group-hover:text-brand-primary transition-colors">
-                      Read Guide <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                      Read Guide <ArrowRightIcon className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
                     </button>
                   </div>
                 ))}
@@ -240,7 +240,7 @@ function Home() {
 
             <div className="text-center mt-12">
               <button onClick={() => navigate('/faq')} className="btn-outline flex items-center gap-2 group text-sm mx-auto">
-                See More Questions <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                See More Questions <ArrowRightIcon className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </button>
             </div>
           </div>
@@ -358,7 +358,7 @@ function Home() {
             <div className="flex flex-col sm:flex-row justify-center gap-4">
               <button onClick={() => navigate('/shop')} className="btn-primary flex items-center justify-center gap-2 px-10 py-4 text-lg">
                 Request for Price
-                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                <ArrowRightIcon className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </button>
               <button onClick={() => window.open('https://discord.gg/yourserver', '_blank')} className="btn-secondary flex items-center justify-center gap-2 px-8 py-4 text-lg">
                 <MessageCircle className="w-5 h-5" />
