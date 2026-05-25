@@ -103,13 +103,13 @@ function Home() {
       {/* ═══ Global Fixed Background for Entire Home Page ═══ */}
       <div className="fixed inset-0 z-[-1] pointer-events-none">
         <img 
-          src={siteSettings?.hero_banner || "/banner.jpg?v=2"} 
+          src={siteSettings?.hero_banner || "/banner.jpg?v=3"} 
           alt="Site Background"
           className="w-full h-full object-cover object-center opacity-50"
           onError={(e) => { 
             if (!e.target.dataset.failed) {
               e.target.dataset.failed = true;
-              e.target.src = "/banner.jpg?v=2";
+              e.target.src = "/banner.jpg?v=3";
             }
           }}
         />

@@ -37,7 +37,7 @@ const Hero = ({ settings = {} }) => {
           description: "♡ ‿ ⃰ Cozy Cloud ⑊ ʕ ‿ ⃰♡ Soft Love • Vibe Finder • Only Chill Stay close, Stay comfy",
           category: "PUBLIC SERVERS",
           member_count: "1.3k+",
-          banner_url: settings?.hero_banner || "/banner.jpg?v=2"
+          banner_url: settings?.hero_banner || "/banner.jpg?v=3"
         }
       });
     }
