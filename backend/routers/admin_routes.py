@@ -199,26 +199,45 @@ def manager_revenue(user=Depends(require_manager)):
                 with open(os.path.join(INVOICES_DIR, fname)) as f:
                     inv = json.load(f)
                 
-                # Add recorded payments to revenue
-                for p in inv.get("payments", []):
+                payments = inv.get("payments", [])
+                status = inv.get("paymentStatus", "pending").lower()
+
+                if not payments and status == "paid":
                     try:
-                        p_date = p.get("date", "")
+                        p_date = inv.get("savedAt") or inv.get("invoiceDate") or ""
                         if "T" in p_date:
                             dt = datetime.datetime.fromisoformat(p_date.replace("Z", "+00:00"))
                         else:
-                            dt = datetime.datetime.strptime(p_date, "%Y-%m-%d")
+                            dt = datetime.datetime.strptime(p_date[:10], "%Y-%m-%d")
                         ptime = int(dt.timestamp())
                         
-                        amt = float(p.get("amount", 0))
+                        amt = float(inv.get("grandTotal", 0))
                         if ptime >= week_ago:
                             week_rev += amt
                         if ptime >= month_ago:
                             month_rev += amt
                     except:
                         pass
+                else:
+                    # Add recorded payments to revenue
+                    for p in payments:
+                        try:
+                            p_date = p.get("date", "")
+                            if "T" in p_date:
+                                dt = datetime.datetime.fromisoformat(p_date.replace("Z", "+00:00"))
+                            else:
+                                dt = datetime.datetime.strptime(p_date[:10], "%Y-%m-%d")
+                            ptime = int(dt.timestamp())
+                            
+                            amt = float(p.get("amount", 0))
+                            if ptime >= week_ago:
+                                week_rev += amt
+                            if ptime >= month_ago:
+                                month_rev += amt
+                        except:
+                            pass
                 
                 # Add unpaid invoice balance to pending
-                status = inv.get("paymentStatus", "pending").lower()
                 if status in ["pending", "partial"]:
                     grand = float(inv.get("grandTotal", 0))
                     paid = sum(float(p.get("amount", 0)) for p in inv.get("payments", []))
