@@ -119,7 +119,10 @@ async def security_header_check(request: Request, call_next):
             "/api/auth/status",
             "/api/prices",
             "/api/portfolio",
-            "/api/public/stats"
+            "/api/public/stats",
+            "/api/blogs",
+            "/api/marketplace/templates",
+            "/api/faq"
         ]
         if not any(request.url.path.startswith(prefix) for prefix in exempt_prefixes):
             if request.method != "OPTIONS":

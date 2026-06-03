@@ -2,10 +2,14 @@ const API = '/api';
 
 export async function request(path, options = {}) {
   const token = localStorage.getItem('ssw_token');
+  const authHeader = (token && token !== 'null' && token !== 'undefined') 
+    ? { Authorization: `Bearer ${token}` } 
+    : {};
+
   const res = await fetch(`${API}${path}`, {
     headers: {
       'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...authHeader,
       'X-Starlit-Key': import.meta.env.VITE_STARLIT_KEY || atob('YzlmMmU4YTFkNGI3NjMwZWY1MWM5YThiM2QyZTdmMDQ2NWExYzhkOWIzZjJlN2EwNDZjNWQ4ZjFhMmIzZTRjNw=='),
       ...options.headers,
     },
